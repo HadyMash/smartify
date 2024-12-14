@@ -1,0 +1,17 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Smartify backend api service",
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
