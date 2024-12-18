@@ -3,20 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "run": "nodemon --exec ts-node src/index.ts"
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "Smartify backend api service",
-  "dependencies": {
-    "@types/express": "^5.0.0",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2"
-  },
+  "description": "",
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }
 }
