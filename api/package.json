@@ -10,8 +10,9 @@
   "license": "ISC",
   "description": "Smartify backend api service",
   "dependencies": {
+    "@types/express": "^5.0.0",
     "dotenv": "^16.4.7",
-    "fastify": "^5.2.0"
+    "express": "^4.21.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
