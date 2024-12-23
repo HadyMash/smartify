@@ -13,6 +13,10 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
+# How to run
+
+To run the app, run `flutter run` in the `app` directory. You can also run it using your IDE.
+
 # Conventions
 
 All code should be in the `lib` directory. `main.dart` is the entry point. **ALL** code you write should be documented using doc comments (`///`). You should also comment your code as needed. Don't write unnecessary comments, and don't write comments that just repeat the code. Your comments should explain the logic behind the code or why you wrote something or do something, so it's easy to follow and understand you're reasoning.

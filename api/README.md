@@ -6,6 +6,10 @@ This is the API backend service for Smartify. It's a Node.js Express server writ
 
 You need to have Node.js installed. It's recommended you have the latest LTS version installed. You also need to have MongoDB installed locally.
 
+# How to run
+
+To run the API service, run `npm run dev` in the `api` directory.
+
 # Conventions
 
 All code should be written in TypeScript and be well documented using JSDoc comments. You should also comment your code as needed. Don't write unnecessary comments, and don't write comments that just repeat the code. Your comments should explain the logic behind the code or why you wrote something or do something, so it's easy to follow and understand your reasoning.
