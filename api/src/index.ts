@@ -1,7 +1,7 @@
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import logMiddleware from './middleware/log.middleware';
+import logMiddleware from './middleware/log';
 
 dotenv.config();
 
