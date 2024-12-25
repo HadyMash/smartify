@@ -64,3 +64,18 @@ All routes need to be properly documented, including all the routes, what they d
 ## Middleware
 
 You may need to write middleware for your routes, such as authentication middleware (to check the auth status, etc.). All middleware should be under the `src/middleware` directory. You should also document your middleware and explain how to use it, what it does and so on.
+
+## Schemas
+
+All schemas should be under the `src/schemas` directory. Schemas are responsible for defining the structure of the data that is being sent or received. You should use zod to define your schemas. Below is an example on how to create a schema:
+
+```typescript
+import { z } from 'zod';
+
+export const templateSchema = z.object({
+  key: z.string(),
+});
+export type templateType = z.infer<typeof templateSchema>;
+```
+
+You should also document your schemas and explain what each field is, what it does, what it should be, etc.
