@@ -14,12 +14,9 @@ app.use(logMiddleware);
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.send('Hello World!');
+router.get('/health', (req, res) => {
+  res.send('OK');
 });
-
-// This is how you include your router
-// router.use('/template', templateRouter);
 
 app.use('/api', router);
 
