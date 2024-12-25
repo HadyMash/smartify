@@ -16,6 +16,14 @@ All code should be written in TypeScript and be well documented using JSDoc comm
 
 **IMPORTANT:** You should not hard code or commit any sensitive information, such as API keys, passwords, etc. You should use environment variables for these. You should also not commit any `.env` files or any other sensitive information.
 
+## Services
+
+All services should be under the `src/services` directory. Services are responsible for handling the business logic of the application.
+
+## Controllers
+
+All controllers should be under the `src/controllers` directory. Controllers are responsible for handling the requests and responses. They should call the services to handle the business logic.
+
 ## Routers
 
 All routers should be under the `src/routes` directory. Each route should export a router which you can use in the `index.ts` file. Below is an example:
@@ -49,9 +57,9 @@ router.use('/template', templateRouter);
 ...
 ```
 
-## Services
+Routes should not contain the controllers, they should only contain the routes and the logic for the routes. The controllers should be called from the routes.
 
-All services should be under the `src/services` directory.
+All routes need to be properly documented, including all the routes, what they do, what they take in, what they return, the meaning of each status code, etc.
 
 ## Middleware
 
