@@ -119,7 +119,6 @@ export class TokenService {
 
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
       user._id,
-      randomUUID,
     );
 
     const created = new Date();
@@ -289,6 +288,16 @@ export class TokenService {
       throw new InvalidTokenError();
     }
 
+    // check the refresh token hasn't been revoked
+    const currGenId = await this.db.tokenRepository.getUserTokenGenerationId(
+      refreshPayload.userId,
+      false,
+    );
+
+    if (!currGenId || currGenId !== refreshPayload.generationId) {
+      throw new InvalidTokenError();
+    }
+
     // get user's email
     const userDoc = await this.db.userRepository.getUserById(
       refreshPayload.userId,
@@ -322,7 +331,33 @@ export class TokenService {
     return this.generateAccessToken(payload, secret);
   }
 
-  //public revokeRefreshToken()
+  /**
+   * Change a user's token generation ID. This will invalidate old refresh tokens and all access tokens generated with it. However, the access token may still be used until it expires if an operation doesn't check the generation ID.
+   * @param userId - The user for whom to revoke token generation
+   * @returns
+   */
+  public async changeTokenGeneration(userId: string) {
+    return await this.db.tokenRepository.changeUserTokenGenerationId(userId);
+  }
 
-  //public revokeAllTokensImmediately()
+  /**
+   * Revoke all tokens for a user. This will invalidate all refresh tokens and all access tokens generated with them. Additionally, it will add the user's token generation ID to the blacklist, preventing access tokens from being used as well.
+   *
+   * This method should be used for security-sensitive operations, such as when a user changes their password, being removed from a household, etc.
+   * @param userId - The usre for whom to revoke all tokens
+   */
+  public async revokeAllTokensImmediately(userId: string) {
+    // get current gen id
+    const curGenId =
+      await this.db.tokenRepository.getUserTokenGenerationId(userId);
+    if (!curGenId) {
+      console.warn(
+        'No token generation ID found for user when blacklisting',
+        userId,
+      );
+      return;
+    }
+    // add to blacklist
+    await this.db.tokenRepository.blacklistTokenGenerationId(userId, curGenId);
+  }
 }
