@@ -79,3 +79,18 @@ export type templateType = z.infer<typeof templateSchema>;
 ```
 
 You should also document your schemas and explain what each field is, what it does, what it should be, etc.
+
+# Environment variables
+
+Below are the environment variables
+
+**`PORT`:** The port the Express server will listen to
+
+**`JWT_SECRET`:** The JWT secret used to sign jwt tokens. This is a temporary
+field until rotations are implemented.
+
+**`AUTH_TOKEN_ACCESS_EXPIRY_SECONDS`:** The time in seconds for the access token expiry (how long it lives). This should be a short duration, typically 30 mins to a few hours.
+
+**`AUTH_TOKEN_REFRESH_EXPIRY_SECONDS`:** The time in seconds for the refresh token expiry (how long it lives). The refresh token is used to refresh/create new access tokens.
+
+**`MONGODB_URI`:** The MongoDB connection URI

@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import logMiddleware from './middleware/log';
+import { TokenService } from './services/token';
 
 dotenv.config();
 
@@ -23,3 +24,6 @@ app.use('/api', router);
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+// ! temp
+const ts = new TokenService();
