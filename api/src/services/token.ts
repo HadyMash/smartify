@@ -1,36 +1,56 @@
 import assert from 'assert';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
-import { InvalidUserError, User, UserSchema } from '../schemas/user';
 import {
-  AccessTokenPayload,
+  InvalidUserError,
+  InvalidUseType,
+  type User,
+  UserSchema,
+} from '../schemas/user';
+import {
+  type AccessTokenPayload,
   AccessTokenPayloadSchema,
-  IDTokenPayload,
+  type IDTokenPayload,
   IDTokenPayloadSchema,
   InvalidTokenError,
-  JWTSecret,
-  RefreshTokenPayload,
+  type JWTSecret,
+  type RefreshTokenPayload,
   RefreshTokenPayloadSchema,
-  TokenType,
+  type TokenType,
   TokenTypeSchema,
 } from '../schemas/tokens';
 import { DatabaseService } from './db/db';
 
-const algorithm = 'RS256';
+//const algorithm = 'RS256';
 
 // TODO: make jwt operations async
 export class TokenService {
-  private static readonly ACCESS_TOKEN_EXPIRY_SECONDS: number = parseInt(
-    process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS!,
-  );
-  private static readonly REFRESH_TOKEN_EXPIRY_SECONDS: number = parseInt(
-    process.env.REFRESH_TOKEN_ACCESS_EXPIRY_SECONDS!,
-  );
+  private readonly ACCESS_TOKEN_EXPIRY_SECONDS: number;
+  private readonly REFRESH_TOKEN_EXPIRY_SECONDS: number;
 
   private readonly db: DatabaseService;
 
   constructor() {
     this.db = new DatabaseService();
+
+    this.ACCESS_TOKEN_EXPIRY_SECONDS = parseInt(
+      process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS!,
+    );
+    this.REFRESH_TOKEN_EXPIRY_SECONDS = parseInt(
+      process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS!,
+    );
+
+    if (isNaN(this.ACCESS_TOKEN_EXPIRY_SECONDS)) {
+      throw new Error(
+        `Invalid access token expiry time: ${process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS}`,
+      );
+    }
+
+    if (isNaN(this.REFRESH_TOKEN_EXPIRY_SECONDS)) {
+      throw new Error(
+        `Invalid refresh token expiry time: ${process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS}`,
+      );
+    }
   }
 
   /**
@@ -47,7 +67,7 @@ export class TokenService {
   ): string {
     const token = jwt.sign(payload, secret.secret, {
       keyid: secret.secret,
-      algorithm,
+      //algorithm,
       expiresIn: lifetime,
     });
 
@@ -64,13 +84,13 @@ export class TokenService {
    * @returns A refresh token
    */
   private async generateRefreshToken(
-    payload: RefreshTokenPayload,
+    payload: Omit<RefreshTokenPayload, 'exp'>,
     secret: JWTSecret,
   ): Promise<string> {
     return this.generateToken(
       payload,
       secret,
-      TokenService.REFRESH_TOKEN_EXPIRY_SECONDS,
+      this.REFRESH_TOKEN_EXPIRY_SECONDS,
     );
   }
 
@@ -82,13 +102,13 @@ export class TokenService {
    * @returns The generated access token
    */
   private async generateAccessToken(
-    payload: AccessTokenPayload,
+    payload: Omit<AccessTokenPayload, 'exp'>,
     secret: JWTSecret,
   ): Promise<string> {
     return this.generateToken(
       payload,
       secret,
-      TokenService.ACCESS_TOKEN_EXPIRY_SECONDS,
+      this.ACCESS_TOKEN_EXPIRY_SECONDS,
     );
   }
 
@@ -98,16 +118,19 @@ export class TokenService {
    * @param secret - The secret to sign the JWT with
    * @returns
    */
-  private generateIdToken(payload: IDTokenPayload, secret: JWTSecret): string {
+  private generateIdToken(
+    payload: Omit<IDTokenPayload, 'exp'>,
+    secret: JWTSecret,
+  ): string {
     return this.generateToken(
       payload,
       secret,
-      TokenService.ACCESS_TOKEN_EXPIRY_SECONDS,
+      this.ACCESS_TOKEN_EXPIRY_SECONDS,
     );
   }
 
   /**
-   * Generaters all the tokens for a user
+   * Generaters all the tokens for a user if they exist
    * @param user - The user to generate tokens for
    * @returns The generated tokens
    */
@@ -117,34 +140,48 @@ export class TokenService {
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
+    // check user exists
+    const userExists = await this.db.userRepository.userExists(user._id);
+
+    if (!userExists) {
+      throw new InvalidUserError({ type: InvalidUseType.DOES_NOT_EXIST });
+    }
+
+    //  user._id,
+    //  true
+
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
-      user._id,
+      user._id.toString(),
+      true,
     );
 
     const created = new Date();
+    // convert created to a number of seconds
+    const createdSeconds = Math.floor(created.getTime() / 1000);
 
-    const refreshTokenPayload: RefreshTokenPayload = {
+    const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
       userId: user._id,
-      iat: created,
+      iat: createdSeconds,
       type: TokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
       generationId,
     };
 
-    const accessTokenPayload: AccessTokenPayload = {
+    const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
       userId: user._id,
       email: user.email,
-      iat: created,
+      iat: createdSeconds,
       type: TokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshTokenPayload.jti,
       generationId,
     };
 
-    const idTokenPayload: IDTokenPayload = {
+    const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: user._id,
       email: user.email,
       type: TokenTypeSchema.enum.ID,
+      generationId,
     };
 
     const [refreshToken, accessToken] = await Promise.all([
@@ -223,7 +260,7 @@ export class TokenService {
   }
 
   /**
-   * Decode an auth token and get it's payload
+   * Decode an auth token and get it's payload. This does not check if it's valid
    * @param token - The token to decode
    * @returns The token's payload
    * @throws An error if the token is invalid or is not a valid token type
@@ -245,10 +282,10 @@ export class TokenService {
    * @param token - The token to verify and decode
    * @returns A boolean indiciating if the token is valid and the token's payload. The payload is undefined if the token is invalid but is defined if the token is valid
    */
-  public verifyToken(token: string): {
+  public async verifyToken(token: string): Promise<{
     valid: boolean;
     payload?: AccessTokenPayload | RefreshTokenPayload | IDTokenPayload;
-  } {
+  }> {
     // TODO: decrypt the token
 
     // validate
@@ -256,9 +293,19 @@ export class TokenService {
     let payload: AccessTokenPayload | RefreshTokenPayload | IDTokenPayload;
     try {
       result = jwt.verify(token, process.env.JWT_SECRET!, {
-        algorithms: [algorithm],
+        //algorithms: [algorithm],
       });
+
       payload = this.parseToken(result);
+
+      // check token isn't blacklisted
+      const blacklisted =
+        await this.db.tokenRepository.isTokenGenerationIdBlacklisted(
+          payload.generationId,
+        );
+      if (blacklisted) {
+        return { valid: false };
+      }
     } catch (_) {
       return { valid: false };
     }
@@ -277,7 +324,8 @@ export class TokenService {
    */
   public async refreshAccessToken(refreshToken: string) {
     // validate the refresh token
-    const { valid, payload: refreshPayload } = this.verifyToken(refreshToken);
+    const { valid, payload: refreshPayload } =
+      await this.verifyToken(refreshToken);
 
     // check we have a valid payload
     if (
@@ -312,10 +360,10 @@ export class TokenService {
 
     // TODO: get user household access and roles
 
-    const payload: AccessTokenPayload = {
+    const payload: Omit<AccessTokenPayload, 'exp'> = {
       userId: refreshPayload.userId,
       email: user.email,
-      iat: new Date(),
+      iat: new Date().getTime() / 1000,
       type: TokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshPayload.jti,
@@ -334,9 +382,9 @@ export class TokenService {
   /**
    * Change a user's token generation ID. This will invalidate old refresh tokens and all access tokens generated with it. However, the access token may still be used until it expires if an operation doesn't check the generation ID.
    * @param userId - The user for whom to revoke token generation
-   * @returns
+   * @returns the user's new token generation ID
    */
-  public async changeTokenGeneration(userId: string) {
+  public async revokeRefreshTokens(userId: string) {
     return await this.db.tokenRepository.changeUserTokenGenerationId(userId);
   }
 

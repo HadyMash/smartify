@@ -35,7 +35,7 @@ export class TokenRepository {
   }
 
   /**
-   * Generate a new random and unique token generation ID
+   * Generates a new token generation ID
    * @returns A new token generation ID
    */
   private generateTokenGenerationId(): string {
@@ -43,14 +43,45 @@ export class TokenRepository {
   }
 
   /**
-   * Get a user's token generation ID
+   * Get a user's token generation ID and optionally generate a new one if it doesn't exist
    * @param userId - The user's ID
-   * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
-   * @returns The user's token generation ID
+   * @returns The user's token generation ID or null if it doesn't exist
    */
   public async getUserTokenGenerationId(
     userId: string,
-    upsert: boolean = false,
+  ): Promise<string | undefined>;
+
+  /**
+   * Get a user's token generation ID and optionally generate a new one if it doesn't exist
+   * @param userId - The user's ID
+   * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
+   * @returns The user's token generation ID or null if it doesn't exist and upsert is false
+   */
+  public async getUserTokenGenerationId(
+    userId: string,
+    upsert: false,
+  ): Promise<string | undefined>;
+
+  /**
+   * Get a user's token generation ID and optionally generate a new one if it doesn't exist
+   * @param userId - The user's ID
+   * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
+   * @returns The user's token generation ID
+   * */
+  public async getUserTokenGenerationId(
+    userId: string,
+    upsert: true,
+  ): Promise<string>;
+
+  /**
+   * Get a user's token generation ID and optionally generate a new one if it doesn't exist
+   * @param userId - The user's ID
+   * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
+   * @returns The user's token generation ID or null if it doesn't exist and upsert is false
+   */
+  public async getUserTokenGenerationId(
+    userId: string,
+    upsert?: boolean,
   ): Promise<string | undefined> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
@@ -80,7 +111,10 @@ export class TokenRepository {
       { upsert: true },
     );
 
-    if (!result.acknowledged || result.modifiedCount !== 1) {
+    if (
+      !result.acknowledged ||
+      (result.modifiedCount !== 1 && result.upsertedCount !== 1)
+    ) {
       throw new Error('Failed to update token generation ID');
     }
 
@@ -115,7 +149,7 @@ export class TokenRepository {
     }
 
     // add to blacklist
-    this.blacklistCollection.insertOne({
+    await this.blacklistCollection.insertOne({
       tokenGenerationId: genId,
       expiry: new Date(Date.now() + refreshLifespan),
     });

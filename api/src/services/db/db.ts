@@ -5,8 +5,6 @@ import { UserRepository } from './repositories/user';
 const DB_NAME: string = 'smartify';
 
 export class DatabaseService {
-  private static uri: string = process.env.MONGO_URI!;
-
   private static client: MongoClient | undefined;
   private static db: Db;
 
@@ -16,7 +14,7 @@ export class DatabaseService {
 
   constructor() {
     if (!DatabaseService.client) {
-      DatabaseService.client = new MongoClient(DatabaseService.uri, {
+      DatabaseService.client = new MongoClient(process.env.MONGODB_URI!, {
         // TODO: configure pool settings
       });
       DatabaseService.client
