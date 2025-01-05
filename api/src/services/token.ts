@@ -25,28 +25,28 @@ import { DatabaseService } from './db/db';
 
 // TODO: make jwt operations async
 export class TokenService {
-  private readonly ACCESS_TOKEN_EXPIRY_SECONDS: number;
-  private readonly REFRESH_TOKEN_EXPIRY_SECONDS: number;
+  private readonly ACCESS_TOKEN_LIFESPAN_SECONDS: number;
+  private readonly REFRESH_TOKEN_LIFESPAN_SECONDS: number;
 
   private readonly db: DatabaseService;
 
   constructor() {
     this.db = new DatabaseService();
 
-    this.ACCESS_TOKEN_EXPIRY_SECONDS = parseInt(
+    this.ACCESS_TOKEN_LIFESPAN_SECONDS = parseInt(
       process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS!,
     );
-    this.REFRESH_TOKEN_EXPIRY_SECONDS = parseInt(
+    this.REFRESH_TOKEN_LIFESPAN_SECONDS = parseInt(
       process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS!,
     );
 
-    if (isNaN(this.ACCESS_TOKEN_EXPIRY_SECONDS)) {
+    if (isNaN(this.ACCESS_TOKEN_LIFESPAN_SECONDS)) {
       throw new Error(
         `Invalid access token expiry time: ${process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS}`,
       );
     }
 
-    if (isNaN(this.REFRESH_TOKEN_EXPIRY_SECONDS)) {
+    if (isNaN(this.REFRESH_TOKEN_LIFESPAN_SECONDS)) {
       throw new Error(
         `Invalid refresh token expiry time: ${process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS}`,
       );
@@ -90,7 +90,7 @@ export class TokenService {
     return this.generateToken(
       payload,
       secret,
-      this.REFRESH_TOKEN_EXPIRY_SECONDS,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -108,7 +108,7 @@ export class TokenService {
     return this.generateToken(
       payload,
       secret,
-      this.ACCESS_TOKEN_EXPIRY_SECONDS,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -125,7 +125,7 @@ export class TokenService {
     return this.generateToken(
       payload,
       secret,
-      this.ACCESS_TOKEN_EXPIRY_SECONDS,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -152,6 +152,7 @@ export class TokenService {
 
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
       user._id.toString(),
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
       true,
     );
 
@@ -339,6 +340,7 @@ export class TokenService {
     // check the refresh token hasn't been revoked
     const currGenId = await this.db.tokenRepository.getUserTokenGenerationId(
       refreshPayload.userId,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
       false,
     );
 
@@ -379,13 +381,19 @@ export class TokenService {
     return this.generateAccessToken(payload, secret);
   }
 
+  // TODO: implement per device token generation
+  // TODO: implement access only blacklist to avoid signing out but refresh permissions
+
   /**
    * Change a user's token generation ID. This will invalidate old refresh tokens and all access tokens generated with it. However, the access token may still be used until it expires if an operation doesn't check the generation ID.
    * @param userId - The user for whom to revoke token generation
    * @returns the user's new token generation ID
    */
   public async revokeRefreshTokens(userId: string) {
-    return await this.db.tokenRepository.changeUserTokenGenerationId(userId);
+    return await this.db.tokenRepository.changeUserTokenGenerationId(
+      userId,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
+    );
   }
 
   /**
@@ -395,17 +403,10 @@ export class TokenService {
    * @param userId - The usre for whom to revoke all tokens
    */
   public async revokeAllTokensImmediately(userId: string) {
-    // get current gen id
-    const curGenId =
-      await this.db.tokenRepository.getUserTokenGenerationId(userId);
-    if (!curGenId) {
-      console.warn(
-        'No token generation ID found for user when blacklisting',
-        userId,
-      );
-      return;
-    }
     // add to blacklist
-    await this.db.tokenRepository.blacklistTokenGenerationId(userId, curGenId);
+    await this.db.tokenRepository.blacklistTokenGenerationId(
+      userId,
+      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
+    );
   }
 }
