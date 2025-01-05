@@ -1,4 +1,3 @@
-import assert from 'assert';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import {
@@ -16,14 +15,13 @@ import {
   type JWTSecret,
   type RefreshTokenPayload,
   RefreshTokenPayloadSchema,
-  type TokenType,
+  TokenPayload,
   TokenTypeSchema,
 } from '../schemas/tokens';
 import { DatabaseService } from './db/db';
 
 //const algorithm = 'RS256';
 
-// TODO: make jwt operations async
 export class TokenService {
   private readonly ACCESS_TOKEN_LIFESPAN_SECONDS: number;
   private readonly REFRESH_TOKEN_LIFESPAN_SECONDS: number;
@@ -61,7 +59,7 @@ export class TokenService {
    * @returns The generated JWT
    */
   private generateToken(
-    payload: any, // TODO: update payload to be a union of all the tokne types
+    payload: Omit<TokenPayload, 'exp'>, // TODO: update payload to be a union of all the tokne types
     secret: JWTSecret,
     lifetime: number,
   ): string {
@@ -183,6 +181,8 @@ export class TokenService {
       email: user.email,
       type: TokenTypeSchema.enum.ID,
       generationId,
+      iat: createdSeconds,
+      name: 'John Doe',
     };
 
     const [refreshToken, accessToken] = await Promise.all([

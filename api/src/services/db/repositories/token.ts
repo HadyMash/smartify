@@ -35,12 +35,9 @@ interface TokenGenIdDoc {
   blacklisted: boolean;
 }
 
-// TODO: combine this with user collection or move into token service, there's
-// no need for this to be a public repository as it's only used by the token
-// service
 // TODO: implement redis
-// TODO: change so that only refresh tokens are stored in db
 // TODO: integrate with token service to remove lifespan parameter
+
 /* revoked access tokens are stored in redis (some sort of version
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
