@@ -2,6 +2,7 @@ import assert from 'assert';
 import { Collection, Db, ObjectId } from 'mongodb';
 import { User } from '../../../schemas/user';
 import { randomInt } from 'crypto';
+import { RedisClientType } from 'redis';
 
 const COLLECTION_NAME = 'users';
 
@@ -9,9 +10,11 @@ const COLLECTION_NAME = 'users';
 
 export class UserRepository {
   private readonly collection: Collection;
+  private readonly redis: RedisClientType;
 
-  constructor(db: Db) {
+  constructor(db: Db, redis: RedisClientType) {
     this.collection = db.collection(COLLECTION_NAME);
+    this.redis = redis;
   }
 
   // ! temp method

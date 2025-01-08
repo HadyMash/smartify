@@ -23,32 +23,44 @@ import { DatabaseService } from './db/db';
 //const algorithm = 'RS256';
 
 export class TokenService {
-  private readonly ACCESS_TOKEN_LIFESPAN_SECONDS: number;
-  private readonly REFRESH_TOKEN_LIFESPAN_SECONDS: number;
+  private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
+  private static _REFRESH_TOKEN_LIFESPAN_SECONDS: number;
 
-  private readonly db: DatabaseService;
-
-  constructor() {
-    this.db = new DatabaseService();
-
-    this.ACCESS_TOKEN_LIFESPAN_SECONDS = parseInt(
-      process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS!,
-    );
-    this.REFRESH_TOKEN_LIFESPAN_SECONDS = parseInt(
-      process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS!,
-    );
-
-    if (isNaN(this.ACCESS_TOKEN_LIFESPAN_SECONDS)) {
+  public static get ACCESS_TOKEN_LIFESPAN_SECONDS(): number {
+    if (this._ACCESS_TOKEN_LIFESPAN_SECONDS === undefined) {
+      this._ACCESS_TOKEN_LIFESPAN_SECONDS = parseInt(
+        process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS!,
+      );
+    }
+    if (isNaN(this._ACCESS_TOKEN_LIFESPAN_SECONDS)) {
       throw new Error(
         `Invalid access token expiry time: ${process.env.AUTH_TOKEN_ACCESS_EXPIRY_SECONDS}`,
       );
     }
 
-    if (isNaN(this.REFRESH_TOKEN_LIFESPAN_SECONDS)) {
+    return this._ACCESS_TOKEN_LIFESPAN_SECONDS;
+  }
+
+  public static get REFRESH_TOKEN_LIFESPAN_SECONDS(): number {
+    if (this._REFRESH_TOKEN_LIFESPAN_SECONDS === undefined) {
+      this._REFRESH_TOKEN_LIFESPAN_SECONDS = parseInt(
+        process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS!,
+      );
+    }
+
+    if (isNaN(this._REFRESH_TOKEN_LIFESPAN_SECONDS)) {
       throw new Error(
         `Invalid refresh token expiry time: ${process.env.AUTH_TOKEN_REFRESH_EXPIRY_SECONDS}`,
       );
     }
+
+    return this._REFRESH_TOKEN_LIFESPAN_SECONDS;
+  }
+
+  private readonly db: DatabaseService;
+
+  constructor() {
+    this.db = new DatabaseService();
   }
 
   /**
@@ -98,7 +110,7 @@ export class TokenService {
     return await this.generateToken(
       payload,
       secret,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -116,7 +128,7 @@ export class TokenService {
     return await this.generateToken(
       payload,
       secret,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -133,7 +145,7 @@ export class TokenService {
     return await this.generateToken(
       payload,
       secret,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
     );
   }
 
@@ -160,7 +172,6 @@ export class TokenService {
 
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
       user._id.toString(),
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
       true,
     );
 
@@ -358,7 +369,6 @@ export class TokenService {
     // check the refresh token hasn't been revoked
     const currGenId = await this.db.tokenRepository.getUserTokenGenerationId(
       refreshPayload.userId,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
       false,
     );
 
@@ -408,10 +418,7 @@ export class TokenService {
    * @returns the user's new token generation ID
    */
   public async revokeRefreshTokens(userId: string) {
-    return await this.db.tokenRepository.changeUserTokenGenerationId(
-      userId,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
-    );
+    return await this.db.tokenRepository.changeUserTokenGenerationId(userId);
   }
 
   /**
@@ -422,9 +429,6 @@ export class TokenService {
    */
   public async revokeAllTokensImmediately(userId: string) {
     // add to blacklist
-    await this.db.tokenRepository.blacklistTokenGenerationId(
-      userId,
-      this.ACCESS_TOKEN_LIFESPAN_SECONDS,
-    );
+    await this.db.tokenRepository.blacklistTokenGenerationId(userId);
   }
 }

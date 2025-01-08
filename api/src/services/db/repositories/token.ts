@@ -1,6 +1,8 @@
 import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Collection, Db, ObjectId } from 'mongodb';
+import { RedisClientType } from 'redis';
+import { TokenService } from '../../token';
 
 const COLLECTION_NAME = 'tokens';
 
@@ -35,7 +37,6 @@ interface TokenGenIdDoc {
   blacklisted: boolean;
 }
 
-// TODO: implement redis
 // TODO: integrate with token service to remove lifespan parameter
 
 /* revoked access tokens are stored in redis (some sort of version
@@ -43,9 +44,18 @@ interface TokenGenIdDoc {
  * that way no revoked access tokens get unrevoked) */
 export class TokenRepository {
   private readonly collection: Collection<TokenGenIdDoc>;
+  private readonly redis: RedisClientType;
 
-  constructor(db: Db) {
+  private static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
+
+  /**
+   * @param db - The database to use
+   * @param redis - The redis client to use
+   * @param accessLifespanSeconds - The lifespan of an access token in seconds
+   */
+  constructor(db: Db, redis: RedisClientType) {
     this.collection = db.collection<TokenGenIdDoc>(COLLECTION_NAME);
+    this.redis = redis;
   }
 
   /**
@@ -59,50 +69,42 @@ export class TokenRepository {
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
    * @param userId - The user's ID
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    * @returns The user's token generation ID or null if it doesn't exist
    */
   public async getUserTokenGenerationId(
     userId: string,
-    accessLifespanSeconds: number,
   ): Promise<string | undefined>;
 
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
    * @param userId - The user's ID
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
     userId: string,
-    accessLifespanSeconds: number,
     upsert: false,
   ): Promise<string | undefined>;
 
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
    * @param userId - The user's ID
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
    * @returns The user's token generation ID
    * */
   public async getUserTokenGenerationId(
     userId: string,
-    accessLifespanSeconds: number,
     upsert: true,
   ): Promise<string>;
 
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
    * @param userId - The user's ID
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
     userId: string,
-    accessLifespanSeconds: number,
     upsert?: boolean,
   ): Promise<string | undefined> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
@@ -119,10 +121,7 @@ export class TokenRepository {
 
     // create if it doesn't exist (or blacklisted)
     if ((doc === null || !doc.tokenGenerationId) && upsert) {
-      return await this.changeUserTokenGenerationId(
-        userId,
-        accessLifespanSeconds,
-      );
+      return await this.changeUserTokenGenerationId(userId);
     }
 
     // if blacklisted and upsert is false return undefined, otherwise return
@@ -133,16 +132,12 @@ export class TokenRepository {
   /**
    * Change's the user's token generation ID
    * @param userId - The user's ID
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    * @returns the new token generation ID
    */
-  public async changeUserTokenGenerationId(
-    userId: string,
-    accessLifespanSeconds: number,
-  ): Promise<string> {
+  public async changeUserTokenGenerationId(userId: string): Promise<string> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
-    const expiry = new Date(Date.now() + accessLifespanSeconds * 1000);
+    const expiry = this.tokenExpiry();
 
     // update the latest document
     await this.collection.updateMany(
@@ -173,30 +168,50 @@ export class TokenRepository {
   }
 
   /**
+   * Adds the token genearation IDs provided in docs to the blacklist cache
    * @param docs - The documents to cache
    */
   private async cacheBlacklist(
     docs: Pick<TokenGenIdDoc, 'tokenGenerationId' | 'expiry'>[],
   ) {
-    console.warn('Not implemented');
+    console.log('adding blacklisted genids to cache');
 
-    docs.forEach(async (doc) => {
-      // TODO: add to redis
-    });
+    await Promise.all(
+      docs.map(async (doc) => {
+        // calculate TTL
+        const ttlSeconds = Math.ceil(
+          ((doc.expiry ?? this.tokenExpiry()).getTime() - Date.now()) / 1000,
+        );
+
+        // don't add it if it's already expired
+        if (ttlSeconds <= 0) {
+          return;
+        }
+
+        // key format: token-blacklist:<tokenGenerationId>
+        const key = `${TokenRepository.BLACKLIST_REDIS_KEY}:${doc.tokenGenerationId}`;
+
+        // add to redis with TTL using SET
+        // use '1' as the key since we don't care about the value we just want
+        // it to exist.
+        await this.redis.set(key, '1', {
+          EX: ttlSeconds,
+        });
+      }),
+    );
 
     return;
   }
 
+  private tokenExpiry = (): Date =>
+    new Date(Date.now() + TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS * 1000);
+
   /**
    * Blacklist a token generation ID to prevent all of it's tokens from being used including access tokens. This method will also change the user's token generation ID.
    * @param genId - The token generation ID to blacklist
-   * @param accessLifespanSeconds - The lifespan of the access token in seconds
    */
-  public async blacklistTokenGenerationId(
-    userId: string,
-    accessLifespanSeconds: number,
-  ): Promise<void> {
-    const expiry = new Date(Date.now() + accessLifespanSeconds * 1000);
+  public async blacklistTokenGenerationId(userId: string): Promise<void> {
+    const expiry = this.tokenExpiry();
 
     // begin blacklisting all tokens in the db but don't wait
     this.collection
@@ -239,18 +254,38 @@ export class TokenRepository {
     await this.cacheBlacklist(docs);
   }
 
+  private async isTokenGenerationIdBlacklistedCache(
+    genId: string,
+  ): Promise<boolean> {
+    console.log('checking redis cache for blacklisted genid');
+
+    const result = await this.redis.get(
+      `${TokenRepository.BLACKLIST_REDIS_KEY}:${genId}`,
+    );
+    console.log('exists:', result != null);
+
+    return result !== null;
+  }
+
   /**
    * Checks if a token generation ID is blacklisted
    * @param genId - The generation id to check
    * @returns True if blacklisted, false otherwise
    */
   public async isTokenGenerationIdBlacklisted(genId: string): Promise<boolean> {
-    // TODO: check redis cache first
+    // try because we don't want it to fail
+    try {
+      const existsInCache =
+        await this.isTokenGenerationIdBlacklistedCache(genId);
+      // we foudn it in cache, return true for blacklisted
+      if (existsInCache) {
+        return true;
+      }
+    } catch (e) {
+      console.error('Error checking redis cache', e);
+    }
 
     // not found in redis, check db
-    //const doc = await this.blacklistCollection.findOne({
-    //  tokenGenerationId: genId,
-    //});
     const doc = await this.collection.findOne({
       tokenGenerationId: genId,
       blacklisted: true, // fewer blacklisted tokens, faster query
@@ -261,8 +296,10 @@ export class TokenRepository {
     }
 
     // doc not null, meaning it's expired.
-    // TODO: add to redis cache to avoid another cache miss
+    // add to redis cache to avoid another cache miss
     // this should be non blocking so don't await
+
+    this.cacheBlacklist([doc]);
 
     // and return
     return true;
