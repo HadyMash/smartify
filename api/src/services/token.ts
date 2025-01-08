@@ -58,15 +58,25 @@ export class TokenService {
    * @param lifetime {}- The lifeimte of the token in seconds
    * @returns The generated JWT
    */
-  private generateToken(
-    payload: Omit<TokenPayload, 'exp'>, // TODO: update payload to be a union of all the tokne types
+  private async generateToken(
+    payload: Omit<TokenPayload, 'exp'>,
     secret: JWTSecret,
     lifetime: number,
-  ): string {
-    const token = jwt.sign(payload, secret.secret, {
-      keyid: secret.secret,
-      //algorithm,
-      expiresIn: lifetime,
+  ): Promise<string> {
+    const token = await new Promise<string>((resolve, reject) => {
+      jwt.sign(
+        payload,
+        secret.secret,
+        {
+          keyid: secret.secret,
+          //algorithm,
+          expiresIn: lifetime,
+        },
+        (err: Error | null, token: string | undefined) => {
+          if (err) reject(err);
+          else resolve(token!);
+        },
+      );
     });
 
     // TODO: update method doc once encryuption is added
@@ -85,7 +95,7 @@ export class TokenService {
     payload: Omit<RefreshTokenPayload, 'exp'>,
     secret: JWTSecret,
   ): Promise<string> {
-    return this.generateToken(
+    return await this.generateToken(
       payload,
       secret,
       this.ACCESS_TOKEN_LIFESPAN_SECONDS,
@@ -103,7 +113,7 @@ export class TokenService {
     payload: Omit<AccessTokenPayload, 'exp'>,
     secret: JWTSecret,
   ): Promise<string> {
-    return this.generateToken(
+    return await this.generateToken(
       payload,
       secret,
       this.ACCESS_TOKEN_LIFESPAN_SECONDS,
@@ -116,11 +126,11 @@ export class TokenService {
    * @param secret - The secret to sign the JWT with
    * @returns
    */
-  private generateIdToken(
+  private async generateIdToken(
     payload: Omit<IDTokenPayload, 'exp'>,
     secret: JWTSecret,
-  ): string {
-    return this.generateToken(
+  ): Promise<string> {
+    return await this.generateToken(
       payload,
       secret,
       this.ACCESS_TOKEN_LIFESPAN_SECONDS,
@@ -185,12 +195,11 @@ export class TokenService {
       name: 'John Doe',
     };
 
-    const [refreshToken, accessToken] = await Promise.all([
+    const [refreshToken, accessToken, idToken] = await Promise.all([
       this.generateRefreshToken(refreshTokenPayload, secret),
       this.generateAccessToken(accessTokenPayload, secret),
+      this.generateIdToken(idTokenPayload, secret),
     ]);
-
-    const idToken = this.generateIdToken(idTokenPayload, secret);
 
     return {
       refreshToken,
@@ -293,9 +302,18 @@ export class TokenService {
     let result: string | jwt.JwtPayload | null = null;
     let payload: AccessTokenPayload | RefreshTokenPayload | IDTokenPayload;
     try {
-      result = jwt.verify(token, process.env.JWT_SECRET!, {
-        //algorithms: [algorithm],
-      });
+      result = await new Promise<string | jwt.JwtPayload | null>(
+        (resolve, reject) => {
+          jwt.verify(
+            token,
+            process.env.JWT_SECRET!,
+            (err: Error | null, decoded: any) => {
+              if (err) reject(err);
+              else resolve(decoded);
+            },
+          );
+        },
+      );
 
       payload = this.parseToken(result);
 
