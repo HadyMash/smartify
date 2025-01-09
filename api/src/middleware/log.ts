@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 
-const logMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`${req.method} ${req.path}`);
+export const logMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  console.log(`${req.method} ${req.path} ${JSON.stringify(req.body)}`);
   next();
 };
-
-export default logMiddleware;
