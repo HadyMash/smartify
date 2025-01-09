@@ -2,9 +2,6 @@ import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import logMiddleware from './middleware/log';
-import { DatabaseService } from './services/db/db';
-import { User, UserSchema } from './schemas/user';
-import { TokenService } from './services/token';
 
 dotenv.config();
 

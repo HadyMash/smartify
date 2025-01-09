@@ -24,6 +24,10 @@ interface TokenGenIdDoc {
    */
   tokenGenerationId: string;
   /**
+   * The device ID the token generation ID is for
+   */
+  deviceId: string;
+  /**
    * When the generation id was created
    */
   created: Date;
@@ -68,21 +72,25 @@ export class TokenRepository {
 
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
-   * @param userId - The user's ID
+   * @param userId - The user's ID for which to get the token gen id
+   * @param deviceId - The device ID for which to get the token gen id
    * @returns The user's token generation ID or null if it doesn't exist
    */
   public async getUserTokenGenerationId(
     userId: string,
+    deviceId: string,
   ): Promise<string | undefined>;
 
   /**
    * Get a user's token generation ID and optionally generate a new one if it doesn't exist
-   * @param userId - The user's ID
+   * @param userId - The user's ID for which to get the token gen id
+   * @param deviceId - The device ID for which to get the token gen id
    * @param [upsert] - Whether to create a new token generation ID if one does not exist (a new one is created if this value is true). Defaults to false.
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
     userId: string,
+    deviceId: string,
     upsert: false,
   ): Promise<string | undefined>;
 
@@ -94,6 +102,7 @@ export class TokenRepository {
    * */
   public async getUserTokenGenerationId(
     userId: string,
+    deviceId: string,
     upsert: true,
   ): Promise<string>;
 
@@ -105,6 +114,7 @@ export class TokenRepository {
    */
   public async getUserTokenGenerationId(
     userId: string,
+    deviceId: string,
     upsert?: boolean,
   ): Promise<string | undefined> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
@@ -113,6 +123,7 @@ export class TokenRepository {
     const doc = await this.collection.findOne(
       {
         userId: new ObjectId(userId),
+        deviceId,
         blacklisted: false,
         $or: [{ expiry: { $exists: false } }, { expiry: undefined }],
       },
@@ -121,7 +132,7 @@ export class TokenRepository {
 
     // create if it doesn't exist (or blacklisted)
     if ((doc === null || !doc.tokenGenerationId) && upsert) {
-      return await this.changeUserTokenGenerationId(userId);
+      return await this.changeUserTokenGenerationId(userId, deviceId);
     }
 
     // if blacklisted and upsert is false return undefined, otherwise return
@@ -132,9 +143,13 @@ export class TokenRepository {
   /**
    * Change's the user's token generation ID
    * @param userId - The user's ID
+   * @param deviceId - The device ID
    * @returns the new token generation ID
    */
-  public async changeUserTokenGenerationId(userId: string): Promise<string> {
+  public async changeUserTokenGenerationId(
+    userId: string,
+    deviceId: string,
+  ): Promise<string> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
     const expiry = this.tokenExpiry();
@@ -154,6 +169,7 @@ export class TokenRepository {
     const doc: TokenGenIdDoc = {
       userId: new ObjectId(userId),
       tokenGenerationId: genId,
+      deviceId,
       created: new Date(),
       blacklisted: false,
     };
