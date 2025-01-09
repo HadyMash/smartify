@@ -30,7 +30,7 @@ export type TokenPayload = z.infer<typeof TokenPayloadSchema>;
 
 export const RefreshTokenPayloadSchema = TokenPayloadSchema.extend({
   /** The token's unique identifier. */
-  jti: z.string(),
+  jti: z.string().min(1),
   /** The token's generation id */
   generationId: z.string(),
   /** The type of the token */
@@ -43,7 +43,7 @@ export const AccessTokenPayloadSchema = RefreshTokenPayloadSchema.extend({
   /** The email of the user the token is for */
   email: z.string(),
   /** The refresh token used to generate this access token's identifier */
-  refreshJti: z.string(),
+  refreshJti: z.string().min(1),
   /** The type of the token */
   type: z.literal(TokenTypeSchema.enum.ACCESS),
   // TODO: include household access and role

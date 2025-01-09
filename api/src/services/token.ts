@@ -152,6 +152,7 @@ export class TokenService {
   /**
    * Generaters all the tokens for a user if they exist
    * @param user - The user to generate tokens for
+   * @param deviceId - The device ID to generate the tokens for
    * @returns The generated tokens
    */
   public async generateAllTokens(user: User, deviceId: string) {
@@ -347,41 +348,51 @@ export class TokenService {
 
   // TODO: implement token rotation
   /**
-   * Refresh an access token using a refresh token
-   * @param refreshToken - The refresh token to use to generate a new access token
+   * Refresh the user's tokens
+   * @param oldRefreshToken - The refresh token to use to generate a new access
+   * token
    * @param deviceId - The device ID to generate the new access token for
-   * @returns a new access token
+   * @returns new tokens. Only the access token is guaranteed to be returned if
+   * the method returns. The others might be undefined if their generation
+   * fails.
    * @throws an {@link InvalidTokenError} if the refresh token is invalid
    * @throws an {@link InvalidUserError} if the user is invalid
    */
-  public async refreshAccessToken(refreshToken: string, deviceId: string) {
+  public async refreshTokens(
+    oldRefreshToken: string,
+    deviceId: string,
+  ): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    idToken?: string;
+  }> {
     // validate the refresh token
-    const { valid, payload: refreshPayload } =
-      await this.verifyToken(refreshToken);
+    const { valid, payload: oldRefreshPayload } =
+      await this.verifyToken(oldRefreshToken);
 
     // check we have a valid payload
     if (
       !valid ||
-      !refreshPayload ||
-      refreshPayload.type !== TokenTypeSchema.enum.REFRESH
+      !oldRefreshPayload ||
+      oldRefreshPayload.type !== TokenTypeSchema.enum.REFRESH
     ) {
       throw new InvalidTokenError();
     }
 
     // check the refresh token hasn't been revoked
     const currGenId = await this.db.tokenRepository.getUserTokenGenerationId(
-      refreshPayload.userId,
+      oldRefreshPayload.userId,
       deviceId,
       false,
     );
 
-    if (!currGenId || currGenId !== refreshPayload.generationId) {
+    if (!currGenId || currGenId !== oldRefreshPayload.generationId) {
       throw new InvalidTokenError();
     }
 
     // get user's email
     const userDoc = await this.db.userRepository.getUserById(
-      refreshPayload.userId,
+      oldRefreshPayload.userId,
     );
     let user: User;
     try {
@@ -393,14 +404,35 @@ export class TokenService {
 
     // TODO: get user household access and roles
 
-    const payload: Omit<AccessTokenPayload, 'exp'> = {
-      userId: refreshPayload.userId,
+    const created = new Date();
+    // convert created to a number of seconds
+    const createdSeconds = Math.floor(created.getTime() / 1000);
+
+    const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
+      userId: oldRefreshPayload.userId,
+      iat: createdSeconds,
+      type: TokenTypeSchema.enum.REFRESH,
+      jti: randomUUID(),
+      generationId: oldRefreshPayload.generationId,
+    };
+
+    const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
+      userId: oldRefreshPayload.userId,
       email: user.email,
-      iat: new Date().getTime() / 1000,
+      iat: createdSeconds,
       type: TokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
-      refreshJti: refreshPayload.jti,
-      generationId: refreshPayload.generationId,
+      refreshJti: refreshTokenPayload.jti,
+      generationId: oldRefreshPayload.generationId,
+    };
+
+    const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
+      userId: oldRefreshPayload.userId,
+      email: user.email,
+      type: TokenTypeSchema.enum.ID,
+      generationId: oldRefreshPayload.generationId,
+      iat: createdSeconds,
+      name: 'John Doe',
     };
 
     // ! temp
@@ -409,7 +441,23 @@ export class TokenService {
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
-    return this.generateAccessToken(payload, secret);
+    const [refreshToken, accessToken, idToken] = await Promise.all([
+      this.generateRefreshToken(refreshTokenPayload, secret).catch((e) => {
+        console.error('error generating refresh token:', e);
+        return undefined;
+      }),
+      this.generateAccessToken(accessTokenPayload, secret),
+      this.generateIdToken(idTokenPayload, secret).catch((e) => {
+        console.error('error generating refresh token:', e);
+        return undefined;
+      }),
+    ]);
+
+    return {
+      refreshToken,
+      accessToken,
+      idToken,
+    };
   }
 
   // TODO: implement per device token generation
