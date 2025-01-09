@@ -154,7 +154,7 @@ export class TokenService {
    * @param user - The user to generate tokens for
    * @returns The generated tokens
    */
-  public async generateAllTokens(user: User) {
+  public async generateAllTokens(user: User, deviceId: string) {
     const secret: JWTSecret = {
       secret: process.env.JWT_SECRET!, // TODO: generate random one
       secretId: '1', // TODO: rotate keys and store in DB
@@ -172,6 +172,7 @@ export class TokenService {
 
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
       user._id.toString(),
+      deviceId,
       true,
     );
 
@@ -348,11 +349,12 @@ export class TokenService {
   /**
    * Refresh an access token using a refresh token
    * @param refreshToken - The refresh token to use to generate a new access token
+   * @param deviceId - The device ID to generate the new access token for
    * @returns a new access token
    * @throws an {@link InvalidTokenError} if the refresh token is invalid
    * @throws an {@link InvalidUserError} if the user is invalid
    */
-  public async refreshAccessToken(refreshToken: string) {
+  public async refreshAccessToken(refreshToken: string, deviceId: string) {
     // validate the refresh token
     const { valid, payload: refreshPayload } =
       await this.verifyToken(refreshToken);
@@ -369,6 +371,7 @@ export class TokenService {
     // check the refresh token hasn't been revoked
     const currGenId = await this.db.tokenRepository.getUserTokenGenerationId(
       refreshPayload.userId,
+      deviceId,
       false,
     );
 
@@ -415,10 +418,14 @@ export class TokenService {
   /**
    * Change a user's token generation ID. This will invalidate old refresh tokens and all access tokens generated with it. However, the access token may still be used until it expires if an operation doesn't check the generation ID.
    * @param userId - The user for whom to revoke token generation
+   * @param deviceId - The device ID to revoke tokens for
    * @returns the user's new token generation ID
    */
-  public async revokeRefreshTokens(userId: string) {
-    return await this.db.tokenRepository.changeUserTokenGenerationId(userId);
+  public async revokeRefreshTokens(userId: string, deviceId: string) {
+    return await this.db.tokenRepository.changeUserTokenGenerationId(
+      userId,
+      deviceId,
+    );
   }
 
   /**

@@ -39,8 +39,6 @@ export const RefreshTokenPayloadSchema = TokenPayloadSchema.extend({
 
 export type RefreshTokenPayload = z.infer<typeof RefreshTokenPayloadSchema>;
 
-let x: RefreshTokenPayload;
-
 export const AccessTokenPayloadSchema = RefreshTokenPayloadSchema.extend({
   /** The email of the user the token is for */
   email: z.string(),
