@@ -17,6 +17,16 @@ To run the app, you will need to have the following installed:
 
 Please refer to each's respective documentation for installation instructions.
 
+# Git Hooks
+
+There are git hooks which may run on commits, pushes, etc to ensure no linting
+errors, the code is formatted, and so on. To set them up, run the
+`setup-hooks.sh` file which will configure your hooks.
+
+### Hook dependencies
+
+- Prettier cli
+
 # Branches
 
 There are three branches. The `main` branch is the main branch, all commits there are for fully functional releases. `staging` is used to stage changes for the next release to be merged at once into `main`. `dev` is used for development purposes. PRs with approvals are required for the `main` and `staging` branches. `dev` doesn't require PRs, but please please please don't push directly to `dev`. You should create a new branch from `dev` and work there, then create a PR to merge back into `dev` once done. Also add a review, so they're notified they need to review the PR.
