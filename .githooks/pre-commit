@@ -7,7 +7,7 @@
 # Format all files
 # api
 # TODO: check eslint for errors
-prettier ./api --write
+prettier ./api --write --ignore-path .gitignore --log-level warn --ignore-unknown
 prettier_exit_code=$?
 
 if [ $prettier_exit_code -ne 0 ]; then
