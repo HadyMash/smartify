@@ -26,6 +26,7 @@ errors, the code is formatted, and so on. To set them up, run the
 ### Hook dependencies
 
 - Prettier cli
+- Dart cli
 
 # Branches
 
