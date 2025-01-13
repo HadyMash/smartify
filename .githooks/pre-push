@@ -26,16 +26,16 @@ url="$2"
 # Initialize a flag for failure
 exit_code=0
 
-echo "Running tests before pushing..."
+echo "Running tests before pushing...\n"
 
 # Change to api directory
 cd api || {
-    echo "❌ Failed to enter api directory"
+    echo "❌ Failed to enter api directory\n"
     exit 1
 }
 
 # run api tests
-echo "Running API tests..."
+echo "Running API tests...\n"
 npm run test
 api_test_results=$?
 
@@ -44,12 +44,12 @@ cd ..
 
 # cd to app directory
 cd app || {
-    echo "❌ Failed to enter app directory"
+    echo "❌ Failed to enter app directory\n"
     exit 1
 }
 
 # run flutter tests
-echo "Running Flutter tests..."
+echo "Running Flutter tests...\n"
 flutter test
 app_test_results=$?
 
@@ -58,13 +58,13 @@ cd ..
 
 # Check both test results
 if [ $api_test_results -ne 0 ]; then
-    echo "❌ API Tests failed. Push aborted."
+    echo "❌ API Tests failed. Push aborted.\n"
     exit_code=1
 elif [ $app_test_results -ne 0 ]; then
-    echo "❌ Flutter Tests failed. Push aborted."
+    echo "❌ Flutter Tests failed. Push aborted.\n"
     exit_code=1
 else
-    echo "✅ All tests passed!"
+    echo "✅ All tests passed!\n"
 fi
 
 # Exit with the appropriate code (0 or 1)
