@@ -44,17 +44,19 @@ cd ..
 
 # cd to app directory
 cd app || {
-    echo "❌ Failed to enter app directory\n"
+    echo "\n❌ Failed to enter app directory\n"
     exit 1
 }
 
 # run flutter tests
-echo "Running Flutter tests...\n"
+echo "\nRunning Flutter tests...\n"
 flutter test
 app_test_results=$?
 
 # change back to original dir
 cd ..
+
+echo ""
 
 # Check both test results
 if [ $api_test_results -ne 0 ]; then
