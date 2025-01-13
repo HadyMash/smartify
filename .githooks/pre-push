@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# An example hook script to verify what is about to be pushed.  Called by "git
+# push" after it has checked the remote status, but before anything has been
+# pushed.  If this script exits with a non-zero status nothing will be pushed.
+#
+# This hook is called with the following parameters:
+#
+# $1 -- Name of the remote to which the push is being done
+# $2 -- URL to which the push is being done
+#
+# If pushing without using a named remote those arguments will be equal.
+#
+# Information about the commits which are being pushed is supplied as lines to
+# the standard input in the form:
+#
+#   <local ref> <local oid> <remote ref> <remote oid>
+#
+# This sample shows how to prevent push of commits where the log message starts
+# with "WIP" (work in progress).
+
+#!/bin/bash
+remote="$1"
+url="$2"
+
+# Initialize a flag for failure
+exit_code=0
+
+echo "Running tests before pushing...\n"
+
+# Change to api directory
+cd api || {
+    echo "❌ Failed to enter api directory\n"
+    exit 1
+}
+
+# run api tests
+echo "Running API tests...\n"
+npm run test
+api_test_results=$?
+
+# change back to original dir
+cd ..
+
+# cd to app directory
+cd app || {
+    echo "\n❌ Failed to enter app directory\n"
+    exit 1
+}
+
+# run flutter tests
+echo "\nRunning Flutter tests...\n"
+flutter test
+app_test_results=$?
+
+# change back to original dir
+cd ..
+
+echo ""
+
+# Check both test results
+if [ $api_test_results -ne 0 ]; then
+    echo "❌ API Tests failed. Push aborted.\n"
+    exit_code=1
+elif [ $app_test_results -ne 0 ]; then
+    echo "❌ Flutter Tests failed. Push aborted.\n"
+    exit_code=1
+else
+    echo "✅ All tests passed!\n"
+fi
+
+# Exit with the appropriate code (0 or 1)
+exit $exit_code
