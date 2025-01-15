@@ -89,6 +89,8 @@ Below are the environment variables
 **`JWT_SECRET`:** The JWT secret used to sign jwt tokens. This is a temporary
 field until rotations are implemented.
 
+**`JWT_ENCRYPTION_KEY`:** The encryption key used to encrypt the JWT tokens. It should be a A256GCM key.
+
 **`AUTH_TOKEN_ACCESS_EXPIRY_SECONDS`:** The time in seconds for the access token expiry (how long it lives). This should be a short duration, typically 30 mins to a few hours.
 
 **`AUTH_TOKEN_REFRESH_EXPIRY_SECONDS`:** The time in seconds for the refresh token expiry (how long it lives). The refresh token is used to refresh/create new access tokens.
