@@ -60,8 +60,8 @@ export class TokenService {
 
   private readonly db: DatabaseService;
 
-  constructor() {
-    this.db = new DatabaseService();
+  constructor(db: DatabaseService) {
+    this.db = db;
   }
 
   private async encryptToken(token: string): Promise<string> {
