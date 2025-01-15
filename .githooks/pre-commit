@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Initialize a flag for failure
+exit_code=0
+
+# Format all files in the api folder
+prettier ./api --write --ignore-path .gitignore --log-level warn --ignore-unknown
+prettier_exit_code=$?
+
+if [ $prettier_exit_code -ne 0 ]; then
+  echo "❌ Error formatting files in api server. Please fix any issues"
+  exit_code=1
+fi
+
+# Fix any issues
+dart fix --apply ./app
+# Run Dart analysis on the mobile app
+dart analyze ./app
+dart_analyze_exit_code=$?
+
+if [ $dart_analyze_exit_code -ne 0 ]; then
+  echo "❌ Error found in the app. Please fix any issues first"
+  exit_code=1
+fi
+
+# Format all files in the mobile app
+dart format ./app
+
+# Exit with the appropriate code (0 or 1)
+exit $exit_code
