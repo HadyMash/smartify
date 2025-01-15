@@ -223,14 +223,17 @@ export class TokenRepository {
     new Date(Date.now() + TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS * 1000);
 
   /**
-   * Blacklist a token generation ID to prevent all of it's tokens from being used including access tokens. This method will also change the user's token generation ID.
+   * Blacklist all a user's token generation ID to prevent all tokens from being
+   * used including access tokens. This method will also change the user's token
+   * generation ID.
+   *
    * @param genId - The token generation ID to blacklist
    */
-  public async blacklistTokenGenerationId(userId: string): Promise<void> {
+  public async blacklistTokenGenerationIds(userId: string): Promise<void> {
     const expiry = this.tokenExpiry();
 
     // begin blacklisting all tokens in the db but don't wait
-    this.collection
+    const dbPromise = this.collection
       .updateMany(
         { userId: new ObjectId(userId), blacklisted: false },
         [
@@ -267,18 +270,15 @@ export class TokenRepository {
       )
       .toArray();
 
-    await this.cacheBlacklist(docs);
+    await Promise.all([this.cacheBlacklist(docs), dbPromise]);
   }
 
   private async isTokenGenerationIdBlacklistedCache(
     genId: string,
   ): Promise<boolean> {
-    console.log('checking redis cache for blacklisted genid');
-
     const result = await this.redis.get(
       `${TokenRepository.BLACKLIST_REDIS_KEY}:${genId}`,
     );
-    console.log('exists:', result != null);
 
     return result !== null;
   }

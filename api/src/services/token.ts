@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
 import {
   InvalidUserError,
   InvalidUseType,
@@ -63,17 +64,48 @@ export class TokenService {
     this.db = new DatabaseService();
   }
 
+  private async encryptToken(token: string): Promise<string> {
+    const key = await importJWK(
+      {
+        kty: 'oct',
+        k: process.env.JWT_ENCRYPTION_KEY!,
+      },
+      'A256GCM',
+    );
+
+    const enc = new CompactEncrypt(
+      new TextEncoder().encode(token),
+    ).setProtectedHeader({ alg: 'dir', enc: 'A256GCM' });
+
+    return await enc.encrypt(key);
+  }
+
+  private async decryptToken(token: string): Promise<string> {
+    const key = await importJWK(
+      {
+        kty: 'oct',
+        k: process.env.JWT_ENCRYPTION_KEY!,
+      },
+      'A256GCM',
+    );
+
+    const { plaintext } = await compactDecrypt(token, key);
+    return new TextDecoder().decode(plaintext);
+  }
+
   /**
    * Generate a signed JWT token
    * @param payload - The payload to include in the JWT
    * @param secret - The secret key to sign the JWT with
    * @param lifetime {}- The lifeimte of the token in seconds
+   * @param encrypt - Whether to encrypt the token
    * @returns The generated JWT
    */
   private async generateToken(
     payload: Omit<TokenPayload, 'exp'>,
     secret: JWTSecret,
     lifetime: number,
+    encrypt: boolean,
   ): Promise<string> {
     const token = await new Promise<string>((resolve, reject) => {
       jwt.sign(
@@ -91,10 +123,8 @@ export class TokenService {
       );
     });
 
-    // TODO: update method doc once encryuption is added
-    // TODO: encrypt the token
-
-    return token;
+    // Only encrypt if specified
+    return encrypt ? await this.encryptToken(token) : token;
   }
 
   /**
@@ -110,7 +140,8 @@ export class TokenService {
     return await this.generateToken(
       payload,
       secret,
-      TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      TokenService.REFRESH_TOKEN_LIFESPAN_SECONDS,
+      true, // Always encrypt refresh tokens
     );
   }
 
@@ -129,11 +160,14 @@ export class TokenService {
       payload,
       secret,
       TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      true, // Always encrypt access tokens
     );
   }
 
   /**
-   * Creates a new ID token with the provided payload
+   * Creates a new ID token with the provided payload. The ID token is only
+   * intended for use on the client side; it should never be used for
+   * any server-side operations.
    * @param payload - The ID token payload to include in the JWT
    * @param secret - The secret to sign the JWT with
    * @returns
@@ -146,11 +180,12 @@ export class TokenService {
       payload,
       secret,
       TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS,
+      false, // don't encrypt so the client can read it
     );
   }
 
   /**
-   * Generaters all the tokens for a user if they exist
+   * Generates all the tokens for a user if they exist
    * @param user - The user to generate tokens for
    * @param deviceId - The device ID to generate the tokens for
    * @returns The generated tokens
@@ -222,7 +257,9 @@ export class TokenService {
   }
 
   /**
-   * Parse an auth tokens payload. This method will throw an error if the token is invalid or is not a valid token type. Token payload is guaranteed to be of it's repsective type if it doesn't throw an error.
+   * Parse an auth tokens payload. This method will throw an error if the token
+   * is invalid or is not a valid token type. Token payload is guaranteed to be
+   * of it's respective type if it doesn't throw an error.
    * @param payload - The token payload to parse
    * @returns The parsed token payload
    * @throws An error if the token is invalid or is not a valid token type
@@ -290,35 +327,38 @@ export class TokenService {
    */
   private decodeToken(
     token: string,
-  ): AccessTokenPayload | RefreshTokenPayload | IDTokenPayload {
-    // TODO: decrypt the token
-
-    // decode
-    const payload = jwt.decode(token);
-
-    // check it's not a string or null
-    return this.parseToken(payload);
+  ): Promise<AccessTokenPayload | RefreshTokenPayload | IDTokenPayload> {
+    // Decrypt the token first
+    return this.decryptToken(token).then((decryptedToken) => {
+      const payload = jwt.decode(decryptedToken);
+      return this.parseToken(payload);
+    });
   }
 
   /**
-   * Verifies a token and decodes it
+   * Verifies a token and decodes it. This method doesn't cross check the
+   * token's generation id.
+   *
    * @param token - The token to verify and decode
-   * @returns A boolean indiciating if the token is valid and the token's payload. The payload is undefined if the token is invalid but is defined if the token is valid
+   * @param encrypted - Whether the token is encrypted
+   * @returns A boolean indicating if the token is valid and the token's payload. The payload is undefined if the token is invalid but is defined if the token is valid
    */
-  public async verifyToken(token: string): Promise<{
+  public async verifyToken(
+    token: string,
+    encrypted: boolean,
+  ): Promise<{
     valid: boolean;
     payload?: AccessTokenPayload | RefreshTokenPayload | IDTokenPayload;
   }> {
-    // TODO: decrypt the token
-
-    // validate
-    let result: string | jwt.JwtPayload | null = null;
-    let payload: AccessTokenPayload | RefreshTokenPayload | IDTokenPayload;
     try {
-      result = await new Promise<string | jwt.JwtPayload | null>(
+      // Decrypt the token first
+      const decryptedToken = encrypted ? await this.decryptToken(token) : token;
+
+      // Verify the decrypted token
+      const result = await new Promise<string | jwt.JwtPayload | null>(
         (resolve, reject) => {
           jwt.verify(
-            token,
+            decryptedToken,
             process.env.JWT_SECRET!,
             (err: Error | null, decoded: any) => {
               if (err) reject(err);
@@ -328,7 +368,7 @@ export class TokenService {
         },
       );
 
-      payload = this.parseToken(result);
+      const payload = this.parseToken(result);
 
       // check token isn't blacklisted
       const blacklisted =
@@ -338,12 +378,11 @@ export class TokenService {
       if (blacklisted) {
         return { valid: false };
       }
-    } catch (_) {
+
+      return { valid: true, payload };
+    } catch (error) {
       return { valid: false };
     }
-
-    // parse and return
-    return { valid: true, payload };
   }
 
   // TODO: implement token rotation
@@ -367,8 +406,10 @@ export class TokenService {
     idToken?: string;
   }> {
     // validate the refresh token
-    const { valid, payload: oldRefreshPayload } =
-      await this.verifyToken(oldRefreshToken);
+    const { valid, payload: oldRefreshPayload } = await this.verifyToken(
+      oldRefreshToken,
+      true,
+    );
 
     // check we have a valid payload
     if (
@@ -464,12 +505,20 @@ export class TokenService {
   // TODO: implement access only blacklist to avoid signing out but refresh permissions
 
   /**
-   * Change a user's token generation ID. This will invalidate old refresh tokens and all access tokens generated with it. However, the access token may still be used until it expires if an operation doesn't check the generation ID.
+   * Revoke a particular device's refresh tokens by changing it's generation ID.
+   * This will invalidate using the revoked generation ids. However, the access
+   * tokens may still be used as methods may not cross check the generation id
+   *
+   * It's also important to note that the verify method will still return true,
+   * however, that shouldn't be a problem as the refresh token is only used to
+   * generate new access tokens, and the generate new access token method will
+   * check the current generation id.
+   *
    * @param userId - The user for whom to revoke token generation
    * @param deviceId - The device ID to revoke tokens for
    * @returns the user's new token generation ID
    */
-  public async revokeRefreshTokens(userId: string, deviceId: string) {
+  public async revokeDeviceRefreshTokens(userId: string, deviceId: string) {
     return await this.db.tokenRepository.changeUserTokenGenerationId(
       userId,
       deviceId,
@@ -477,13 +526,19 @@ export class TokenService {
   }
 
   /**
-   * Revoke all tokens for a user. This will invalidate all refresh tokens and all access tokens generated with them. Additionally, it will add the user's token generation ID to the blacklist, preventing access tokens from being used as well.
+   * Revoke all tokens for a user. This will invalidate all refresh tokens and
+   * all access tokens generated with them. Additionally, it will add the user's
+   * token generation ID to the blacklist, preventing access tokens from being
+   * used as well.
    *
-   * This method should be used for security-sensitive operations, such as when a user changes their password, being removed from a household, etc.
-   * @param userId - The usre for whom to revoke all tokens
+   * This method should be used for security-sensitive operations, such as when
+   * a user changes their password, being removed from a household, etc. as it
+   * will sign the user out of all devices.
+   *
+   * @param userId - The user for whom to revoke all tokens
    */
   public async revokeAllTokensImmediately(userId: string) {
     // add to blacklist
-    await this.db.tokenRepository.blacklistTokenGenerationId(userId);
+    await this.db.tokenRepository.blacklistTokenGenerationIds(userId);
   }
 }

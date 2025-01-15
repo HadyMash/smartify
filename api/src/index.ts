@@ -2,8 +2,10 @@ import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
-import { mfaRouter } from './routes/mfa';
 import { authRouter } from './routes/auth';
+import { DatabaseService } from './services/db/db';
+import { TokenService } from './services/token';
+import { User, UserSchema } from './schemas/user';
 
 dotenv.config();
 
