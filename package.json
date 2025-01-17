@@ -17,5 +17,9 @@
   "bugs": {
     "url": "https://github.com/HadyMash/smartify/issues"
   },
-  "homepage": "https://github.com/HadyMash/smartify#readme"
+  "homepage": "https://github.com/HadyMash/smartify#readme",
+  "dependencies": {
+    "mongoose": "^8.9.3",
+    "zod": "^3.24.1"
+  }
 }
