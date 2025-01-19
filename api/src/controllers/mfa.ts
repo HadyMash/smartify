@@ -1,7 +1,7 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../schemas/auth';
 import { DatabaseService, MFAService } from '../services/mfa';
 import { MFAToken, mfaTokenSchema } from '../schemas/mfa';
+import { AuthenticatedRequest } from '../schemas/auth/user';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class MFAController {
@@ -17,7 +17,7 @@ export class MFAController {
     const mfa = new MFAService(db);
 
     try {
-      const result = await mfa.initUserMFA(req.user.id);
+      const result = await mfa.initUserMFA(req.user._id);
       console.log('MFA setup initiated');
 
       res.status(201).send(result);
@@ -59,7 +59,7 @@ export class MFAController {
     const mfa = new MFAService(db);
 
     try {
-      const confirmed = await mfa.finishInitMFASetup(req.user.id, mfaToken);
+      const confirmed = await mfa.finishInitMFASetup(req.user._id, mfaToken);
       if (confirmed) {
         console.log('MFA setup confirmed');
 
@@ -110,7 +110,7 @@ export class MFAController {
     const db = new DatabaseService();
     const mfa = new MFAService(db);
     try {
-      const confirmed = await mfa.verifyMFA(req.user.id, mfaToken);
+      const confirmed = await mfa.verifyMFA(req.user._id, mfaToken);
 
       // TODO: update this to be integrated with authentication instead of just
       // returning true/false

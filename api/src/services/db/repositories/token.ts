@@ -1,10 +1,9 @@
 import assert from 'assert';
 import { randomUUID } from 'crypto';
-import { Collection, Db, ObjectId } from 'mongodb';
+import { Collection, Db, Document, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
 import { TokenService } from '../../token';
-
-const COLLECTION_NAME = 'tokens';
+import { DatabaseRepository } from '../db';
 
 /**
  * Token generation id document. There may be multiple toke
@@ -43,14 +42,27 @@ interface TokenGenIdDoc {
 
 // TODO: integrate with token service to remove lifespan parameter
 
+class NewTokenRepo extends DatabaseRepository {
+  protected collection: Collection<TokenGenIdDoc>;
+  protected COLLECTION_NAME: string = 'abc';
+
+  constructor(db: Db, redis: RedisClientType) {
+    super(redis);
+    this.collection = db.collection<TokenGenIdDoc>(this.COLLECTION_NAME);
+  }
+
+  public configureCollectiob(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+}
+
 /* revoked access tokens are stored in redis (some sort of version
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
-export class TokenRepository {
-  private readonly collection: Collection<TokenGenIdDoc>;
-  private readonly redis: RedisClientType;
-
-  private static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
+export class TokenRepository extends DatabaseRepository {
+  protected readonly COLLECTION_NAME = 'tokens';
+  protected readonly collection: Collection<TokenGenIdDoc>;
+  protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
 
   /**
    * @param db - The database to use
@@ -58,8 +70,16 @@ export class TokenRepository {
    * @param accessLifespanSeconds - The lifespan of an access token in seconds
    */
   constructor(db: Db, redis: RedisClientType) {
-    this.collection = db.collection<TokenGenIdDoc>(COLLECTION_NAME);
-    this.redis = redis;
+    super(redis);
+    this.collection = db.collection<TokenGenIdDoc>(this.COLLECTION_NAME);
+  }
+
+  // TODO: implement configure collection
+  public async configureCollectiob(): Promise<void> {
+    // create collection
+    //
+    // configure indices
+    //
   }
 
   /**

@@ -5,8 +5,8 @@ import {
   InvalidUserError,
   InvalidUseType,
   type User,
-  UserSchema,
-} from '../schemas/user';
+  userSchema,
+} from '../schemas/auth/user';
 import {
   type AccessTokenPayload,
   AccessTokenPayloadSchema,
@@ -18,7 +18,7 @@ import {
   RefreshTokenPayloadSchema,
   TokenPayload,
   TokenTypeSchema,
-} from '../schemas/tokens';
+} from '../schemas/auth/tokens';
 import { DatabaseService } from './db/db';
 
 //const algorithm = 'RS256';
@@ -437,7 +437,7 @@ export class TokenService {
     );
     let user: User;
     try {
-      user = UserSchema.parse(userDoc);
+      user = userSchema.parse(userDoc);
     } catch (e) {
       console.log('error parsing user:', e);
       throw new InvalidUserError();

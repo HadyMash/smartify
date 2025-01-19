@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb';
+import { Collection, Db, Document, MongoClient } from 'mongodb';
 import { TokenRepository } from './repositories/token';
 import { UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
@@ -68,4 +68,17 @@ export class DatabaseService {
   get tokenRepository(): TokenRepository {
     return this._tokenRepository;
   }
+}
+
+export abstract class DatabaseRepository {
+  protected abstract readonly collection: Collection<any>;
+  protected readonly redis: RedisClientType;
+
+  protected abstract readonly COLLECTION_NAME: string;
+
+  constructor(redis: RedisClientType) {
+    this.redis = redis;
+  }
+
+  public abstract configureCollectiob(): Promise<void>;
 }

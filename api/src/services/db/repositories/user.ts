@@ -1,20 +1,27 @@
 import assert from 'assert';
 import { Collection, Db, ObjectId } from 'mongodb';
-import { User } from '../../../schemas/user';
+import { User } from '../../../schemas/auth/user';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
-
-const COLLECTION_NAME = 'users';
+import { DatabaseRepository } from '../db';
 
 // TODO: create type
 
-export class UserRepository {
-  private readonly collection: Collection;
-  private readonly redis: RedisClientType;
+export class UserRepository extends DatabaseRepository {
+  protected readonly COLLECTION_NAME = 'users';
+  protected readonly collection: Collection;
 
   constructor(db: Db, redis: RedisClientType) {
-    this.collection = db.collection(COLLECTION_NAME);
-    this.redis = redis;
+    super(redis);
+    this.collection = db.collection(this.COLLECTION_NAME);
+  }
+
+  // TODO: implement configure collection
+  public async configureCollectiob(): Promise<void> {
+    // create collection
+    //
+    // configure indices
+    //
   }
 
   // ! temp method
