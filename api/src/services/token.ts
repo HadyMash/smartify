@@ -9,15 +9,15 @@ import {
 } from '../schemas/auth/user';
 import {
   type AccessTokenPayload,
-  AccessTokenPayloadSchema,
+  accessTokenPayloadSchema,
   type IDTokenPayload,
-  IDTokenPayloadSchema,
+  iDTokenPayloadSchema,
   InvalidTokenError,
   type JWTSecret,
   type RefreshTokenPayload,
-  RefreshTokenPayloadSchema,
+  refreshTokenPayloadSchema,
   TokenPayload,
-  TokenTypeSchema,
+  tokenTypeSchema,
 } from '../schemas/auth/tokens';
 import { DatabaseService } from './db/db';
 
@@ -219,7 +219,7 @@ export class TokenService {
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
       userId: user._id,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.REFRESH,
+      type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
       generationId,
     };
@@ -228,7 +228,7 @@ export class TokenService {
       userId: user._id,
       email: user.email,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.ACCESS,
+      type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshTokenPayload.jti,
       generationId,
@@ -237,7 +237,7 @@ export class TokenService {
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: user._id,
       email: user.email,
-      type: TokenTypeSchema.enum.ID,
+      type: tokenTypeSchema.enum.ID,
       generationId,
       iat: createdSeconds,
       name: 'John Doe',
@@ -273,7 +273,7 @@ export class TokenService {
 
     const type: any = payload?.type;
 
-    const validType = TokenTypeSchema.safeParse(type);
+    const validType = tokenTypeSchema.safeParse(type);
 
     if (!validType.success) {
       throw new InvalidTokenError(
@@ -282,8 +282,8 @@ export class TokenService {
     }
 
     switch (validType.data) {
-      case TokenTypeSchema.enum.ACCESS:
-        const accessParseResult = AccessTokenPayloadSchema.safeParse(payload);
+      case tokenTypeSchema.enum.ACCESS:
+        const accessParseResult = accessTokenPayloadSchema.safeParse(payload);
 
         if (!accessParseResult.success) {
           throw new InvalidTokenError(
@@ -293,8 +293,8 @@ export class TokenService {
 
         const accessTokenPayload: AccessTokenPayload = accessParseResult.data;
         return accessTokenPayload;
-      case TokenTypeSchema.enum.REFRESH:
-        const refreshParseResult = RefreshTokenPayloadSchema.safeParse(payload);
+      case tokenTypeSchema.enum.REFRESH:
+        const refreshParseResult = refreshTokenPayloadSchema.safeParse(payload);
 
         if (!refreshParseResult.success) {
           throw new InvalidTokenError(
@@ -305,8 +305,8 @@ export class TokenService {
         const refreshTokenPayload: RefreshTokenPayload =
           refreshParseResult.data;
         return refreshTokenPayload;
-      case TokenTypeSchema.enum.ID:
-        const idParseResult = IDTokenPayloadSchema.safeParse(payload);
+      case tokenTypeSchema.enum.ID:
+        const idParseResult = iDTokenPayloadSchema.safeParse(payload);
 
         if (!idParseResult.success) {
           throw new InvalidTokenError(
@@ -415,7 +415,7 @@ export class TokenService {
     if (
       !valid ||
       !oldRefreshPayload ||
-      oldRefreshPayload.type !== TokenTypeSchema.enum.REFRESH
+      oldRefreshPayload.type !== tokenTypeSchema.enum.REFRESH
     ) {
       throw new InvalidTokenError();
     }
@@ -452,7 +452,7 @@ export class TokenService {
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.REFRESH,
+      type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
       generationId: oldRefreshPayload.generationId,
     };
@@ -461,7 +461,7 @@ export class TokenService {
       userId: oldRefreshPayload.userId,
       email: user.email,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.ACCESS,
+      type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshTokenPayload.jti,
       generationId: oldRefreshPayload.generationId,
@@ -470,7 +470,7 @@ export class TokenService {
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
       email: user.email,
-      type: TokenTypeSchema.enum.ID,
+      type: tokenTypeSchema.enum.ID,
       generationId: oldRefreshPayload.generationId,
       iat: createdSeconds,
       name: 'John Doe',

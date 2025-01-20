@@ -1,12 +1,12 @@
 import { ObjectId } from 'mongodb';
 import { Request } from 'express';
 import { z } from 'zod';
+import { objectIdSchema } from '../obj-id';
 
 export const userSchema = z.object({
-  /** MongoDB ObjectID */
-  _id: z.coerce.string().refine((val) => ObjectId.isValid(val), {
-    message: 'Invalid ObjectID',
-  }),
+  /** MongoDB Object Id*/
+  _id: objectIdSchema,
+  /** Email address */
   email: z.string().email(),
 });
 

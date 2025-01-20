@@ -1,6 +1,7 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../db';
-import { Collection, Db } from 'mongodb';
+import { Collection, Db, ObjectId } from 'mongodb';
+import { Coordinates, Household } from '../../../schemas/household';
 
 interface HouseholdDoc {}
 
@@ -19,5 +20,20 @@ export class HouseholdRepository extends DatabaseRepository {
     //
     // configure indices
     //
+  }
+
+  /**
+   * Creates a new household.
+   * @param ownerId - The ID of the user creating the household.
+   * @param name - The name of the household.
+   * @param coordinates - The coordinates of the household.
+   * @returns The created household.
+   */
+  public async createHousehold(
+    ownerId: ObjectId,
+    name: string,
+    coordinates?: Coordinates,
+  ): Promise<Household> {
+    // create household
   }
 }
