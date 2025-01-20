@@ -1,17 +1,20 @@
-import { Collection, Db, Document, MongoClient } from 'mongodb';
+import { Db, MongoClient } from 'mongodb';
 import { TokenRepository } from './repositories/token';
 import { UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
+import { HouseholdRepository } from './repositories/household';
 
 const DB_NAME: string = 'smartify';
 
 export class DatabaseService {
-  private static db: Db;
-  private static redis: RedisClientType;
+  protected static client: MongoClient;
+  protected static db: Db;
+  protected static redis: RedisClientType;
 
   // Repositories
   private _userRepository: UserRepository;
   private _tokenRepository: TokenRepository;
+  private _householdRepository: HouseholdRepository;
 
   constructor() {
     if (!DatabaseService.db) {
@@ -26,6 +29,7 @@ export class DatabaseService {
         .catch((err) => {
           console.error('Error connecting to MongoDB', err);
         });
+      DatabaseService.client = client;
       DatabaseService.db = client.db(DB_NAME);
     }
     if (!DatabaseService.redis) {
@@ -52,10 +56,17 @@ export class DatabaseService {
 
     // Initialize repositories
     this._userRepository = new UserRepository(
+      DatabaseService.client,
       DatabaseService.db,
       DatabaseService.redis,
     );
     this._tokenRepository = new TokenRepository(
+      DatabaseService.client,
+      DatabaseService.db,
+      DatabaseService.redis,
+    );
+    this._householdRepository = new HouseholdRepository(
+      DatabaseService.client,
       DatabaseService.db,
       DatabaseService.redis,
     );
@@ -68,16 +79,7 @@ export class DatabaseService {
   get tokenRepository(): TokenRepository {
     return this._tokenRepository;
   }
-}
-
-export abstract class DatabaseRepository<T extends Document> {
-  protected readonly collection: Collection<T>;
-  protected readonly redis: RedisClientType;
-
-  constructor(db: Db, collectionName: string, redis: RedisClientType) {
-    this.collection = db.collection<T>(collectionName);
-    this.redis = redis;
+  get householdRepository(): HouseholdRepository {
+    return this._householdRepository;
   }
-
-  public abstract configureCollectiob(): Promise<void>;
 }

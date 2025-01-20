@@ -1,11 +1,11 @@
 import { ObjectId } from 'mongodb';
 import { Request } from 'express';
 import { z } from 'zod';
-import { objectIdSchema } from '../obj-id';
+import { objectIdStringSchema } from '../obj-id';
 
 export const userSchema = z.object({
   /** MongoDB Object Id*/
-  _id: objectIdSchema,
+  _id: objectIdStringSchema,
   /** Email address */
   email: z.string().email(),
 });

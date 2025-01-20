@@ -1,9 +1,9 @@
 import assert from 'assert';
 import { randomUUID } from 'crypto';
-import { Collection, Db, Document, ObjectId } from 'mongodb';
+import { Collection, Db, Document, MongoClient, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
 import { TokenService } from '../../token';
-import { DatabaseRepository } from '../db';
+import { DatabaseRepository } from '../repo';
 
 /**
  * Token generation id document. There may be multiple toke
@@ -13,7 +13,7 @@ import { DatabaseRepository } from '../db';
  *
  * The blacklisted ones will have blacklisted as true and an expiry
  */
-interface TokenGenIdDoc extends Document {
+interface TokenGenIdDoc {
   /**
    * The user who the token generation ID is for
    */
@@ -48,17 +48,12 @@ interface TokenGenIdDoc extends Document {
 export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
   protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
 
-  /**
-   * @param db - The database to use
-   * @param redis - The redis client to use
-   * @param accessLifespanSeconds - The lifespan of an access token in seconds
-   */
-  constructor(db: Db, redis: RedisClientType) {
-    super(db, 'tokens', redis);
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, 'tokens', redis);
   }
 
   // TODO: implement configure collection
-  public async configureCollectiob(): Promise<void> {
+  public async configureCollection(): Promise<void> {
     // create collection
     //
     // configure indices

@@ -1,17 +1,23 @@
 import { RedisClientType } from 'redis';
-import { DatabaseRepository } from '../db';
-import { Collection, Db, ObjectId } from 'mongodb';
-import { Coordinates, Household } from '../../../schemas/household';
+import { DatabaseRepository } from '../repo';
+import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
+import {
+  Coordinates,
+  Household,
+  HouseholdMember,
+  householdSchema,
+} from '../../../schemas/household';
+import { z } from 'zod';
 
-interface HouseholdDoc extends Document {}
+interface HouseholdDoc extends Household {}
 
 export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
-  constructor(db: Db, redis: RedisClientType) {
-    super(db, 'households', redis);
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, 'households', redis);
   }
 
   // TODO: implement configure collection
-  public async configureCollectiob(): Promise<void> {
+  public async configureCollection(): Promise<void> {
     // create collection
     //
     // configure indices
@@ -25,11 +31,31 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
    * @param coordinates - The coordinates of the household.
    * @returns The created household.
    */
-  public async createHousehold(
-    ownerId: ObjectId,
-    name: string,
-    coordinates?: Coordinates,
-  ): Promise<Household> {
-    // create household
+  public async createHousehold(data: {
+    ownerId: ObjectId;
+    name: string;
+    coordinates?: Coordinates;
+  }): Promise<Household> {
+    const household: Omit<Household, '_id'> = {
+      name: data.name,
+      coordinates: data.coordinates,
+      owner: data.ownerId,
+      members: [],
+    };
+
+    // validate
+    householdSchema.parse(household);
+
+    // insert into db
+    const result = await this.collection.insertOne(household);
+
+    if (!result.acknowledged || !result.insertedId) {
+      throw new Error('Failed to create household');
+    }
+
+    return {
+      _id: result.insertedId,
+      ...household,
+    };
   }
 }

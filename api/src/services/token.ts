@@ -11,7 +11,7 @@ import {
   type AccessTokenPayload,
   accessTokenPayloadSchema,
   type IDTokenPayload,
-  iDTokenPayloadSchema,
+  idTokenPayloadSchema,
   InvalidTokenError,
   type JWTSecret,
   type RefreshTokenPayload,
@@ -306,7 +306,7 @@ export class TokenService {
           refreshParseResult.data;
         return refreshTokenPayload;
       case tokenTypeSchema.enum.ID:
-        const idParseResult = iDTokenPayloadSchema.safeParse(payload);
+        const idParseResult = idTokenPayloadSchema.safeParse(payload);
 
         if (!idParseResult.success) {
           throw new InvalidTokenError(

@@ -1,6 +1,9 @@
-import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { objectIdSchema } from './obj-id';
+import {
+  objectIdOrStringSchema,
+  objectIdSchema,
+  objectIdStringSchema,
+} from './obj-id';
 
 export const coordinatesSchema = z.object({
   lat: z.number().min(-89).max(90),
@@ -14,18 +17,24 @@ export const householdRoleSchema = z.enum(['owner', 'admin', 'dweller']);
 export type HouseholdRole = z.infer<typeof householdRoleSchema>;
 
 export const householdMemberSchema = z.object({
-  id: objectIdSchema,
+  id: objectIdOrStringSchema.optional(),
   role: householdRoleSchema,
 });
 
 export type HouseholdMember = z.infer<typeof householdMemberSchema>;
 
-export const householdSchema = z.object({
-  _id: objectIdSchema,
+export const householdRequestDataSchema = z.object({
   name: z.string(),
   coordinates: coordinatesSchema.optional(),
-  owner: objectIdSchema,
+});
+
+export type HouseholdRequestData = z.infer<typeof householdRequestDataSchema>;
+
+export const householdSchema = householdRequestDataSchema.extend({
+  _id: objectIdOrStringSchema.optional(),
+  owner: objectIdOrStringSchema,
   members: z.array(householdMemberSchema),
+  //devices:
 });
 
 export type Household = z.infer<typeof householdSchema>;

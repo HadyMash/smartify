@@ -1,19 +1,19 @@
 import assert from 'assert';
-import { Collection, Db, ObjectId } from 'mongodb';
+import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
 import { User } from '../../../schemas/auth/user';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
-import { DatabaseRepository } from '../db';
+import { DatabaseRepository } from '../repo';
 
 // TODO: create type
 
 export class UserRepository extends DatabaseRepository<any> {
-  constructor(db: Db, redis: RedisClientType) {
-    super(db, 'users', redis);
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, 'users', redis);
   }
 
   // TODO: implement configure collection
-  public async configureCollectiob(): Promise<void> {
+  public async configureCollection(): Promise<void> {
     // create collection
     //
     // configure indices
