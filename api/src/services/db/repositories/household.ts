@@ -3,15 +3,11 @@ import { DatabaseRepository } from '../db';
 import { Collection, Db, ObjectId } from 'mongodb';
 import { Coordinates, Household } from '../../../schemas/household';
 
-interface HouseholdDoc {}
+interface HouseholdDoc extends Document {}
 
-export class HouseholdRepository extends DatabaseRepository {
-  protected readonly COLLECTION_NAME = 'households';
-  protected readonly collection: Collection<HouseholdDoc>;
-
+export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
   constructor(db: Db, redis: RedisClientType) {
-    super(redis);
-    this.collection = db.collection<HouseholdDoc>(this.COLLECTION_NAME);
+    super(db, 'households', redis);
   }
 
   // TODO: implement configure collection

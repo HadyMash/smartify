@@ -70,13 +70,12 @@ export class DatabaseService {
   }
 }
 
-export abstract class DatabaseRepository {
-  protected abstract readonly collection: Collection<any>;
+export abstract class DatabaseRepository<T extends Document> {
+  protected readonly collection: Collection<T>;
   protected readonly redis: RedisClientType;
 
-  protected abstract readonly COLLECTION_NAME: string;
-
-  constructor(redis: RedisClientType) {
+  constructor(db: Db, collectionName: string, redis: RedisClientType) {
+    this.collection = db.collection<T>(collectionName);
     this.redis = redis;
   }
 

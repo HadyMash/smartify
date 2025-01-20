@@ -7,13 +7,9 @@ import { DatabaseRepository } from '../db';
 
 // TODO: create type
 
-export class UserRepository extends DatabaseRepository {
-  protected readonly COLLECTION_NAME = 'users';
-  protected readonly collection: Collection;
-
+export class UserRepository extends DatabaseRepository<any> {
   constructor(db: Db, redis: RedisClientType) {
-    super(redis);
-    this.collection = db.collection(this.COLLECTION_NAME);
+    super(db, 'users', redis);
   }
 
   // TODO: implement configure collection

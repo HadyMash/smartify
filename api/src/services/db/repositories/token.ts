@@ -13,7 +13,7 @@ import { DatabaseRepository } from '../db';
  *
  * The blacklisted ones will have blacklisted as true and an expiry
  */
-interface TokenGenIdDoc {
+interface TokenGenIdDoc extends Document {
   /**
    * The user who the token generation ID is for
    */
@@ -42,26 +42,10 @@ interface TokenGenIdDoc {
 
 // TODO: integrate with token service to remove lifespan parameter
 
-class NewTokenRepo extends DatabaseRepository {
-  protected collection: Collection<TokenGenIdDoc>;
-  protected COLLECTION_NAME: string = 'abc';
-
-  constructor(db: Db, redis: RedisClientType) {
-    super(redis);
-    this.collection = db.collection<TokenGenIdDoc>(this.COLLECTION_NAME);
-  }
-
-  public configureCollectiob(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-}
-
 /* revoked access tokens are stored in redis (some sort of version
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
-export class TokenRepository extends DatabaseRepository {
-  protected readonly COLLECTION_NAME = 'tokens';
-  protected readonly collection: Collection<TokenGenIdDoc>;
+export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
   protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
 
   /**
@@ -70,8 +54,7 @@ export class TokenRepository extends DatabaseRepository {
    * @param accessLifespanSeconds - The lifespan of an access token in seconds
    */
   constructor(db: Db, redis: RedisClientType) {
-    super(redis);
-    this.collection = db.collection<TokenGenIdDoc>(this.COLLECTION_NAME);
+    super(db, 'tokens', redis);
   }
 
   // TODO: implement configure collection
