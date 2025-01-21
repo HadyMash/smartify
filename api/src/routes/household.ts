@@ -6,4 +6,10 @@ export const householdRouter = Router();
 
 householdRouter.post('/new', requireAuth, HouseholdController.createHousehold);
 
+householdRouter.get('/:id');
+
+householdRouter.get('/memberships');
+
+//householdRouter.get();
+
 //householdRouter.delete('/:id', HouseholdController.deleteHousehold);

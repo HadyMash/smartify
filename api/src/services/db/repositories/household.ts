@@ -31,23 +31,11 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
    * @param coordinates - The coordinates of the household.
    * @returns The created household.
    */
-  public async createHousehold(data: {
-    ownerId: ObjectId;
-    name: string;
-    coordinates?: Coordinates;
-  }): Promise<Household> {
-    const household: Omit<Household, '_id'> = {
-      name: data.name,
-      coordinates: data.coordinates,
-      owner: data.ownerId,
-      members: [],
-    };
-
-    // validate
-    householdSchema.parse(household);
-
+  public async createHousehold(
+    data: Omit<Household, '_id'>,
+  ): Promise<Household> {
     // insert into db
-    const result = await this.collection.insertOne(household);
+    const result = await this.collection.insertOne(data);
 
     if (!result.acknowledged || !result.insertedId) {
       throw new Error('Failed to create household');
@@ -55,7 +43,7 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
 
     return {
       _id: result.insertedId,
-      ...household,
+      ...data,
     };
   }
 }
