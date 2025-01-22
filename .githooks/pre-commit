@@ -62,7 +62,7 @@ fi
 
 # Run Dart analysis on the mobile app
 echo -e "\nRunning dart analyze in ./app...\n"
-dart analyze ./app
+flutter analyze ./app --no-fatal-infos
 dart_analyze_exit_code=$?
 
 if [ $dart_analyze_exit_code -ne 0 ]; then
