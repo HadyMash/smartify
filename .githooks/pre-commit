@@ -39,7 +39,7 @@ fi
 # Format all files in the api folder using prettier (if package.json exists in ./api)
 if [ -f "./api/package.json" ]; then
   echo -e "\nRunning prettier in ./api...\n"
-  (cd ./api && npx prettier . --write --ignore-path .gitignore --log-level warn --ignore-unknown)
+  (cd ./api && npm run format)
   prettier_exit_code=$?
 
   if [ $prettier_exit_code -ne 0 ]; then
