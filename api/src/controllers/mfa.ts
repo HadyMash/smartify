@@ -22,8 +22,8 @@ export class MFAController {
 
       res.status(201).send(result);
       return;
-    } catch (e: any) {
-      console.log('Internal Server Error:', e.message);
+    } catch (e: unknown) {
+      console.log('Internal Server Error:', e);
       res.status(500).send({
         error: 'Internal Server Error',
         message: 'Please try again later',
@@ -44,6 +44,7 @@ export class MFAController {
     let mfaToken: MFAToken;
     try {
       //const userToken = req.body.token;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mfaToken = mfaTokenSchema.parse(req.body.token);
     } catch (_) {
       console.log('Invalid token');
@@ -75,8 +76,8 @@ export class MFAController {
       }
 
       return;
-    } catch (e: any) {
-      console.log('Internal Server Error:', e.message);
+    } catch (e: unknown) {
+      console.log('Internal Server Error:', e);
 
       res.status(500).send({
         error: 'Internal Server Error',
@@ -97,6 +98,7 @@ export class MFAController {
     }
     let mfaToken: MFAToken;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mfaToken = mfaTokenSchema.parse(req.body.token);
     } catch (_) {
       console.log('Invalid token');
@@ -128,32 +130,13 @@ export class MFAController {
         });
         return;
       }
-    } catch (e: any) {
-      console.log('Internal Server Error:', e.message);
+    } catch (e: unknown) {
+      console.log('Internal Server Error:', e);
       res.status(500).send({
         error: 'Internal Server Error',
-        message: e.message,
+        message: e,
       });
       return;
     }
-  }
-
-  public static async testRoute(req: AuthenticatedRequest, res: Response) {
-    const userId = req.params.id;
-
-    const db = new DatabaseService();
-    const mfa = new MFAService(db);
-
-    const result = await db.userRepository.getUserMFAformattedKey(
-      userId.toString(),
-    );
-
-    if (!result) {
-      res.status(404).send('User not found');
-      return;
-    }
-
-    res.status(200).send(result);
-    return;
   }
 }
