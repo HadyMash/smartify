@@ -6,8 +6,6 @@ import {
   householdRequestDataSchema,
   householdSchema,
 } from '../schemas/household';
-import { DatabaseService } from '../services/db/db';
-import { ObjectId } from 'mongodb';
 import { HouseholdService } from '../services/household';
 
 // TODO: proper error handling (maybe implement custom error classes)
@@ -24,8 +22,10 @@ export class HouseholdController {
       // validate data
       let householdRequestData: HouseholdRequestData;
       try {
-        householdRequestData = householdRequestDataSchema.parse(req.body.data);
-      } catch (e) {
+        householdRequestData = householdRequestDataSchema.parse(
+          (req.body as { data?: unknown }).data,
+        );
+      } catch (_) {
         res.status(400).send({ error: 'Invalid data' });
         return;
       }

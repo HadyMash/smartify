@@ -8,7 +8,11 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "format": "prettier . --write --ignore-path .gitignore --log-level warn --ignore-unknown",
+    "format:check": "prettier . --check --ignore-path .gitignore --log-level warn --ignore-unknown",
+    "lint": "eslint ./src --exit-on-fatal-error",
+    "lint:fix": "eslint ./src --fix --exit-on-fatal-error"
   },
   "keywords": [],
   "author": "",
@@ -26,16 +30,22 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@types/authenticator": "^1.1.4",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "globals": "^15.14.0",
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "prettier": "^3.4.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.21.0"
   }
 }

@@ -271,7 +271,7 @@ export class TokenService {
       throw new InvalidTokenError('Invalid token');
     }
 
-    const type: any = payload?.type;
+    const type: unknown = payload?.type;
 
     const validType = tokenTypeSchema.safeParse(type);
 
@@ -282,7 +282,7 @@ export class TokenService {
     }
 
     switch (validType.data) {
-      case tokenTypeSchema.enum.ACCESS:
+      case tokenTypeSchema.enum.ACCESS: {
         const accessParseResult = accessTokenPayloadSchema.safeParse(payload);
 
         if (!accessParseResult.success) {
@@ -293,7 +293,8 @@ export class TokenService {
 
         const accessTokenPayload: AccessTokenPayload = accessParseResult.data;
         return accessTokenPayload;
-      case tokenTypeSchema.enum.REFRESH:
+      }
+      case tokenTypeSchema.enum.REFRESH: {
         const refreshParseResult = refreshTokenPayloadSchema.safeParse(payload);
 
         if (!refreshParseResult.success) {
@@ -305,7 +306,8 @@ export class TokenService {
         const refreshTokenPayload: RefreshTokenPayload =
           refreshParseResult.data;
         return refreshTokenPayload;
-      case tokenTypeSchema.enum.ID:
+      }
+      case tokenTypeSchema.enum.ID: {
         const idParseResult = idTokenPayloadSchema.safeParse(payload);
 
         if (!idParseResult.success) {
@@ -316,6 +318,7 @@ export class TokenService {
 
         const idTokenPayload: IDTokenPayload = idParseResult.data;
         return idTokenPayload;
+      }
     }
   }
 
@@ -360,8 +363,10 @@ export class TokenService {
           jwt.verify(
             decryptedToken,
             process.env.JWT_SECRET!,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (err: Error | null, decoded: any) => {
               if (err) reject(err);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
               else resolve(decoded);
             },
           );
@@ -380,7 +385,7 @@ export class TokenService {
       }
 
       return { valid: true, payload };
-    } catch (error) {
+    } catch (_) {
       return { valid: false };
     }
   }
@@ -431,7 +436,10 @@ export class TokenService {
       throw new InvalidTokenError();
     }
 
+    // TODO: replace with user service call
+    //
     // get user's email
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const userDoc = await this.db.userRepository.getUserById(
       oldRefreshPayload.userId,
     );

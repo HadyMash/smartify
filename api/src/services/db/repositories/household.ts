@@ -1,15 +1,9 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
-import {
-  Coordinates,
-  Household,
-  HouseholdMember,
-  householdSchema,
-} from '../../../schemas/household';
-import { z } from 'zod';
+import { Db, MongoClient } from 'mongodb';
+import { Household } from '../../../schemas/household';
 
-interface HouseholdDoc extends Household {}
+type HouseholdDoc = Household;
 
 export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {

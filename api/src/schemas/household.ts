@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  objectIdOrStringSchema,
-  objectIdSchema,
-  objectIdStringSchema,
-} from './obj-id';
+import { objectIdOrStringSchema } from './obj-id';
 
 export const coordinatesSchema = z.object({
   /** Latitude */

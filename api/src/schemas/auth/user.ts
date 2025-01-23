@@ -1,4 +1,3 @@
-import { ObjectId } from 'mongodb';
 import { Request } from 'express';
 import { z } from 'zod';
 import { objectIdStringSchema } from '../obj-id';

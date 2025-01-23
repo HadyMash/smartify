@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'assert';
-import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
-import { User } from '../../../schemas/auth/user';
+import { Db, MongoClient, ObjectId } from 'mongodb';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';

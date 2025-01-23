@@ -4,7 +4,9 @@ import { requireAuth } from '../middleware/auth';
 
 export const householdRouter = Router();
 
-householdRouter.post('/new', requireAuth, HouseholdController.createHousehold);
+householdRouter.post('/new', requireAuth, (req, res) =>
+  HouseholdController.createHousehold(req, res),
+);
 
 householdRouter.get('/:id');
 

@@ -13,7 +13,7 @@ export const requireAuth = (
   next: NextFunction,
 ) => {
   // TODO: check for cookies/auth header
-  const user = req.body.user;
+  const user = (req.body as { user?: unknown }).user;
 
   if (!user) {
     console.log('no user found');
@@ -48,7 +48,7 @@ export const optionalAuth = (
   next: NextFunction,
 ) => {
   // TODO: check for cookies/auth header
-  const user = req.body.user;
+  const user = (req.body as { user?: unknown }).user;
 
   const parseUserResult = userSchema.safeParse(user);
 

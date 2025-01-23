@@ -1,4 +1,4 @@
-import { Coordinates, Household } from '../schemas/household';
+import { Household } from '../schemas/household';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {

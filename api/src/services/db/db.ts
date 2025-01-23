@@ -51,7 +51,13 @@ export class DatabaseService {
           console.log('Reconnecting to Redis');
         });
 
-      DatabaseService.redis.connect();
+      DatabaseService.redis
+        .connect()
+        .then(() => console.log('db connected'))
+        .catch((err) => {
+          console.error('db error', err);
+          throw err;
+        });
     }
 
     // Initialize repositories

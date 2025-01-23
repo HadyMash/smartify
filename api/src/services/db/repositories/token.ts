@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { randomUUID } from 'crypto';
-import { Collection, Db, Document, MongoClient, ObjectId } from 'mongodb';
+import { Db, MongoClient, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
 import { TokenService } from '../../token';
 import { DatabaseRepository } from '../repo';
@@ -313,7 +313,9 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     // add to redis cache to avoid another cache miss
     // this should be non blocking so don't await
 
-    this.cacheBlacklist([doc]);
+    this.cacheBlacklist([doc]).catch((e) =>
+      console.error('error caching blacklist', e),
+    );
 
     // and return
     return true;
