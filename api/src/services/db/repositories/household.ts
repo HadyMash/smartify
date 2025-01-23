@@ -26,8 +26,8 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
    * @returns The created household.
    */
   public async createHousehold(
-    data: Omit<Household, '_id'>,
-  ): Promise<Household> {
+    data: Omit<HouseholdDoc, '_id'>,
+  ): Promise<HouseholdDoc> {
     // insert into db
     const result = await this.collection.insertOne(data);
 
@@ -39,5 +39,17 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
       _id: result.insertedId,
       ...data,
     };
+  }
+
+  /**
+   * Get a household by its ID
+   * @param id - The household's ID
+   */
+  public async getHouseholdById(id: string): Promise<HouseholdDoc | null> {
+    const result = await this.collection.findOne({ _id: id });
+    if (!result) {
+      return null;
+    }
+    return result;
   }
 }

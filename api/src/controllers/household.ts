@@ -54,4 +54,39 @@ export class HouseholdController {
       return;
     }
   }
+
+  public static async getHousehold(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        res.status(401).send('Unauthorized');
+        return;
+      }
+
+      // validate id
+      const id = req.params.id;
+
+      try {
+        householdSchema.shape._id.parse(id);
+      } catch (_) {
+        res.status(400).send({ error: 'Invalid id' });
+        return;
+      }
+
+      // get household
+      const hs = new HouseholdService();
+      const household = await hs.getHousehold(id);
+
+      if (!household) {
+        res.status(404).send({ error: 'Not found' });
+        return;
+      }
+
+      res.status(200).send(household);
+      return;
+    } catch (e) {
+      console.error(e);
+      res.status(500).send('An error');
+      return;
+    }
+  }
 }

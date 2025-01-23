@@ -13,4 +13,13 @@ export class HouseholdService {
   ): Promise<Household> {
     return this.db.householdRepository.createHousehold(data);
   }
+
+  /**
+   * Get a household by its ID
+   * @param id - The household's ID
+   * @returns
+   */
+  public async getHousehold(id: string): Promise<Household | null> {
+    return this.db.householdRepository.getHouseholdById(id);
+  }
 }

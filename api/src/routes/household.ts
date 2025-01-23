@@ -8,7 +8,9 @@ householdRouter.post('/new', requireAuth, (req, res) =>
   HouseholdController.createHousehold(req, res),
 );
 
-householdRouter.get('/:id');
+householdRouter.get('/:id', (req, res) =>
+  HouseholdController.getHousehold(req, res),
+);
 
 householdRouter.get('/memberships');
 
