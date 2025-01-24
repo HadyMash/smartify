@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 
+/**
+ * Coordinates using longitude and latitude
+ */
 export const coordinatesSchema = z.object({
   /** Latitude */
   lat: z.number().min(-89).max(90),
@@ -11,12 +14,45 @@ export const coordinatesSchema = z.object({
 /** Coordinates in the format [latitude, longitude] */
 export type Coordinates = z.infer<typeof coordinatesSchema>;
 
+/**
+ * The role of a household member.
+ * - owner: The owner of the household. Can do anything
+ * - admin: Has elevated permissions.
+ * - dweller: A regular member of the household.
+ */
 export const memberRoleSchema = z.enum(['owner', 'admin', 'dweller']);
 
+/**
+ * The role of a household member.
+ * - owner: The owner of the household. Can do anything
+ * - admin: Has elevated permissions.
+ * - dweller: A regular member of the household.
+ */
 export type MemberRole = z.infer<typeof memberRoleSchema>;
 
-export const memberPermissionsSchema = z.object({});
+// TODO: update the permissions to allow for more granular control such as
+// setting permissions per room or per device (or exceptions at that level as well)
 
+/**
+ * A household dweller's permissions
+ */
+export const memberPermissionsSchema = z.object({
+  // TODO : add per device permissions
+
+  /** Whether the user permissions to view and control appliances */
+  appliances: z.boolean(),
+  /**
+   * Whether the user has permissions to view other member's health devices.
+   * It's important to note that users can always view their own health devices
+   */
+  health: z.boolean(),
+  /** Whether the user has permissions to view and control security devices */
+  security: z.boolean(),
+  /** Whether the user has permissions to view and control energy devices */
+  energy: z.boolean(),
+});
+
+/** A household dweller's permissions */
 export type MemberPermissions = z.infer<typeof memberPermissionsSchema>;
 
 /** Household member schema */
@@ -35,7 +71,7 @@ export const memberSchema = z
   })
   .refine(
     ({ role, permissions }) => {
-      return role === memberRoleSchema.enum.dweller && !permissions;
+      return role === memberRoleSchema.enum.dweller && !!permissions;
     },
     () => ({
       path: ['permissions'],
