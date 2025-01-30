@@ -1,22 +1,18 @@
 import { Router } from 'express';
 import middleware from '../middleware/log';
-import {
-  registrationController,
-  loginController,
-  forgotPassswordController,
-} from '../controllers/authentication';
+import { RegistrationController } from '../controllers/authentication';
 const authenticationRouter = Router();
 authenticationRouter.get('/', middleware, (req, res) => {
   res.send('Authentication');
 });
 authenticationRouter.post('/', (req, res, next) => {
-  registrationController.register;
+  RegistrationController.register;
 });
 authenticationRouter.post('/', (req, res, next) => {
-  loginController.login;
+  RegistrationController.login;
 });
 authenticationRouter.post('/', (req, res, next) => {
-  forgotPassswordController.forgotPassword;
+  RegistrationController.forgotPassword;
 });
 
 authenticationRouter.get('/', (req, res, next) => {});

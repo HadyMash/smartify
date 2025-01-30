@@ -16,6 +16,7 @@ export class DatabaseService {
         .catch((err) => {
           console.error('Error connecting to MongoDB', err);
         });
+
       DatabaseService.db = client.db(DB_NAME);
     }
   }
