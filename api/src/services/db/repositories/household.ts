@@ -52,4 +52,40 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
     }
     return result;
   }
+  public async addMember(householdId: string, memberId: string, ownerId: string): Promise<HouseholdDoc> {
+    return this.collection.findOneAndUpdate(
+      { _id: householdId, owner: ownerId },
+      { $addToSet: { members: memberId } },
+      { returnDocument: 'after' }
+    );
+  }
+  
+  public async removeMember(householdId: string, memberId: string, ownerId: string): Promise<HouseholdDoc> {
+    return this.collection.findOneAndUpdate(
+      { _id: householdId, owner: ownerId },
+      { $pull: { members: {id: memberId } } },
+      { returnDocument: 'after' }
+    );
+  }
+  
+  public async deleteHousehold(householdId: string, ownerId: string): Promise<void> {
+    await this.collection.deleteOne({ _id: householdId, owner: ownerId });
+  }
+  
+  public async addRoom(householdId: string, roomData: any, ownerId: string): Promise<HouseholdDoc> {
+    return this.collection.findOneAndUpdate(
+      { _id: householdId, owner: ownerId },
+      { $push: { rooms: roomData } },
+      { returnDocument: 'after' }
+    );
+  }
+  
+  public async changeUserRole(householdId: string, memberId: string, newRole: string, ownerId: string): Promise<HouseholdDoc> {
+    return this.collection.findOneAndUpdate(
+      { _id: householdId, owner: ownerId, 'members._id': memberId },
+      { $set: { 'members.$.role': newRole } },
+      { returnDocument: 'after' }
+    );
+  }
 }
+

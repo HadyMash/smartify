@@ -135,3 +135,12 @@ export const householdSchema = householdRequestDataSchema.extend({
 });
 
 export type Household = z.infer<typeof householdSchema>;
+
+
+export const roomRequestDataSchema = z.object({
+  name: z.string(),
+  type: householdRoomTypeSchema,
+  floor: z.number().int(),
+});
+
+export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
