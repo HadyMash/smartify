@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/CreateAccountScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,8 +20,10 @@ class MyApp extends StatelessWidget {
 class SignInScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    TextTheme textTheme = Theme.of(context).textTheme;
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.primary,
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -29,15 +32,15 @@ class SignInScreen extends StatelessWidget {
             // Profile Icon
             CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.grey[200],
-              child: Icon(Icons.person, size: 50, color: Colors.grey),
+              backgroundColor: colorScheme.surface,
+              child: Icon(Icons.person, size: 50, color: colorScheme.surface),
             ),
             const SizedBox(height: 20),
             
             // Sign In Text
-            const Text(
+            Text(
               "Sign In",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: textTheme.displayLarge,
             ),
             const SizedBox(height: 30),
             
@@ -75,9 +78,9 @@ class SignInScreen extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {},
-                  child: const Text(
+                  child: Text(
                     "Forgot Password?",
-                    style: TextStyle(color: Colors.blue),
+                    style: textTheme.bodyMedium,
                   ),
                 ),
               ],
@@ -90,15 +93,15 @@ class SignInScreen extends StatelessWidget {
               onPressed: () {},
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
+                backgroundColor: colorScheme.secondary,
+                foregroundColor: colorScheme.onSecondary,
               ),
               child: const Text("Sign in", style: TextStyle(fontSize: 16)),
             ),
             const SizedBox(height: 20),
             
             // Or sign in with Text
-            const Text("Or sign in with"),
+            Text("Or sign in with", style: textTheme.bodyMedium),
             const SizedBox(height: 10),
            
           OutlinedButton.icon(
@@ -106,7 +109,7 @@ class SignInScreen extends StatelessWidget {
             icon: Icon(
               Icons.account_circle, 
               size: 20,
-              color: Colors.black, 
+              color: colorScheme.onPrimary, 
             ),
             label: const Text("Continue with Google"),
             style: OutlinedButton.styleFrom(
@@ -114,21 +117,27 @@ class SignInScreen extends StatelessWidget {
               foregroundColor: Colors.black,
             ),
           ),
-
-            // Sign Up Link
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Don’t have an account? "),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    "Sign up",
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ),
-              ],
-            ),
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Text("Don’t have an account? "),
+    TextButton(
+      onPressed: () {
+        // Navigate to CreateAccountScreen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CreateAccountScreen(),
+          ),
+        );
+      },
+      child: Text(
+        "Sign up",
+        style: textTheme.bodyMedium?.copyWith(color: colorScheme.primary),
+      ),
+    ),
+  ],
+),
           ],
         ),
       ),

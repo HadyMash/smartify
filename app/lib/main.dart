@@ -1,17 +1,12 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import 'services/mfa.dart';
 import 'widgets/mfa_code.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'intro_screen.dart';
 import 'sign_in_screen.dart';
 import 'dashboard_screen.dart';
 
 Future<void> main() async {
-  await dotenv.load(fileName: '.env');
+  //await dotenv.load(fileName: '.env');
 
   runApp(const MyApp());
 }
@@ -41,13 +36,44 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        textTheme: TextTheme(
+        displayLarge: TextStyle(
+          fontSize: 32, // Heading 1 size
+          fontWeight: FontWeight.bold, // Heading 1 weight
+          height: 38 / 32, // Line height (calculated as line height / font size)
+        ),
+        displayMedium: TextStyle(
+          fontSize: 24, // Heading 2 size
+          fontWeight: FontWeight.bold, // Heading 2 weight
+          height: 29 / 24, // Line height
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16, // Body Text size
+          fontWeight: FontWeight.normal, // Body Text weight (Regular)
+          height: 19 / 16, // Line height
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14, // Secondary Text size
+          fontWeight: FontWeight.normal, // Secondary Text weight (Regular)
+          height: 24 / 14, // Line height
+        ),
+        ),
+          colorScheme: ColorScheme(
+          brightness: Brightness.light, // Light theme
+          primary: Colors.white, // Primary color
+          onPrimary: Colors.black, // Text/Icon color on primary
+          secondary: Colors.black, // Secondary color
+          onSecondary: Colors.white, // Text/Icon color on secondary
+          surface: Colors.grey[200]!, // Surface color (e.g., cards)
+          onSurface: Colors.black, // Text/Icon color on surface
+          error: Colors.red, // Error color
+          onError: Colors.white, // Text/Icon color on error
+        ),
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: '/main',
           routes: {
-            '/': (context) => IntroScreen(),
-            '/signin': (context) => SignInScreen(),
+            '/main': (context) => SignInScreen(),
             '/dashboard': (context) => DashboardScreen(),
           },
       home: const MFATest(),
@@ -223,3 +249,39 @@ class _MFATestState extends State<MFATest> {
     );
   }
 }
+
+
+// import 'package:flutter/material.dart';
+// import 'package:flutter_screenutil/flutter_screenutil.dart';
+// import 'intro_screen.dart';
+// import 'sign_in_screen.dart';
+// import 'dashboard_screen.dart';
+
+// void main() {
+//   runApp(MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return ScreenUtilInit(
+//       designSize: Size(360, 690), // Reference size for scaling
+//       builder: (context, child) {
+//         return MaterialApp(
+//           debugShowCheckedModeBanner: false,
+//           title: 'Smartify App',
+//           theme: ThemeData(
+//             scaffoldBackgroundColor: Color(0xFFFFFFFF), // Main Background
+//           ),
+//           initialRoute: '/',
+//           routes: {
+//             '/': (context) => IntroScreen(),
+//             '/signin': (context) => SignInScreen(),
+//             '/dashboard': (context) => DashboardScreen(),
+//           },
+//         );
+//       },
+//     );
+//   }
+// }
+
