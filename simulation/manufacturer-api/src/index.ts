@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { adminRouter } from './routes/admin';
 import { DBService } from './services/db-service';
 import { logMiddleware } from './middleware/log';
+import { externalAPIRouter } from './routes/external';
 
 const app: Express = express();
 //const port = process.env.PORT ?? 3000;
@@ -12,14 +13,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(logMiddleware);
 
-const router = express.Router();
-
-router.get('/health', (req, res) => {
-  res.send('OK');
-});
-
 app.use('/', adminRouter);
-app.use('/api', router);
+app.use('/api', externalAPIRouter);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

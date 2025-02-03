@@ -17,6 +17,7 @@ const baseDeviceSchema = z.object({
   id: z.string(),
   type: deviceTypeSchema,
   connected: z.boolean(),
+  pairedApiKeys: z.array(z.string()).default([]),
 });
 
 // bulbs
@@ -103,25 +104,32 @@ export type SolarPanel = z.infer<typeof solarPanelSchema>;
 
 // Default states for device creation
 export const defaultStates: Record<DeviceType, any> = {
-  BULB_ON_OFF: { on: false, connecteed: true },
+  BULB_ON_OFF: { on: false, connected: true, pairedApiKeys: [] },
   BULB_RGB_BRIGHTNESS: {
     on: false,
     rgb: [255, 255, 255],
     brightness: 100,
-    connecteed: true,
+    connected: true,
+    pairedApiKeys: [],
   },
   BULB_LIMITED_COLOR_BRIGHTNESS: {
     on: false,
     color: 'neutral',
     brightness: 100,
-    connecteed: true,
+    connected: true,
+    pairedApiKeys: [],
   },
-  BULB_LIMITED_COLOR: { on: false, color: 'neutral', connecteed: true },
-  CURTAIN: { connecteed: true },
-  AC: { connecteed: true },
-  COFFEE_MACHINE: { connecteed: true },
-  GARAGE_DOOR: { connecteed: true },
-  SOLAR_PANEL: { connecteed: true },
+  BULB_LIMITED_COLOR: {
+    on: false,
+    color: 'neutral',
+    connected: true,
+    pairedApiKeys: [],
+  },
+  CURTAIN: { connected: true, pairedApiKeys: [] },
+  AC: { connected: true, pairedApiKeys: [] },
+  COFFEE_MACHINE: { connected: true, pairedApiKeys: [] },
+  GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
+  SOLAR_PANEL: { connected: true, pairedApiKeys: [] },
 };
 
 // Type guards

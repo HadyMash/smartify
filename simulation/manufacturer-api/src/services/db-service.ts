@@ -12,7 +12,8 @@ import {
   GarageDoor,
   SolarPanel,
 } from '../schemas/device';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
+import { APIKey } from '../schemas/api-key';
 
 export class DBService {
   private static _db: JsonDB;
@@ -121,6 +122,86 @@ export class DBService {
     }
   }
 
+  public async createApiKey(name: string): Promise<APIKey> {
+    const key = randomBytes(32).toString('hex');
+    const apiKey: APIKey = {
+      key,
+      name,
+      createdAt: new Date(),
+      isActive: true,
+    };
+
+    await this.db.push(`${DBService.API_KEY_DB_PATH}/${key}`, apiKey);
+    return apiKey;
+  }
+
+  public async deleteApiKey(key: string): Promise<boolean> {
+    try {
+      await this.db.delete(`${DBService.API_KEY_DB_PATH}/${key}`);
+      return true;
+    } catch (e) {
+      if (!(e instanceof DataError)) {
+        throw e;
+      }
+      return false;
+    }
+  }
+
+  public async getApiKey(key: string): Promise<APIKey | undefined> {
+    try {
+      return await this.db.getObject<APIKey>(
+        `${DBService.API_KEY_DB_PATH}/${key}`,
+      );
+    } catch (e) {
+      if (!(e instanceof DataError)) {
+        throw e;
+      }
+      return undefined;
+    }
+  }
+
+  public async pairDeviceWithApiKey(
+    deviceId: string,
+    apiKey: string,
+  ): Promise<boolean> {
+    try {
+      const device = await this.getDevice(deviceId);
+      const keyExists = await this.getApiKey(apiKey);
+
+      if (!device || !keyExists) return false;
+
+      const updatedPairedKeys = [...new Set([...device.pairedApiKeys, apiKey])];
+      await this.db.push(
+        `${DBService.DEVICE_DB_PATH}/${deviceId}/pairedApiKeys`,
+        updatedPairedKeys,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  public async unpairDeviceFromApiKey(
+    deviceId: string,
+    apiKey: string,
+  ): Promise<boolean> {
+    try {
+      const device = await this.getDevice(deviceId);
+      if (!device) return false;
+
+      const updatedPairedKeys = device.pairedApiKeys.filter(
+        (k) => k !== apiKey,
+      );
+      await this.db.push(
+        `${DBService.DEVICE_DB_PATH}/${deviceId}/pairedApiKeys`,
+        updatedPairedKeys,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   public async updateDeviceState<T extends Device>(
     id: string,
     partialState: Partial<Omit<T, 'id'>>,
@@ -137,7 +218,6 @@ export class DBService {
       delete updatedState.id; // Remove id before updating
       await this.db.push(`${DBService.DEVICE_DB_PATH}/${id}`, updatedState);
       return await this.getDevice<T>(id);
-      return;
     } catch (e) {
       if (!(e instanceof DataError)) {
         throw e;
