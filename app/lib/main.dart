@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'services/mfa.dart';
 import 'widgets/mfa_code.dart';
-import 'sign_in_screen.dart';
-import 'dashboard_screen.dart';
+import 'screens/account/sign_in_screen.dart';
+import 'screens/account/dashboard_screen.dart';
 
 Future<void> main() async {
   //await dotenv.load(fileName: '.env');
@@ -64,18 +64,48 @@ class MyApp extends StatelessWidget {
           onPrimary: Colors.black, // Text/Icon color on primary
           secondary: Colors.black, // Secondary color
           onSecondary: Colors.white, // Text/Icon color on secondary
-          surface: Colors.grey[200]!, // Surface color (e.g., cards)
+          surface: Colors.grey[200]!, // Surface color 
           onSurface: Colors.black, // Text/Icon color on surface
           error: Colors.red, // Error color
           onError: Colors.white, // Text/Icon color on error
         ),
         useMaterial3: true,
+
+       // Elevated Button Theme (Black button with rounded edges and white text)
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black, // Button color
+            foregroundColor: Colors.white, // Text color
+            minimumSize: Size(double.infinity, 50), // Full width button
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12), // Rounded corners
+            ),
+            elevation: 4, // Light shadow
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white, // Background color
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12), // Rounded edges
+            borderSide: BorderSide(color: Colors.black, width: 2), // Black outline
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.black, width: 2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey, width: 2),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Padding inside text field
+        ),
       ),
       initialRoute: '/main',
-          routes: {
-            '/main': (context) => SignInScreen(),
-            '/dashboard': (context) => DashboardScreen(),
-          },
+      routes: {
+        '/main': (context) => SignInScreen(),
+        '/dashboard': (context) => DashboardScreen(),
+      },
       home: const MFATest(),
     );
   }
