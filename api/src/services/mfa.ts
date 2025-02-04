@@ -6,7 +6,7 @@ import { MFAToken } from '../schemas/mfa';
 // ! temp interface
 interface MFAFormattedKey {
   formattedKey: string;
-  confirmed: Boolean;
+  confirmed: boolean;
 }
 
 // ! temp interface
@@ -19,10 +19,12 @@ interface User {
 class UserRepository {
   private static readonly m: { [key: string]: MFAFormattedKey } = {};
 
+  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
   public async userExists(userId: string): Promise<boolean> {
     return true;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async getUserById(userId: string) {
     const testUser: User = {
       _id: userId,
@@ -31,6 +33,7 @@ class UserRepository {
     return testUser;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async getUserMFAformattedKey(userId: string) {
     console.log('userid', userId, 'm', UserRepository.m);
 
@@ -40,16 +43,19 @@ class UserRepository {
     return UserRepository.m[userId];
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async isUserMFAInitialised(userId: string) {
     return !!UserRepository.m[userId];
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async saveUserMFAUnconfirmed(userId: string, formattedKey: string) {
     console.log('mfa initialised');
 
     UserRepository.m[userId] = { formattedKey, confirmed: false };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async confirmUserMFA(userId: string) {
     if (!UserRepository.m[userId]) {
       throw new Error('User did not setup MFA');
@@ -111,10 +117,7 @@ export class MFAService {
       30,
     );
 
-    const result = await this.db.userRepository.saveUserMFAUnconfirmed(
-      userId,
-      formattedKey,
-    );
+    await this.db.userRepository.saveUserMFAUnconfirmed(userId, formattedKey);
 
     // TODO: check if result is successful once implemented with actual classes
 

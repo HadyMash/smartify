@@ -2,7 +2,6 @@ import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
-import { mfaRouter } from './routes/mfa';
 import { authRouter } from './routes/auth';
 
 dotenv.config();

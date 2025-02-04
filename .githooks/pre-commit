@@ -3,28 +3,101 @@
 # Initialize a flag for failure
 exit_code=0
 
-# Format all files in the api folder
-prettier ./api --write --ignore-path .gitignore --log-level warn --ignore-unknown
-prettier_exit_code=$?
+# Store the list of all staged files before formatting
+staged_files=$(git diff --name-only --cached)
 
-if [ $prettier_exit_code -ne 0 ]; then
-  echo "❌ Error formatting files in api server. Please fix any issues"
+# Function to get the modification time of a file (macOS compatible)
+get_mod_time() {
+  if [ -f "$1" ]; then
+    stat -f %m "$1"  # macOS uses -f instead of -c
+  else
+    echo 0
+  fi
+}
+
+# Store the modification times of all staged files before running tools
+mod_times_before=""
+for file in $staged_files; do
+  mod_time=$(get_mod_time "$file")
+  mod_times_before="$mod_times_before$file:$mod_time "
+done
+
+# Check for errors in the API server using eslint (if package.json exists in ./api)
+if [ -f "./api/package.json" ]; then
+  echo -e "\nRunning eslint in ./api...\n"
+  (cd ./api && npm run lint:fix)
+  eslint_exit_code=$?
+
+  if [ $eslint_exit_code -ne 0 ]; then
+    echo -e "\n❌ Error found in the api server. Please fix any issues first\n"
+    exit_code=1
+  fi
+else
+  echo -e "\n⚠️  No package.json found in ./api. Skipping eslint.\n"
+fi
+
+# Format all files in the api folder using prettier (if package.json exists in ./api)
+if [ -f "./api/package.json" ]; then
+  echo -e "\nRunning prettier in ./api...\n"
+  (cd ./api && npm run format)
+  prettier_exit_code=$?
+
+  if [ $prettier_exit_code -ne 0 ]; then
+    echo -e "\n❌ Error formatting files in api server. Please fix any issues\n"
+    exit_code=1
+  fi
+else
+  echo -e "\n⚠️  No package.json found in ./api. Skipping prettier.\n"
+fi
+
+# Fix any issues in the mobile app using dart fix
+echo -e "\nRunning dart fix in ./app...\n"
+dart fix --apply ./app
+dart_fix_exit_code=$?
+
+if [ $dart_fix_exit_code -ne 0 ]; then
+  echo -e "\n❌ Error applying fixes in the app. Please fix any issues\n"
   exit_code=1
 fi
 
-# Fix any issues
-dart fix --apply ./app
 # Run Dart analysis on the mobile app
-dart analyze ./app
+echo -e "\nRunning dart analyze in ./app...\n"
+flutter analyze ./app --no-fatal-infos
 dart_analyze_exit_code=$?
 
 if [ $dart_analyze_exit_code -ne 0 ]; then
-  echo "❌ Error found in the app. Please fix any issues first"
+  echo -e "\n❌ Error found in the app. Please fix any issues first\n"
   exit_code=1
 fi
 
-# Format all files in the mobile app
+# Format all files in the mobile app using dart format
+echo -e "\nRunning dart format in ./app...\n"
 dart format ./app
+dart_format_exit_code=$?
+
+if [ $dart_format_exit_code -ne 0 ]; then
+  echo -e "\n❌ Error formatting files in the app. Please fix any issues\n"
+  exit_code=1
+fi
+
+# Re-stage only the files that were:
+# 1. Previously staged, and
+# 2. Modified by eslint, prettier, dart fix, or dart format (based on timestamp)
+for file in $staged_files; do
+  mod_time_before=$(echo -e "\n$mod_times_before" | tr ' ' '\n' | grep "^$file:\n" | cut -d: -f2)
+  mod_time_after=$(get_mod_time "$file")
+
+  if [ "$mod_time_after" -gt "$mod_time_before" ]; then
+    git add "$file"
+    echo -e "\n✅ Re-staged modified file: $file\n"
+  fi
+done
 
 # Exit with the appropriate code (0 or 1)
+if [ $exit_code -eq 0 ]; then
+  echo -e "\n✅ Pre-commit checks passed\n"
+else
+  echo -e "\n❌ Pre-commit checks failed, please fix any issues\n"
+fi
+
 exit $exit_code
