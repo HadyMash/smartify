@@ -27,6 +27,17 @@ export const userSchema = z.object({
     gender: z.enum(['m', 'f']).optional(),
   }),
 });
+
+export const changePasswordSchema = z.object({
+  body: z.object({
+    oldPassword: z
+      .string({ required_error: 'Incorrect password' })
+      .min(8, 'Password is too short. Needs to be at least 8 characters'),
+    newPassword: z
+      .string({ required_error: 'A new password is required' })
+      .min(8, 'Password is too short. Needs to be at least 8 characters'),
+  }),
+});
 export const forgotPasswordSchema = z.object({
   body: z.object({
     email: z

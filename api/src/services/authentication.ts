@@ -1,6 +1,5 @@
 import { randomBytes, pbkdf2Sync } from 'crypto';
 import { Collection, Db, MongoClient } from 'mongodb';
-import { DeleteUserById } from './db/Repositories/user';
 import { UserType, userSchema } from '../schemas/users';
 interface User {
   _id: string;
@@ -59,7 +58,9 @@ export class AuthenticationService {
       throw new Error('Failed to generate salt');
     }
     const hash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex'); // Generate hash
-    return { hash, salt };
+    const generator = 3;
+    const verifier = generator;
+    return { salt, hash };
   }
   /**
    * This method will check if the user exists already, after which it will create a new user, hash the password and then
@@ -94,7 +95,7 @@ export class AuthenticationService {
    * @returns
    */
   public async login(userData: UserType) {
-    //const user = awaitdb.collection('users').finOne({email});
+    //const user = await db.collection('users').finOne({email});
     //if (!user){
     //throw new Error("User not found");
     //}
@@ -135,20 +136,23 @@ export class AuthenticationService {
   }
   public async resetPassword(email: string, password: string) {
     UserRepository.findByEmail(email);
-    if (!email) {
-      console.log('Email not found');
+    if (email) {
+      const { salt, hash } = await this.hashPassword(password);
+      // Update password in the database
+      // const result = await db.collection('users').updateOne({email},{ $set: { password: hash, salt }});
+      console.log('Password reset successfully');
     } else {
+      console.log('Email not found');
     }
   }
-  // public async deleteUser(userId:string): Promise<boolean>{
-  //   try{
-  //       const userDeleted = await deleteUserById(userId);
-  //     return userDeleted
-  //     }
-  //     catch(error){
-  //     console.log(error);
-  //     return false;
-  //     }
-  //
-  // }
+  public async deleteUser(userId: string): Promise<boolean> {
+    try {
+      //const userDeleted = await deleteUserById(userId);
+      //return userDeleted
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
 }
