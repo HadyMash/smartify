@@ -7,11 +7,11 @@ export const externalAPIRouter = Router();
 
 // Public endpoints
 externalAPIRouter.get('/health', (req, res) => {
-  res.send({ health: 'OK' });
+  res.status(200).send();
 });
 
-// Protected routes using API key
-controlRouter.use(validateApiKey);
+// Protected routes using API key from request body
+externalAPIRouter.use(validateApiKey);
 
 // Device pairing management
 controlRouter.post('/pair/:deviceId', async (req: Request, res: Response) => {
@@ -66,7 +66,6 @@ controlRouter.get('/devices', async (req: Request, res: Response) => {
   const devices = (await dbService.getDevices()) || [];
   const pairedDevices = devices
     .filter((d) => d.pairedApiKeys.includes(apiKey))
-    .filter((d) => d.connected)
     .map((d) => {
       const { pairedApiKeys, ...deviceData } = d;
       return deviceData;
@@ -114,4 +113,4 @@ controlRouter.patch(
   },
 );
 
-externalAPIRouter.use('/:key', controlRouter);
+externalAPIRouter.use('/', controlRouter);

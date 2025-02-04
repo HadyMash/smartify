@@ -6,7 +6,7 @@ export const validateApiKey = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const apiKey = req.params.key;
+  const apiKey = req.body.key;
 
   if (!apiKey) {
     res.status(401).json({ error: 'API key is required' });
