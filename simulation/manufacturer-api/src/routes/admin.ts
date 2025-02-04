@@ -30,6 +30,27 @@ adminRouter.get('/devices/', async (req: Request, res: Response) => {
   }
 });
 
+adminRouter.get('/devices/:id', async (req: Request, res: Response) => {
+  try {
+    let device: Device | undefined = await new DBService().getDevice(
+      req.params.id,
+    );
+
+    if (!device) {
+      res.status(404).send({
+        error: 'not found',
+      });
+      return;
+    }
+
+    res.status(200).send(device);
+  } catch (e) {
+    console.log('error', e);
+
+    res.status(500).send({ error: 'Internal server error' });
+  }
+});
+
 adminRouter.post('/devices/new', async (req: Request, res: Response) => {
   try {
     const { type } = req.body as { type: keyof typeof defaultStates };
@@ -107,74 +128,7 @@ adminRouter.delete('/devices/:id', async (req: Request, res: Response) => {
   }
 });
 
-// API Key management
-adminRouter.post('/api-keys', async (req: Request, res: Response) => {
-  try {
-    const { name } = req.body;
-    if (!name) {
-      res.status(400).json({ error: 'Name is required' });
-      return;
-    }
-
-    const apiKey = await new DBService().createApiKey(name);
-    res.status(201).json(apiKey);
-  } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-adminRouter.delete('/api-keys/:key', async (req: Request, res: Response) => {
-  try {
-    const success = await new DBService().deleteApiKey(req.params.key);
-    if (!success) {
-      res.status(404).json({ error: 'API key not found' });
-      return;
-    }
-    res.status(204).send();
-  } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-adminRouter.post(
-  '/devices/:id/pair/:key',
-  async (req: Request, res: Response) => {
-    try {
-      const success = await new DBService().pairDeviceWithApiKey(
-        req.params.id,
-        req.params.key,
-      );
-      if (!success) {
-        res.status(404).json({ error: 'Device or API key not found' });
-        return;
-      }
-      res.status(204).send();
-    } catch (e) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
-
-adminRouter.delete(
-  '/devices/:id/pair/:key',
-  async (req: Request, res: Response) => {
-    try {
-      const success = await new DBService().unpairDeviceFromApiKey(
-        req.params.id,
-        req.params.key,
-      );
-      if (!success) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-      res.status(204).send();
-    } catch (e) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
-
-adminRouter.patch('/devices/:id/state', async (req: Request, res: Response) => {
+adminRouter.patch('/devices/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
     const device = await new DBService().getDevice(id);
@@ -224,5 +178,162 @@ adminRouter.patch('/devices/:id/state', async (req: Request, res: Response) => {
   } catch (e) {
     console.error('error', e);
     res.status(500).send({ error: 'Internal server error' });
+  }
+});
+
+// API Key management
+
+adminRouter.get('/api-keys', async (req: Request, res: Response) => {
+  try {
+    const active = req.query.active === 'true';
+    const dbService = new DBService();
+    const apiKeys = active
+      ? await dbService.getActiveApiKeys()
+      : await dbService.getApiKeys();
+    res.status(200).json(apiKeys);
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.post('/api-keys/get', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) {
+      res.status(400).json({ error: 'API key is required' });
+      return;
+    }
+    const apiKey = await new DBService().getApiKey(key);
+    if (!apiKey) {
+      res.status(404).json({ error: 'API key not found' });
+      return;
+    }
+    res.status(200).json(apiKey);
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.patch('/api-keys', async (req: Request, res: Response) => {
+  try {
+    const { key, ...updates } = req.body;
+    if (!key) {
+      res.status(400).json({ error: 'API key is required' });
+      return;
+    }
+    if (!updates || Object.keys(updates).length === 0) {
+      res.status(400).json({ error: 'No updates provided' });
+      return;
+    }
+
+    // Only allow updating certain fields
+    const allowedUpdates = ['name', 'isActive'];
+    const hasDisallowedField = Object.keys(updates).some(
+      (key) => !allowedUpdates.includes(key),
+    );
+
+    if (hasDisallowedField) {
+      res.status(400).json({ error: 'Request contains disallowed fields' });
+      return;
+    }
+
+    const filteredUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([key]) => allowedUpdates.includes(key)),
+    );
+
+    const updatedKey = await new DBService().updateApiKey(key, filteredUpdates);
+    if (!updatedKey) {
+      res.status(404).json({ error: 'API key not found' });
+      return;
+    }
+
+    res.status(200).json(updatedKey);
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.post('/api-keys', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    if (!name) {
+      res.status(400).json({ error: 'Name is required' });
+      return;
+    }
+
+    const apiKey = await new DBService().createApiKey(name);
+    res.status(201).json(apiKey);
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.delete('/api-keys', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) {
+      res.status(400).json({ error: 'API key is required' });
+      return;
+    }
+    const dbService = new DBService();
+
+    // Check if API key exists first
+    const apiKey = await dbService.getApiKey(key);
+    if (!apiKey) {
+      res.status(404).json({ error: 'API key not found' });
+      return;
+    }
+
+    const success = await dbService.deleteApiKey(key);
+    if (!success) {
+      res.status(500).json({ error: 'Internal server error' });
+      return;
+    }
+    res.status(204).send();
+  } catch (e) {
+    console.error('error', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.post('/devices/:id/pair', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) {
+      res.status(400).json({ error: 'API key is required' });
+      return;
+    }
+    const success = await new DBService().pairDeviceWithApiKey(
+      req.params.id,
+      key,
+    );
+    if (!success) {
+      res.status(404).json({ error: 'Device or API key not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+adminRouter.delete('/devices/:id/pair', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) {
+      res.status(400).json({ error: 'API key is required' });
+      return;
+    }
+    const success = await new DBService().unpairDeviceFromApiKey(
+      req.params.id,
+      key,
+    );
+    if (!success) {
+      res.status(404).json({ error: 'Device not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 });

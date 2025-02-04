@@ -160,15 +160,49 @@ export class DBService {
     }
   }
 
+  public async getApiKeys(): Promise<APIKey[]> {
+    try {
+      const data = await this.db.getObject<{ [key: string]: APIKey }>(
+        DBService.API_KEY_DB_PATH,
+      );
+      return Object.values(data);
+    } catch (e) {
+      if (e instanceof DataError) {
+        return [];
+      }
+      throw e;
+    }
+  }
+
+  public async updateApiKey(
+    key: string,
+    updates: Partial<APIKey>,
+  ): Promise<APIKey | undefined> {
+    try {
+      const currentKey = await this.getApiKey(key);
+      if (!currentKey) return undefined;
+
+      const updatedKey = { ...currentKey, ...updates };
+      await this.db.push(`${DBService.API_KEY_DB_PATH}/${key}`, updatedKey);
+      return updatedKey;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  public async getActiveApiKeys(): Promise<APIKey[]> {
+    const keys = await this.getApiKeys();
+    return keys.filter((key) => key.isActive);
+  }
+
   public async pairDeviceWithApiKey(
     deviceId: string,
     apiKey: string,
   ): Promise<boolean> {
     try {
       const device = await this.getDevice(deviceId);
-      const keyExists = await this.getApiKey(apiKey);
-
-      if (!device || !keyExists) return false;
+      const key = await this.getApiKey(apiKey);
+      if (!device || !key) return false;
 
       const updatedPairedKeys = [...new Set([...device.pairedApiKeys, apiKey])];
       await this.db.push(
