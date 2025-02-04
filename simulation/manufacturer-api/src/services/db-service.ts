@@ -11,9 +11,14 @@ import {
   CoffeeMachine,
   GarageDoor,
   SolarPanel,
+  isOnOffBulb,
+  isRGBBulb,
+  isLimitedColorBulb,
+  isLimitedColorBrightnessBulb,
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
 import { APIKey } from '../schemas/api-key';
+import { DeviceCapability } from '../schemas/capabilities';
 
 export class DBService {
   private static _db: JsonDB;
@@ -258,5 +263,65 @@ export class DBService {
       }
       return;
     }
+  }
+
+  private getDeviceCapabilities(device: Device): DeviceCapability[] {
+    const capabilities: DeviceCapability[] = [];
+
+    if (
+      isOnOffBulb(device) ||
+      isRGBBulb(device) ||
+      isLimitedColorBulb(device) ||
+      isLimitedColorBrightnessBulb(device)
+    ) {
+      capabilities.push({ type: 'POWER' });
+    }
+
+    if (isRGBBulb(device) || isLimitedColorBrightnessBulb(device)) {
+      capabilities.push({
+        type: 'BRIGHTNESS',
+        minValue: 0,
+        maxValue: 100,
+      });
+    }
+
+    if (isRGBBulb(device)) {
+      capabilities.push({
+        type: 'RGB_COLOR',
+        minValue: 0,
+        maxValue: 255,
+      });
+    }
+
+    if (isLimitedColorBulb(device) || isLimitedColorBrightnessBulb(device)) {
+      capabilities.push({
+        type: 'LIMITED_COLOR',
+        availableColors: ['warm', 'neutral', 'cool'],
+      });
+    }
+
+    return capabilities;
+  }
+
+  public async getDevicesWithCapabilities(): Promise<
+    Array<Device & { capabilities: DeviceCapability[] }>
+  > {
+    const devices = (await this.getDevices()) || [];
+    return devices.map((device) => ({
+      ...device,
+      capabilities: this.getDeviceCapabilities(device),
+    }));
+  }
+
+  public async getDeviceWithCapabilities(
+    id: string,
+  ): Promise<(Device & { capabilities: DeviceCapability[] }) | undefined> {
+    const device = await this.getDevice(id);
+    if (!device) return undefined;
+
+    return {
+      ...device,
+      capabilities: this.getDeviceCapabilities(device),
+    };
   }
 }

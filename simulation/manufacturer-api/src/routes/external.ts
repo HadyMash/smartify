@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { validateApiKey, validateDevicePairing } from '../middleware/api-key';
 import { DBService } from '../services/db-service';
 
-const controlRouter = Router();
 export const externalAPIRouter = Router();
 
 // Public endpoints
@@ -10,60 +9,101 @@ externalAPIRouter.get('/health', (req, res) => {
   res.status(200).send();
 });
 
+// Discovery endpoint - returns all available device types and their capabilities
+externalAPIRouter.get('/device-types', (req: Request, res: Response) => {
+  const deviceTypes = [
+    {
+      type: 'BULB_ON_OFF',
+      capabilities: [{ type: 'POWER' }],
+    },
+    {
+      type: 'BULB_RGB_BRIGHTNESS',
+      capabilities: [
+        { type: 'POWER' },
+        { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
+        { type: 'RGB_COLOR', minValue: 0, maxValue: 255 },
+      ],
+    },
+    {
+      type: 'BULB_LIMITED_COLOR_BRIGHTNESS',
+      capabilities: [
+        { type: 'POWER' },
+        { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
+        { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
+      ],
+    },
+    {
+      type: 'BULB_LIMITED_COLOR',
+      capabilities: [
+        { type: 'POWER' },
+        { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
+      ],
+    },
+  ];
+
+  res.json(deviceTypes);
+});
+
 // Protected routes using API key from request body
 externalAPIRouter.use(validateApiKey);
 
 // Device pairing management
-controlRouter.post('/pair/:deviceId', async (req: Request, res: Response) => {
-  try {
-    const apiKey = (req as any).apiKey;
-    const deviceId = req.params.deviceId;
+externalAPIRouter.post(
+  '/pair/:deviceId',
+  async (req: Request, res: Response) => {
+    try {
+      const apiKey = (req as any).apiKey;
+      const deviceId = req.params.deviceId;
 
-    const dbService = new DBService();
-    const device = await dbService.getDevice(deviceId);
+      const dbService = new DBService();
+      const device = await dbService.getDevice(deviceId);
 
-    if (!device) {
-      res.status(404).json({ error: 'Device not found' });
-      return;
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const success = await dbService.pairDeviceWithApiKey(deviceId, apiKey);
+      if (!success) {
+        res.status(500).json({ error: 'Failed to pair device' });
+        return;
+      }
+
+      res.status(201).json({ message: 'Device paired successfully' });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
     }
+  },
+);
 
-    const success = await dbService.pairDeviceWithApiKey(deviceId, apiKey);
-    if (!success) {
-      res.status(500).json({ error: 'Failed to pair device' });
-      return;
+externalAPIRouter.delete(
+  '/pair/:deviceId',
+  async (req: Request, res: Response) => {
+    try {
+      const apiKey = (req as any).apiKey;
+      const deviceId = req.params.deviceId;
+
+      const dbService = new DBService();
+      const success = await dbService.unpairDeviceFromApiKey(deviceId, apiKey);
+
+      if (!success) {
+        res.status(404).json({ error: 'Device not found or not paired' });
+        return;
+      }
+
+      res.status(204).send();
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
     }
+  },
+);
 
-    res.status(201).json({ message: 'Device paired successfully' });
-  } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-controlRouter.delete('/pair/:deviceId', async (req: Request, res: Response) => {
-  try {
-    const apiKey = (req as any).apiKey;
-    const deviceId = req.params.deviceId;
-
-    const dbService = new DBService();
-    const success = await dbService.unpairDeviceFromApiKey(deviceId, apiKey);
-
-    if (!success) {
-      res.status(404).json({ error: 'Device not found or not paired' });
-      return;
-    }
-
-    res.status(204).send();
-  } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get all paired devices
-controlRouter.get('/devices', async (req: Request, res: Response) => {
+// Get all paired devices with their capabilities
+externalAPIRouter.get('/devices', async (req: Request, res: Response) => {
   const apiKey = (req as any).apiKey;
   const dbService = new DBService();
 
-  const devices = (await dbService.getDevices()) || [];
+  const devices = await dbService.getDevicesWithCapabilities();
   const pairedDevices = devices
     .filter((d) => d.pairedApiKeys.includes(apiKey))
     .map((d) => {
@@ -74,13 +114,32 @@ controlRouter.get('/devices', async (req: Request, res: Response) => {
   res.json(pairedDevices);
 });
 
+// Get unpaired devices that are available for pairing
+externalAPIRouter.get('/discover', async (req: Request, res: Response) => {
+  const apiKey = (req as any).apiKey;
+  const dbService = new DBService();
+
+  const devices = await dbService.getDevicesWithCapabilities();
+  const unpairedDevices = devices
+    .filter((d) => !d.pairedApiKeys.includes(apiKey))
+    .map((d) => {
+      // Only return essential information for unpaired devices
+      const { id, type, connected, capabilities } = d;
+      return { id, type, connected, capabilities };
+    });
+
+  res.json(unpairedDevices);
+});
+
 // Get specific device
-controlRouter.get(
+externalAPIRouter.get(
   '/devices/:deviceId',
   validateDevicePairing,
   async (req: Request, res: Response) => {
     const dbService = new DBService();
-    const device = await dbService.getDevice(req.params.deviceId);
+    const device = await dbService.getDeviceWithCapabilities(
+      req.params.deviceId,
+    );
 
     if (!device) {
       res.status(404).json({ error: 'Device not found' });
@@ -93,7 +152,7 @@ controlRouter.get(
 );
 
 // Update device state
-controlRouter.patch(
+externalAPIRouter.patch(
   '/devices/:deviceId/state',
   validateDevicePairing,
   async (req: Request, res: Response) => {
@@ -112,5 +171,3 @@ controlRouter.patch(
     res.json(deviceData);
   },
 );
-
-externalAPIRouter.use('/', controlRouter);
