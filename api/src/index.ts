@@ -15,8 +15,8 @@ app.use(logMiddleware);
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.send('Hello World!');
+router.get('/health', (_, res) => {
+  res.send('OK');
 });
 
 router.use('/auth', authRouter);

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node --no-assertions dist/index.js",
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
     "test": "jest",
@@ -23,6 +23,10 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jose": "^5.9.6",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.12.0",
+    "redis": "^4.7.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -31,6 +35,7 @@
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
