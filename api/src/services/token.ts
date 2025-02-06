@@ -370,13 +370,22 @@ export class TokenService {
 
       const payload = this.parseToken(result);
 
-      // check token isn't blacklisted
+      // check token generation ID isn't blacklisted
       const blacklisted =
         await this.db.tokenRepository.isTokenGenerationIdBlacklisted(
           payload.generationId,
         );
       if (blacklisted) {
         return { valid: false };
+      }
+
+      // For access tokens, also check if the specific token is blacklisted
+      if (payload.type === TokenTypeSchema.enum.ACCESS) {
+        const tokenBlacklisted =
+          await this.db.tokenRepository.isAccessTokenBlacklisted(payload.jti);
+        if (tokenBlacklisted) {
+          return { valid: false };
+        }
       }
 
       return { valid: true, payload };
@@ -540,5 +549,40 @@ export class TokenService {
   public async revokeAllTokensImmediately(userId: string) {
     // add to blacklist
     await this.db.tokenRepository.blacklistTokenGenerationIds(userId);
+  }
+
+  /**
+   * Blacklist a specific access token. This will prevent the token from being used
+   * for any future requests, but won't affect other tokens generated with the same
+   * refresh token.
+   *
+   * This is useful for scenarios where you want to revoke a single access token
+   * without affecting other sessions, such as when a user logs out of a specific device.
+   *
+   * @param accessToken - The access token to blacklist
+   * @returns Promise that resolves when the token has been blacklisted
+   * @throws InvalidTokenError if the token is invalid or not an access token
+   */
+  public async blacklistAccessToken(accessToken: string): Promise<void> {
+    // Verify and decode the token
+    const { valid, payload } = await this.verifyToken(accessToken, true);
+
+    if (!valid || !payload) {
+      throw new InvalidTokenError('Invalid access token');
+    }
+
+    // Ensure it's an access token
+    if (payload.type !== TokenTypeSchema.enum.ACCESS) {
+      throw new InvalidTokenError('Token is not an access token');
+    }
+
+    // Get expiry time from the payload
+    const exp = (payload as jwt.JwtPayload).exp;
+    if (!exp) {
+      throw new InvalidTokenError('Token has no expiry time');
+    }
+
+    // Blacklist the token
+    await this.db.tokenRepository.blacklistAccessToken(payload.jti, exp);
   }
 }
