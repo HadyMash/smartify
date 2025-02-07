@@ -9,41 +9,6 @@ externalAPIRouter.get('/health', (req, res) => {
   res.status(200).send();
 });
 
-// Discovery endpoint - returns all available device types and their capabilities
-externalAPIRouter.get('/device-types', (req: Request, res: Response) => {
-  const deviceTypes = [
-    {
-      type: 'BULB_ON_OFF',
-      capabilities: [{ type: 'POWER' }],
-    },
-    {
-      type: 'BULB_RGB_BRIGHTNESS',
-      capabilities: [
-        { type: 'POWER' },
-        { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
-        { type: 'RGB_COLOR', minValue: 0, maxValue: 255 },
-      ],
-    },
-    {
-      type: 'BULB_LIMITED_COLOR_BRIGHTNESS',
-      capabilities: [
-        { type: 'POWER' },
-        { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
-        { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
-      ],
-    },
-    {
-      type: 'BULB_LIMITED_COLOR',
-      capabilities: [
-        { type: 'POWER' },
-        { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
-      ],
-    },
-  ];
-
-  res.json(deviceTypes);
-});
-
 // Protected routes using API key from request body
 externalAPIRouter.use(validateApiKey);
 
@@ -100,54 +65,95 @@ externalAPIRouter.delete(
 
 // Get all paired devices with their capabilities
 externalAPIRouter.get('/devices', async (req: Request, res: Response) => {
-  const apiKey = (req as any).apiKey;
-  const dbService = new DBService();
+  try {
+    const apiKey = (req as any).apiKey;
+    const dbService = new DBService();
 
-  const devices = await dbService.getDevicesWithCapabilities();
-  const pairedDevices = devices
-    .filter((d) => d.pairedApiKeys.includes(apiKey))
-    .map((d) => {
-      const { pairedApiKeys, ...deviceData } = d;
-      return deviceData;
-    });
+    const devices = await dbService.getDevicesWithCapabilities();
+    const pairedDevices = devices
+      .filter((d) => d.pairedApiKeys.includes(apiKey))
+      .map((d) => {
+        const { pairedApiKeys, ...deviceData } = d;
+        return deviceData;
+      });
 
-  res.json(pairedDevices);
+    res.json(pairedDevices);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get unpaired devices that are available for pairing
 externalAPIRouter.get('/discover', async (req: Request, res: Response) => {
-  const apiKey = (req as any).apiKey;
-  const dbService = new DBService();
+  try {
+    const apiKey = (req as any).apiKey;
+    const dbService = new DBService();
 
-  const devices = await dbService.getDevicesWithCapabilities();
-  const unpairedDevices = devices
-    .filter((d) => !d.pairedApiKeys.includes(apiKey))
-    .map((d) => {
-      // Only return essential information for unpaired devices
-      const { id, type, connected, capabilities } = d;
-      return { id, type, connected, capabilities };
-    });
+    const devices = await dbService.getDevicesWithCapabilities();
+    const unpairedDevices = devices
+      .filter((d) => !d.pairedApiKeys.includes(apiKey))
+      .map((d) => {
+        // Only return essential information for unpaired devices
+        const { id, type, connected, capabilities } = d;
+        return { id, type, connected, capabilities };
+      });
 
-  res.json(unpairedDevices);
+    res.json(unpairedDevices);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
+
+// Get paired devices and their states
+externalAPIRouter.get(
+  '/devices/paired',
+  async (req: Request, res: Response) => {
+    try {
+      const apiKey = (req as any).apiKey;
+      const dbService = new DBService();
+      const devices = await dbService
+        .getDevicesWithCapabilities()
+        .then((devices) => {
+          return devices.filter((d) => d.pairedApiKeys.includes(apiKey));
+        });
+      if (!devices) {
+        res.status(404).json({ error: 'No paired devices found' });
+        return;
+      }
+
+      res.status(200).json(devices);
+      return;
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
 
 // Get specific device
 externalAPIRouter.get(
   '/devices/:deviceId',
   validateDevicePairing,
   async (req: Request, res: Response) => {
-    const dbService = new DBService();
-    const device = await dbService.getDeviceWithCapabilities(
-      req.params.deviceId,
-    );
+    try {
+      const dbService = new DBService();
+      const device = await dbService.getDeviceWithCapabilities(
+        req.params.deviceId,
+      );
 
-    if (!device) {
-      res.status(404).json({ error: 'Device not found' });
-      return;
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const { pairedApiKeys, ...deviceData } = device;
+      res.json(deviceData);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
     }
-
-    const { pairedApiKeys, ...deviceData } = device;
-    res.json(deviceData);
   },
 );
 
@@ -156,18 +162,23 @@ externalAPIRouter.patch(
   '/devices/:deviceId/state',
   validateDevicePairing,
   async (req: Request, res: Response) => {
-    const dbService = new DBService();
-    const updatedDevice = await dbService.updateDeviceState(
-      req.params.deviceId,
-      req.body,
-    );
+    try {
+      const dbService = new DBService();
+      const updatedDevice = await dbService.updateDeviceState(
+        req.params.deviceId,
+        req.body,
+      );
 
-    if (!updatedDevice) {
-      res.status(404).json({ error: 'Device not found' });
-      return;
+      if (!updatedDevice) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const { pairedApiKeys, ...deviceData } = updatedDevice;
+      res.json(deviceData);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
     }
-
-    const { pairedApiKeys, ...deviceData } = updatedDevice;
-    res.json(deviceData);
   },
 );

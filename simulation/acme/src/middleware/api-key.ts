@@ -6,10 +6,10 @@ export const validateApiKey = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const apiKey = req.body.key;
+  const apiKey = req.header('x-api-key');
 
   if (!apiKey) {
-    res.status(401).json({ error: 'API key is required' });
+    res.status(401).json({ error: 'API key is required in X-API-Key header' });
     return;
   }
 
