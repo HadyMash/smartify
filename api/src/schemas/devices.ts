@@ -92,7 +92,7 @@ export const deviceSchema = z.object({
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
   /** Device capabilities */
-  capabilities: z.array(deviceCapabilitySchema),
+  capabilities: z.array(deviceCapabilitySchema).nonempty(),
 });
 
 /** The schema for a device's state */
@@ -105,7 +105,7 @@ export const deviceWithStateSchema = deviceSchema
   })
   .refine(
     (d) => {
-      return Object.keys(d.state).some((key) =>
+      return Object.keys(d.state).every((key) =>
         d.capabilities.some((c) => c.id === key),
       );
     },

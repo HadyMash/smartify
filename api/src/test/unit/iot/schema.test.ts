@@ -1,6 +1,7 @@
 import {
   DeviceCapability,
   deviceCapabilitySchema,
+  deviceSchema,
   DeviceSource,
   deviceSourceSchema,
 } from '../../../schemas/devices';
@@ -248,13 +249,6 @@ describe('IoT Device Schema Tests', () => {
           id: 'speed',
         };
 
-        try {
-          console.log(deviceCapabilitySchema.parse(capability));
-          console.log('no issues');
-        } catch (e) {
-          console.log('error', e);
-        }
-
         expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
         expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
           false,
@@ -287,6 +281,107 @@ describe('IoT Device Schema Tests', () => {
           false,
         );
       });
+    });
+  });
+
+  describe('Device schema', () => {
+    test('missing id', () => {
+      const device = {
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'invalid-type',
+            id: 'invalid',
+          },
+        ],
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
+    });
+
+    test('missing source', () => {
+      const device = {
+        id: 'device-1',
+        capabilities: [
+          {
+            type: 'invalid-type',
+            id: 'invalid',
+          },
+        ],
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
+    });
+
+    test('missing capabilities', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme' as const,
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
+    });
+
+    test('invalid capabilities', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'invalid-type',
+            id: 'invalid',
+          },
+        ],
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
+    });
+
+    test('invalid source', () => {
+      const device = {
+        id: 'device-1',
+        source: 'invalid-source',
+        capabilities: [
+          {
+            type: 'invalid-type',
+            id: 'invalid',
+          },
+        ],
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
+    });
+
+    test('valid device', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'switch' as const,
+            id: 'power',
+          },
+          {
+            type: 'range' as const,
+            id: 'brightness',
+            min: 0,
+            max: 100,
+            unit: '%',
+          },
+        ],
+      };
+      expect(() => deviceSchema.parse(device)).not.toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('device with empty capabilities array should fail', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme' as const,
+        capabilities: [],
+      };
+      expect(() => deviceSchema.parse(device)).toThrow();
+      expect(deviceSchema.safeParse(device).success).toBe(false);
     });
   });
 });
