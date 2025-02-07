@@ -5,6 +5,8 @@ export const logMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  console.log(`${req.method} ${req.path} ${JSON.stringify(req.body)}`);
+  console.log(
+    `${req.method} ${req.path}${req.method !== 'GET' ? ` ${JSON.stringify(req.body)}` : ''}`,
+  );
   next();
 };
