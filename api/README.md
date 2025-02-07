@@ -95,6 +95,8 @@ field until rotations are implemented.
 
 **`AUTH_TOKEN_REFRESH_EXPIRY_SECONDS`:** The time in seconds for the refresh token expiry (how long it lives). The refresh token is used to refresh/create new access tokens.
 
+**`AUTH_TOKEN_MFA_EXPIRY_SECONDS`:** The time in seconds for the MFA token to expire (how long it lives). This should be a very short duration, typically around 5 minutes.
+
 **`MONGODB_URL`:** The MongoDB connection URL
 
 **`REDIS_URL`:** The Redis cache server URL

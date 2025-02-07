@@ -10,13 +10,16 @@ import {
 import {
   type AccessTokenPayload,
   AccessTokenPayloadSchema,
+  CommonTokenInfo,
   type IDTokenPayload,
   IDTokenPayloadSchema,
   InvalidTokenError,
   type JWTSecret,
+  MFATokenPayload,
+  mfaTokenPayloadSchema,
+  mfaTokenTypeSchema,
   type RefreshTokenPayload,
   RefreshTokenPayloadSchema,
-  TokenPayload,
   TokenTypeSchema,
 } from '../schemas/tokens';
 import { DatabaseService } from './db/db';
@@ -26,6 +29,7 @@ import { DatabaseService } from './db/db';
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
   private static _REFRESH_TOKEN_LIFESPAN_SECONDS: number;
+  private static _MFA_TOKEN_LIFESPAN_SECONDS: number;
 
   public static get ACCESS_TOKEN_LIFESPAN_SECONDS(): number {
     if (this._ACCESS_TOKEN_LIFESPAN_SECONDS === undefined) {
@@ -56,6 +60,21 @@ export class TokenService {
     }
 
     return this._REFRESH_TOKEN_LIFESPAN_SECONDS;
+  }
+
+  public static get MFA_TOKEN_LIFESPAN_SECONDS(): number {
+    if (this._MFA_TOKEN_LIFESPAN_SECONDS === undefined) {
+      this._MFA_TOKEN_LIFESPAN_SECONDS = parseInt(
+        process.env.AUTH_TOKEN_MFA_EXPIRY_SECONDS!,
+      );
+    }
+
+    if (isNaN(this._MFA_TOKEN_LIFESPAN_SECONDS)) {
+      throw new Error(
+        `Invalid MFA token expiry time: ${process.env.AUTH_TOKEN_MFA_EXPIRY_SECONDS}`,
+      );
+    }
+    return this._MFA_TOKEN_LIFESPAN_SECONDS;
   }
 
   private readonly db: DatabaseService;
@@ -101,8 +120,8 @@ export class TokenService {
    * @param encrypt - Whether to encrypt the token
    * @returns The generated JWT
    */
-  private async generateToken(
-    payload: Omit<TokenPayload, 'exp'>,
+  private async generateToken<T extends CommonTokenInfo>(
+    payload: Omit<T, 'exp'>,
     secret: JWTSecret,
     lifetime: number,
     encrypt: boolean,
@@ -325,7 +344,7 @@ export class TokenService {
    * @returns The token's payload
    * @throws An error if the token is invalid or is not a valid token type
    */
-  private decodeToken(
+  private async decodeToken(
     token: string,
   ): Promise<AccessTokenPayload | RefreshTokenPayload | IDTokenPayload> {
     // Decrypt the token first
@@ -584,5 +603,116 @@ export class TokenService {
 
     // Blacklist the token
     await this.db.tokenRepository.blacklistAccessToken(payload.jti, exp);
+  }
+
+  /**
+   * Creates a new MFA token with the provided payload
+   * @param payload - The MFA token payload to include in the JWT
+   * @param secret - The secret to sign the JWT with
+   * @returns The generated MFA token
+   */
+  private async generateMFAToken(
+    payload: Omit<MFATokenPayload, 'exp'>,
+    secret: JWTSecret,
+  ): Promise<string> {
+    return await this.generateToken(
+      payload,
+      secret,
+      TokenService.MFA_TOKEN_LIFESPAN_SECONDS,
+      true, // Always encrypt MFA tokens
+    );
+  }
+
+  /**
+   * Creates a new MFA token for a user
+   * @param userId - The user's ID to create the token for
+   * @param deviceId - The device ID to create the token for
+   * @returns The generated MFA token
+   */
+  public async createMFAToken(
+    userId: string,
+    deviceId: string,
+  ): Promise<string> {
+    const created = new Date();
+    const createdSeconds = Math.floor(created.getTime() / 1000);
+
+    const mfaTokenPayload: Omit<MFATokenPayload, 'exp'> = {
+      type: 'MFA',
+      userId,
+      deviceId,
+      iat: createdSeconds,
+      jti: randomUUID(),
+    };
+
+    const secret: JWTSecret = {
+      secret: process.env.JWT_SECRET!, // TODO: generate random one
+      secretId: '1', // TODO: rotate keys and store in DB
+    };
+
+    const token = await this.generateMFAToken(mfaTokenPayload, secret);
+
+    // encrypt
+    return await this.encryptToken(token);
+  }
+
+  /**
+   * Verify and decode an MFA token. This method will automatically blacklist
+   * the MFA token if it's valid so that it can't be used again
+   * @param token - The MFA token to verify
+   * @returns The decoded token payload if valid
+   * @throws InvalidTokenError if the token is invalid or has been blacklisted
+   */
+  public async verifyMFAToken(token: string): Promise<MFATokenPayload> {
+    // Decrypt the token first
+    const decryptedToken = await this.decryptToken(token);
+
+    // Verify the decrypted token
+    const result = await new Promise<string | jwt.JwtPayload | null>(
+      (resolve, reject) => {
+        jwt.verify(
+          decryptedToken,
+          process.env.JWT_SECRET!,
+          (err: Error | null, decoded: any) => {
+            if (err) reject(err);
+            else resolve(decoded);
+          },
+        );
+      },
+    );
+    const { success, data } = mfaTokenPayloadSchema.safeParse(result);
+
+    if (!success) {
+      throw new InvalidTokenError('Invalid MFA token');
+    }
+
+    if (data.type !== mfaTokenTypeSchema.value) {
+      throw new InvalidTokenError('Token is not an MFA token');
+    }
+
+    // check token generation ID isn't blacklisted
+    const blacklisted = await this.db.tokenRepository.isMFATokenBlacklisted(
+      data.jti,
+    );
+    if (blacklisted) {
+      throw new InvalidTokenError('MFA token has been blacklisted');
+    }
+
+    // valid, blacklist so it can't be used again
+    await this.blacklistMFAToken(data);
+
+    return data;
+  }
+
+  /**
+   * Blacklist an MFA token to prevent it from being used again
+   * @param token - The MFA token to blacklist
+   */
+  private async blacklistMFAToken(token: MFATokenPayload): Promise<void> {
+    const exp = token.exp;
+    if (!exp) {
+      throw new InvalidTokenError('Token has no expiry time');
+    }
+
+    await this.db.tokenRepository.blacklistMFA(token.jti, exp);
   }
 }

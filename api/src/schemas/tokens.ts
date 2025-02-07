@@ -13,15 +13,24 @@ export const TokenTypeSchema = z.enum(['ACCESS', 'REFRESH', 'ID']);
 
 export type TokenType = z.infer<typeof TokenTypeSchema>;
 
-export const TokenPayloadSchema = z.object({
+export const mfaTokenTypeSchema = z.literal('MFA');
+
+export type MFATokenType = z.infer<typeof mfaTokenTypeSchema>;
+
+export const commonTokenInfoSchema = z.object({
   /** The user ID of the user the token is for */
   userId: z.string(),
   /** When the token was created */
   iat: z.number(),
-  /** The token's generation id */
-  generationId: z.string(),
   /** The expiration time of the token */
   exp: z.number(),
+});
+
+export type CommonTokenInfo = z.infer<typeof commonTokenInfoSchema>;
+
+export const TokenPayloadSchema = commonTokenInfoSchema.extend({
+  /** The token's generation id */
+  generationId: z.string(),
   /** The type of the token */
   type: TokenTypeSchema,
 });
@@ -60,6 +69,18 @@ export const IDTokenPayloadSchema = TokenPayloadSchema.extend({
 });
 
 export type IDTokenPayload = z.infer<typeof IDTokenPayloadSchema>;
+
+// mfa token
+export const mfaTokenPayloadSchema = commonTokenInfoSchema.extend({
+  /** The token's type */
+  type: mfaTokenTypeSchema,
+  /** The token's unique identifier. */
+  jti: z.string().min(1),
+  /** The device ID of the device the token is for */
+  deviceId: z.string().min(1),
+});
+
+export type MFATokenPayload = z.infer<typeof mfaTokenPayloadSchema>;
 
 /**
  * An error that is thrown when a token is invalid or malformed

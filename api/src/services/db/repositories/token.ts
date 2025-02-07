@@ -4,9 +4,9 @@ import { Collection, Db, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
 import { TokenService } from '../../token';
 
-const TOKENS_COLLECTION_NAME = 'tokens';
-const ACCESS_BLACKLIST_COLLECTION_NAME = 'blacklisted_access_tokens';
-
+/**
+ * Document representing a blacklisted access token in the database
+ */
 interface BlacklistedAccessTokenDoc {
   /**
    * The JWT ID of the access token
@@ -16,6 +16,20 @@ interface BlacklistedAccessTokenDoc {
    * When the token was blacklisted
    */
   created: Date;
+  /**
+   * When the token expires
+   */
+  expiry: Date;
+}
+
+/**
+ * Document representing a blacklisted MFA token in the database
+ */
+interface BlacklistedMFAToken {
+  /**
+   * The JWT ID of the MFA token
+   */
+  jti: string;
   /**
    * When the token expires
    */
@@ -63,14 +77,21 @@ interface TokenGenIdDoc {
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
 export class TokenRepository {
-  private readonly tokensCollection: Collection<TokenGenIdDoc>;
-  private readonly accessBlacklistCollection: Collection<BlacklistedAccessTokenDoc>;
-  private readonly redis: RedisClientType;
+  protected readonly tokensCollection: Collection<TokenGenIdDoc>;
+  protected readonly accessBlacklistCollection: Collection<BlacklistedAccessTokenDoc>;
+  protected readonly mfaBlacklistCollection: Collection<BlacklistedMFAToken>;
+  protected readonly redis: RedisClientType;
 
-  private static readonly GENERATION_IDS_BLACKLIST_REDIS_KEY =
+  protected static readonly TOKENS_COLLECTION_NAME = 'tokens';
+  protected static readonly ACCESS_BLACKLIST_COLLECTION_NAME =
+    'blacklisted_access_tokens';
+
+  protected static readonly GENERATION_IDS_BLACKLIST_REDIS_KEY =
     'token-blacklist' as const;
-  private static readonly ACCESS_BLACKLIST_REDIS_KEY =
+  protected static readonly ACCESS_BLACKLIST_REDIS_KEY =
     'access-token-blacklist' as const;
+
+  protected static readonly MFA_BLACKLIST_KEY = 'mfa-token-blacklist' as const;
 
   /**
    * @param db - The database to use
@@ -79,10 +100,13 @@ export class TokenRepository {
    */
   constructor(db: Db, redis: RedisClientType) {
     this.tokensCollection = db.collection<TokenGenIdDoc>(
-      TOKENS_COLLECTION_NAME,
+      TokenRepository.TOKENS_COLLECTION_NAME,
     );
     this.accessBlacklistCollection = db.collection<BlacklistedAccessTokenDoc>(
-      ACCESS_BLACKLIST_COLLECTION_NAME,
+      TokenRepository.ACCESS_BLACKLIST_COLLECTION_NAME,
+    );
+    this.mfaBlacklistCollection = db.collection<BlacklistedMFAToken>(
+      TokenRepository.MFA_BLACKLIST_KEY,
     );
     this.redis = redis;
   }
@@ -451,6 +475,94 @@ export class TokenRepository {
     this.cacheGenIDBlacklist([doc]);
 
     // and return
+    return true;
+  }
+
+  /**
+   * Blacklist an MFA token by adding it to both Redis cache and MongoDB storage
+   * @param jti - The JWT ID of the MFA token to blacklist
+   * @param expirySeconds - When the token expires in seconds since epoch
+   * @throws {Error} If the token fails to be blacklisted in the database
+   */
+  public async blacklistMFA(jti: string, expirySeconds: number): Promise<void> {
+    const expiry = new Date(expirySeconds * 1000);
+    // calculate TTL
+    const ttlSeconds = Math.ceil(
+      ((expiry ?? TokenService.MFA_TOKEN_LIFESPAN_SECONDS).getTime() -
+        Date.now()) /
+        1000,
+    );
+
+    // don't add it if it's already expired
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    const doc: BlacklistedMFAToken = {
+      jti,
+      expiry,
+    };
+
+    // cache in Redis
+    const key = `${TokenRepository.ACCESS_BLACKLIST_REDIS_KEY}:${jti}`;
+    const redisPromise = this.redis
+      .set(key, '1', {
+        EX: ttlSeconds,
+      })
+      .catch((e) => console.warn('Error caching MFA token blacklist', e));
+
+    // add to db in case Redis fails
+    const dbPromise = this.mfaBlacklistCollection
+      .insertOne(doc)
+      .then((result) => {
+        return result.acknowledged;
+      });
+
+    const [dbResult] = await Promise.all([dbPromise, redisPromise]);
+
+    if (!dbResult) {
+      throw new Error('Failed to blacklist MFA token in database');
+    }
+  }
+
+  /**
+   * Check if an MFA token is blacklisted by its JTI
+   * @param jti - The JWT ID to check
+   * @returns True if the token is blacklisted, false otherwise
+   */
+  public async isMFATokenBlacklisted(jti: string): Promise<boolean> {
+    try {
+      // Check Redis cache first
+      const key = `${TokenRepository.MFA_BLACKLIST_KEY}:${jti}`;
+      const existsInCache = await this.redis.get(key);
+      if (existsInCache !== null) {
+        return true;
+      }
+    } catch (e) {
+      console.error('Error checking redis cache for MFA token blacklist', e);
+    }
+
+    // Not found in Redis, check MongoDB
+    const doc = await this.mfaBlacklistCollection.findOne({ jti });
+
+    if (doc === null) {
+      return false;
+    }
+
+    // Found in DB, add to Redis cache to avoid future cache misses
+    // Don't await as this is non-blocking
+    const ttlSeconds = Math.ceil((doc.expiry.getTime() - Date.now()) / 1000);
+    if (ttlSeconds > 0) {
+      const key = `${TokenRepository.MFA_BLACKLIST_KEY}:${jti}`;
+      this.redis
+        .set(key, '1', {
+          EX: ttlSeconds,
+        })
+        .catch((e) =>
+          console.warn('Error caching MFA token blacklist status', e),
+        );
+    }
+
     return true;
   }
 }
