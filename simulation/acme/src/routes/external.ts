@@ -92,7 +92,7 @@ externalAPIRouter.get('/discover', async (req: Request, res: Response) => {
 
     const devices = await dbService.getDevicesWithCapabilities();
     const unpairedDevices = devices
-      .filter((d) => !d.pairedApiKeys.includes(apiKey))
+      .filter((d) => !d.pairedApiKeys.includes(apiKey) && d.connected)
       .map((d) => {
         // Only return essential information for unpaired devices
         const { id, type, connected, capabilities } = d;
