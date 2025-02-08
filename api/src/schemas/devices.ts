@@ -96,7 +96,7 @@ export const deviceSchema = z.object({
 });
 
 /** The schema for a device's state */
-export const stateSchema = z.record(z.string(), z.object({}));
+export const stateSchema = z.record(z.string(), z.unknown());
 
 /** A device with its state */
 export const deviceWithStateSchema = deviceSchema
@@ -111,6 +111,75 @@ export const deviceWithStateSchema = deviceSchema
     },
     {
       message: 'State contains keys not in capabilities',
+    },
+  )
+  .refine(
+    (d) => {
+      return d.capabilities.every((c) => Object.keys(d.state).includes(c.id));
+    },
+    { message: 'Missing state keys' },
+  )
+  .refine(
+    (d) => {
+      // Validate that each state value matches its capability type
+      return Object.entries(d.state).every(([key, value]) => {
+        const capability = d.capabilities.find((c) => c.id === key);
+        if (!capability) return false;
+
+        switch (capability.type) {
+          case 'switch':
+            return typeof value === 'boolean';
+          case 'range':
+            if (
+              typeof value !== 'number' ||
+              value < capability.min ||
+              value > capability.max
+            )
+              return false;
+
+            if (capability.step !== undefined) {
+              const steps = (value - capability.min) / capability.step;
+              // Check if steps is very close to a whole number to handle floating point imprecision
+              if (Math.abs(Math.round(steps) - steps) > Number.EPSILON)
+                return false;
+            }
+            return true;
+          case 'number':
+            if (typeof value !== 'number') return false;
+
+            // Check bounds
+            if (capability.bound) {
+              if (
+                capability.bound.type === 'min' &&
+                value < capability.bound.value
+              )
+                return false;
+              if (
+                capability.bound.type === 'max' &&
+                value > capability.bound.value
+              )
+                return false;
+            }
+
+            // Check step
+            if (capability.step !== undefined) {
+              const reference = capability.bound?.value ?? 0;
+              const steps = (value - reference) / capability.step;
+              // Check if steps is very close to a whole number to handle floating point imprecision
+              if (Math.abs(Math.round(steps) - steps) > Number.EPSILON)
+                return false;
+            }
+            return true;
+          case 'mode':
+            return capability.modes.includes(String(value));
+          default:
+            return false;
+        }
+      });
+    },
+    {
+      message:
+        'State values do not match their capability types or are out of bounds',
     },
   );
 
