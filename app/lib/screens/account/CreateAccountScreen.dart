@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'qr_setup_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   @override
@@ -6,7 +7,7 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();w
   final TextEditingController passwordController = TextEditingController();
 
   String? gender;
@@ -121,23 +122,27 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
             // Sign Up Button
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  print("Email: ${emailController.text}");
-                  print("Password: ${passwordController.text}");
-                  print("Gender: $gender");
-                  print("DOB: $selectedMonth $selectedYear");
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 15, horizontal: 80),
-                  backgroundColor: colorScheme.secondary,
-                  foregroundColor: colorScheme.onSecondary,
-                ),
-                child: const Text("Sign up"),
-              ),
-            ),
-            const SizedBox(height: 20),
+            child: ElevatedButton(
+            onPressed: () {
+              print("Email: ${emailController.text}");
+              print("Password: ${passwordController.text}");
+              print("Gender: $gender");
+              print("DOB: $selectedMonth $selectedYear");
+
+      // Navigate to QRSetupScreen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => QRSetupScreen()),
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
+      backgroundColor: colorScheme.secondary,
+      foregroundColor: colorScheme.onSecondary,
+    ),
+    child: const Text("Sign up"),
+  ),
+),
 
             Center(
               child: Text(
