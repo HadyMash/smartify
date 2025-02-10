@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest, requestUserSchema } from '../schemas/auth';
+import { AuthenticatedRequest, requestUserSchema } from '../schemas/user';
 
 // TODO: implement requireAuth middleware
 export const requireAuth = (
@@ -8,7 +8,7 @@ export const requireAuth = (
   next: NextFunction,
 ) => {
   // TODO: check for cookies/auth header
-  const user = req.body.user;
+  const user = req.user;
 
   if (!user) {
     console.log('no user found');

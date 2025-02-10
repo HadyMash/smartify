@@ -1,15 +1,28 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
-export const UserSchema = z.object({
+export const requestUserSchema = z.object({
+  // TODO: replace with srp
+  email: z.string().email(),
+  gender: z.string().optional(),
+  dob: z.coerce.date().optional(),
+  password: z.string().min(8),
+});
+
+export type RequestUser = z.infer<typeof requestUserSchema>;
+
+export interface AuthenticatedRequest extends Request {
+  user?: RequestUser | undefined;
+}
+
+export const userSchema = requestUserSchema.extend({
   /** MongoDB ObjectID */
   _id: z.coerce.string().refine((val) => ObjectId.isValid(val), {
     message: 'Invalid ObjectID',
   }),
-  email: z.string().email(),
 });
 
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof userSchema>;
 
 export enum InvalidUseType {
   INVALID_ID = 'Invalid ID',

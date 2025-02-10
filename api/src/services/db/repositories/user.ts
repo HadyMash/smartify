@@ -1,9 +1,10 @@
 import assert from 'assert';
 import { Collection, Db, ObjectId } from 'mongodb';
-import { User } from '../../../schemas/user';
+import { RequestUser, requestUserSchema } from '../../../schemas/user';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
 
+//TODO: Add comments and documentation
 const COLLECTION_NAME = 'users';
 
 // TODO: create type
@@ -27,25 +28,25 @@ export class UserRepository {
     return doc;
   }
 
-  /**
-   *Checks if a user exists by their id
-   * @param userId - The user to check
-   * @returns true if the user exists, false otherwise
-   */
   public async userExists(userId: string): Promise<boolean> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
     const user = await this.collection.findOne({ _id: new ObjectId(userId) });
     return !!user;
   }
 
-  /**
-   * @returns The user's id
-   */
-  public async createUser() {
-    const result = await this.collection.insertOne({
-      email: `example${randomInt(99999)}@domain.com`,
+  public async createUser(
+    email: string,
+    password: string,
+    dob: Date | undefined,
+    gender: string | undefined,
+  ) {
+    const newUser = await this.collection.insertOne({
+      email: email,
+      password: password,
+      dob: dob,
+      gender: gender,
     });
-
-    return result.insertedId.toString();
+    console.log(newUser);
+    return;
   }
 }

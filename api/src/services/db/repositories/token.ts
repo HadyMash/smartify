@@ -2,7 +2,7 @@ import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Collection, Db, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
-import { TokenService } from '../../token';
+import { TokenService } from '../../auth/token';
 
 /**
  * Document representing a blacklisted access token in the database
@@ -448,8 +448,9 @@ export class TokenRepository {
   public async isTokenGenerationIdBlacklisted(genId: string): Promise<boolean> {
     // try because we don't want it to fail
     try {
-      const existsInCache =
-        await this.isTokenGenerationIdBlacklistedCache(genId);
+      const existsInCache = await this.isTokenGenerationIdBlacklistedCache(
+        genId,
+      );
       // we foudn it in cache, return true for blacklisted
       if (existsInCache) {
         return true;

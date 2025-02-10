@@ -4,8 +4,6 @@ import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { DatabaseService } from './services/db/db';
-import { TokenService } from './services/token';
-import { User, UserSchema } from './schemas/user';
 
 dotenv.config();
 
