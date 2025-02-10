@@ -30,6 +30,7 @@ const baseCapabilitySchema = z
   })
   .strict();
 
+/** A device's capability and the capability's parameters */
 export const deviceCapabilitySchema = z.discriminatedUnion('type', [
   baseCapabilitySchema
     .extend({
@@ -86,6 +87,7 @@ export const deviceCapabilitySchema = z.discriminatedUnion('type', [
     .strict(),
 ]);
 
+/** An IoT device without state */
 export const deviceSchema = z.object({
   /** Device ID */
   id: z.string(),
@@ -98,7 +100,7 @@ export const deviceSchema = z.object({
 /** The schema for a device's state */
 export const stateSchema = z.record(z.string(), z.unknown());
 
-/** A device with its state */
+/** An IoT device with its state */
 export const deviceWithStateSchema = deviceSchema
   .extend({
     state: stateSchema,
@@ -194,7 +196,7 @@ export type DeviceCapabilityTypes = z.infer<typeof deviceCapabilityTypesSchema>;
 /** A capability of a device */
 export type DeviceCapability = z.infer<typeof deviceCapabilitySchema>;
 
-/** An IoT Device */
+/** An IoT Device (without it's state) */
 export type Device = z.infer<typeof deviceSchema>;
 
 /** A device's state */
