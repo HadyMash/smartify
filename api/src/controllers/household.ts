@@ -7,6 +7,7 @@ import {
   roomRequestDataSchema,
   householdRequestDataSchema,
   householdSchema,
+  HouseholdMember,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 
@@ -97,11 +98,16 @@ export class HouseholdController {
         res.status(401).send('Unauthorized');
         return;
       }
-      const { householdId, memberId } = req.body;
-
+      const { householdId, memberId } = req.body as {
+        householdId: string;
+        memberId: string;
+      };
       const hs = new HouseholdService();
-
-      const updatedHousehold = await hs.inviteMember(householdId, memberId, req.user._id);
+      const updatedHousehold = await hs.addMember(
+        householdId,
+        memberId,
+        req.user._id,
+      );
 
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -109,6 +115,35 @@ export class HouseholdController {
       res.status(500).send('An error occurred');
     }
   }
+  public static async respondToInvite(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
+    try {
+      if (!req.user) {
+        res.status(401).send('Unauthorized');
+        return;
+      }
+      const { inviteId, response } = req.body as {
+        inviteId: string;
+        response: boolean;
+      };
+      const hs = new HouseholdService();
+
+      const updatedHousehold = await hs.respondToInvite(
+        inviteId,
+        response,
+        req.user._id,
+      );
+
+      res.status(200).send(updatedHousehold);
+    } catch (e) {
+      console.error(e);
+      res.status(500).send('An error occurred');
+    }
+  }
+
+  //public static async userPermissions(){}
 
   public static async removeMember(req: AuthenticatedRequest, res: Response) {
     try {
@@ -116,10 +151,17 @@ export class HouseholdController {
         res.status(401).send('Unauthorized');
         return;
       }
-      const { householdId, memberId } = req.body;
-      
+      const { householdId, memberId } = req.body as {
+        householdId: string;
+        memberId: string;
+      };
+
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.removeMember(householdId, memberId, req.user._id);
+      const updatedHousehold = await hs.removeMember(
+        householdId,
+        memberId,
+        req.user._id,
+      );
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
@@ -127,7 +169,10 @@ export class HouseholdController {
     }
   }
 
-  public static async deleteHousehold(req: AuthenticatedRequest, res: Response) {
+  public static async deleteHousehold(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       if (!req.user) {
         res.status(401).send('Unauthorized');
@@ -152,7 +197,7 @@ export class HouseholdController {
       }
       let roomRequestData: RoomRequestData;
       try {
-        roomRequestData = roomRequestDataSchema.parse(req.body.data);
+        roomRequestData = roomRequestDataSchema.parse(req.body);
       } catch (_) {
         res.status(400).send({ error: 'Invalid data' });
         return;
@@ -160,7 +205,11 @@ export class HouseholdController {
 
       const { householdId } = req.params;
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.addRoom(householdId, roomRequestData, req.user._id);
+      const updatedHousehold = await hs.addRoom(
+        householdId,
+        roomRequestData,
+        req.user._id,
+      );
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
@@ -168,7 +217,10 @@ export class HouseholdController {
     }
   }
 
-  public static async getHouseholdInfo(req: AuthenticatedRequest, res: Response) {
+  public static async getHouseholdInfo(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       if (!req.user) {
         res.status(401).send('Unauthorized');
@@ -178,7 +230,7 @@ export class HouseholdController {
 
       const hs = new HouseholdService();
       const household = await hs.getHousehold(householdId);
-      
+
       if (!household) {
         res.status(404).send({ error: 'Household not found' });
         return;
@@ -191,16 +243,28 @@ export class HouseholdController {
     }
   }
 
-  public static async changeUserPermissions(req: AuthenticatedRequest, res: Response) {
+  public static async changeUserPermissions(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       if (!req.user) {
         res.status(401).send('Unauthorized');
         return;
       }
-      const { householdId, memberId, newRole } = req.body;
-      
+      const { householdId, memberId, newRole } = req.body as {
+        householdId: string;
+        memberId: string;
+        newRole: HouseholdMember;
+      };
+
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.changeUserPermissions(householdId, memberId, newRole, req.user._id);
+      const updatedHousehold = await hs.changeUserRole(
+        householdId,
+        memberId,
+        newRole,
+        req.user._id,
+      );
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
@@ -214,10 +278,44 @@ export class HouseholdController {
         res.status(401).send('Unauthorized');
         return;
       }
-      const { householdId, roomId, action } = req.body;
-      
+      const { householdId, roomId, action } = req.body as {
+        householdId: string;
+        roomId: string;
+        action: 'add' | 'remove';
+      };
+
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.manageRooms(householdId, roomId, action, req.user._id);
+      const updatedHousehold = await hs.manageRooms(
+        householdId,
+        roomId,
+        action,
+        req.user._id,
+      );
+      res.status(200).send(updatedHousehold);
+    } catch (e) {
+      console.error(e);
+      res.status(500).send('An error occurred');
+    }
+  }
+  public static async removeRoom(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        res.status(401).send('Unauthorized');
+        return;
+      }
+
+      const { householdId, roomId } = req.body as {
+        householdId: string;
+        roomId: string;
+      };
+
+      const hs = new HouseholdService();
+      const updatedHousehold = await hs.removeRoom(
+        householdId,
+        roomId,
+        req.user._id,
+      );
+
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);

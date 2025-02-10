@@ -1,4 +1,8 @@
-import { Household } from '../schemas/household';
+import {
+  Household,
+  HouseholdMember,
+  HouseholdRoom,
+} from '../schemas/household';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {
@@ -22,27 +26,85 @@ export class HouseholdService {
   public async getHousehold(id: string): Promise<Household | null> {
     return this.db.householdRepository.getHouseholdById(id);
   }
-  public async inviteMember(householdId: string, memberId: string, ownerId: string): Promise<Household> {
-    return this.db.householdRepository.addMember(householdId, memberId, ownerId);
+  public async addMember(
+    householdId: string,
+    memberId: string,
+    ownerId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.addMember(
+      householdId,
+      memberId,
+      ownerId,
+    );
   }
 
-  public async removeMember(householdId: string, memberId: string, ownerId: string): Promise<Household> {
-    return this.db.householdRepository.removeMember(householdId, memberId, ownerId);
+  public async removeMember(
+    householdId: string,
+    memberId: string,
+    ownerId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.removeMember(
+      householdId,
+      memberId,
+      ownerId,
+    );
   }
-
-  public async deleteHousehold(householdId: string, ownerId: string): Promise<void> {
-    return this.db.householdRepository.deleteHousehold(householdId, ownerId);
+  public async respondToInvite(
+    inviteId: string,
+    response: boolean,
+    userId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.processInviteResponse(
+      inviteId,
+      response,
+      userId,
+    );
   }
-
-  public async addRoom(householdId: string, roomData: any, ownerId: string): Promise<Household> {
+  public async deleteHousehold(
+    householdId: string,
+    ownerId: string,
+  ): Promise<void> {
+    await this.db.householdRepository.deleteHousehold(householdId, ownerId);
+  }
+  public async addRoom(
+    householdId: string,
+    roomData: HouseholdRoom,
+    ownerId: string,
+  ): Promise<Household | null> {
     return this.db.householdRepository.addRoom(householdId, roomData, ownerId);
   }
-
-  public async changeUserPermissions(householdId: string, memberId: string, newRole: string, ownerId: string): Promise<Household> {
-    return this.db.householdRepository.changeUserRole(householdId, memberId, newRole, ownerId);
+  public async removeRoom(
+    householdId: string,
+    roomId: string,
+    ownerId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.removeRoom(householdId, roomId, ownerId);
   }
-
-  public async manageRooms(householdId: string, roomId: string, action: string, ownerId: string): Promise<Household> {
-    return this.db.householdRepository.manageRooms(householdId, roomId, action, ownerId);
+  public async changeUserRole(
+    householdId: string,
+    memberId: string,
+    newRole: HouseholdMember,
+    ownerId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.changeUserRole(
+      householdId,
+      memberId,
+      newRole,
+      ownerId,
+    );
   }
+  public async manageRooms(
+    householdId: string,
+    roomId: string,
+    action: 'add' | 'remove',
+    ownerId: string,
+  ): Promise<Household | null> {
+    return this.db.householdRepository.manageRooms(
+      householdId,
+      roomId,
+      action,
+      ownerId,
+    );
+  }
+  // public async userPermissions(){}
 }

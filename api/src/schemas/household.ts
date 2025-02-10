@@ -103,6 +103,7 @@ export const householdRoomSchema = z.object({
    */
   // connectedRooms:
 });
+export type HouseholdRoom = z.infer<typeof householdRoomSchema>;
 
 export type HouseholdMember = z.infer<typeof memberSchema>;
 
@@ -136,11 +137,9 @@ export const householdSchema = householdRequestDataSchema.extend({
 
 export type Household = z.infer<typeof householdSchema>;
 
-
 export const roomRequestDataSchema = z.object({
+  type: z.enum(['living', 'kitchen', 'bathroom', 'bedroom', 'other']),
   name: z.string(),
-  type: householdRoomTypeSchema,
-  floor: z.number().int(),
+  floor: z.number(),
 });
-
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;

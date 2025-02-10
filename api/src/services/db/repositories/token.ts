@@ -46,7 +46,7 @@ interface TokenGenIdDoc {
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
 export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
-  protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
+  protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist';
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, 'tokens', redis);

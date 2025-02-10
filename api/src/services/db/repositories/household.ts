@@ -1,7 +1,11 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient } from 'mongodb';
-import { Household } from '../../../schemas/household';
+import { Db, MongoClient, ObjectId } from 'mongodb';
+import {
+  Household,
+  HouseholdMember,
+  HouseholdRoom,
+} from '../../../schemas/household';
 
 type HouseholdDoc = Household;
 
@@ -52,40 +56,123 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
     }
     return result;
   }
-  public async addMember(householdId: string, memberId: string, ownerId: string): Promise<HouseholdDoc> {
+  public async addMember(
+    householdId: string,
+    memberId: string,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
     return this.collection.findOneAndUpdate(
-      { _id: householdId, owner: ownerId },
-      { $addToSet: { members: memberId } },
-      { returnDocument: 'after' }
+      { _id: new ObjectId(householdId), owner: ownerId },
+      {
+        $addToSet: {
+          members: {
+            id: new ObjectId(memberId),
+            role: 'dweller',
+          },
+        },
+      },
+      { returnDocument: 'after' },
     );
   }
-  
-  public async removeMember(householdId: string, memberId: string, ownerId: string): Promise<HouseholdDoc> {
+
+  public async removeMember(
+    householdId: string,
+    memberId: string,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
     return this.collection.findOneAndUpdate(
-      { _id: householdId, owner: ownerId },
-      { $pull: { members: {id: memberId } } },
-      { returnDocument: 'after' }
+      { _id: new ObjectId(householdId), owner: ownerId },
+      { $pull: { members: { id: new ObjectId(memberId) } } },
+      { returnDocument: 'after' },
     );
   }
-  
-  public async deleteHousehold(householdId: string, ownerId: string): Promise<void> {
+
+  public async deleteHousehold(
+    householdId: string,
+    ownerId: string,
+  ): Promise<void> {
     await this.collection.deleteOne({ _id: householdId, owner: ownerId });
   }
-  
-  public async addRoom(householdId: string, roomData: any, ownerId: string): Promise<HouseholdDoc> {
-    return this.collection.findOneAndUpdate(
-      { _id: householdId, owner: ownerId },
-      { $push: { rooms: roomData } },
-      { returnDocument: 'after' }
-    );
-  }
-  
-  public async changeUserRole(householdId: string, memberId: string, newRole: string, ownerId: string): Promise<HouseholdDoc> {
-    return this.collection.findOneAndUpdate(
-      { _id: householdId, owner: ownerId, 'members._id': memberId },
-      { $set: { 'members.$.role': newRole } },
-      { returnDocument: 'after' }
-    );
-  }
-}
 
+  public async addRoom(
+    householdId: string,
+    roomData: HouseholdRoom,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
+    return this.collection.findOneAndUpdate(
+      { _id: new ObjectId(householdId), owner: ownerId },
+      { $push: { rooms: roomData } },
+      { returnDocument: 'after' },
+    );
+  }
+
+  public async changeUserRole(
+    householdId: string,
+    memberId: string,
+    newRole: HouseholdMember,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
+    return this.collection.findOneAndUpdate(
+      {
+        _id: new ObjectId(householdId),
+        owner: ownerId,
+        'members.id': new ObjectId(memberId),
+      },
+      { $set: { 'members.$.role': newRole } },
+      { returnDocument: 'after' },
+    );
+  }
+  public async manageRooms(
+    householdId: string,
+    roomId: string,
+    action: string,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
+    const update =
+      action === 'add'
+        ? { $push: { rooms: { _id: new ObjectId(roomId) } } }
+        : { $pull: { rooms: { _id: new ObjectId(roomId) } } };
+
+    return this.collection.findOneAndUpdate(
+      { _id: new ObjectId(householdId), owner: ownerId },
+      update,
+      { returnDocument: 'after' },
+    );
+  }
+  public async processInviteResponse(
+    inviteId: string,
+    response: boolean,
+    userId: string,
+  ): Promise<HouseholdDoc | null> {
+    if (response === true) {
+      return this.collection.findOneAndUpdate(
+        { 'invites._id': new ObjectId(inviteId), 'invites.userId': userId },
+        {
+          $pull: { invites: { _id: new ObjectId(inviteId) } },
+          $addToSet: {
+            members: { _id: new ObjectId(userId), role: 'dweller' },
+          },
+        },
+        { returnDocument: 'after' },
+      );
+    } else {
+      return this.collection.findOneAndUpdate(
+        { 'invites._id': new ObjectId(inviteId), 'invites.userId': userId },
+        { $pull: { invites: { _id: new ObjectId(inviteId) } } },
+        { returnDocument: 'after' },
+      );
+    }
+  }
+  public async removeRoom(
+    householdId: string,
+    roomId: string,
+    ownerId: string,
+  ): Promise<HouseholdDoc | null> {
+    return this.collection.findOneAndUpdate(
+      { _id: new ObjectId(householdId), owner: ownerId },
+      { $pull: { rooms: { _id: new ObjectId(roomId) } } },
+      { returnDocument: 'after' },
+    );
+  }
+  // public async userPermissions(){}
+}
