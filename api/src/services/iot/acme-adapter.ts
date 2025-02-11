@@ -158,6 +158,8 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       if (axios.isAxiosError(e)) {
         console.log(e.message);
         return;
+      } else {
+        console.log('non axios error:', e);
       }
     }
   }
@@ -168,21 +170,56 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
    * @param device - The device to pair
    * @throws Error if the pairing fails
    */
-  private async pairDevice(device: Device): Promise<void> {
+  private async pairDeviceById(deviceId: string): Promise<void> {
     // Call the external API to pair devices
     try {
-      await this.axiosInstance.post(`/pair/${device.id}`);
+      await this.axiosInstance.post(`/pair/${deviceId}`);
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
         console.log(e.message);
         return;
+      } else {
+        console.log('non axios error:', e);
       }
     }
   }
 
-  public async pairDevices(device: Device[]): Promise<void> {
-    await Promise.all(device.map((d) => this.pairDevice(d)));
+  public async pairDevices(devicesOrIds: Device[] | string[]): Promise<void> {
+    const ids =
+      Array.isArray(devicesOrIds) &&
+      devicesOrIds.length > 0 &&
+      typeof devicesOrIds[0] === 'string'
+        ? (devicesOrIds as string[])
+        : (devicesOrIds as Device[]).map((d) => d.id);
+
+    await Promise.all(ids.map((id) => this.pairDeviceById(id)));
+  }
+
+  private async unpairDeviceById(deviceId: string): Promise<void> {
+    // Call the external API to unpair devices
+    try {
+      await this.axiosInstance.delete(`/pair/${deviceId}`);
+    } catch (e: unknown) {
+      // TODO: Handle errors
+      if (axios.isAxiosError(e)) {
+        console.log(e.message);
+        return;
+      } else {
+        console.log('non axios error:', e);
+      }
+    }
+  }
+
+  public async unpairDevices(devicesOrIds: Device[] | string[]): Promise<void> {
+    const ids =
+      Array.isArray(devicesOrIds) &&
+      devicesOrIds.length > 0 &&
+      typeof devicesOrIds[0] === 'string'
+        ? (devicesOrIds as string[])
+        : (devicesOrIds as Device[]).map((d) => d.id);
+
+    await Promise.all(ids.map((id) => this.unpairDeviceById(id)));
   }
 
   public async getDevice(
@@ -266,5 +303,40 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         console.log('non axios error:', e);
       }
     }
+  }
+
+  public async setDeviceState(
+    deviceId: string,
+    state: Record<string, unknown>,
+  ): Promise<DeviceWithState | undefined> {
+    try {
+      const response = await this.axiosInstance.patch(
+        `/devices/${deviceId}/state`,
+        state,
+      );
+
+      if (response.status !== 200) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        throw new Error(response?.data?.error || 'Failed to set device state');
+      }
+      return;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.log(e.message);
+        return;
+      } else {
+        console.log('non axios error:', e);
+      }
+    }
+  }
+  public async setDeviceStates(
+    deviceStates: Record<string, Record<string, unknown>>,
+  ): Promise<DeviceWithState[] | undefined> {
+    await Promise.all(
+      Object.entries(deviceStates).map(([id, state]) =>
+        this.setDeviceState(id, state),
+      ),
+    );
+    return;
   }
 }

@@ -25,30 +25,53 @@ export abstract class BaseIotAdapter {
   }
 
   /**
-   * Discover unpaired devices that are available for pairing. Returns a list of devices (possibly empty) if successful, and undefined otherwise.
+   * Discover unpaired devices that are available for pairing.
+   * This method scans the network or queries the IoT platform for available devices that haven't been paired yet.
    *
-   * This may throw an error if the request fails or if the response is not as expected.
-   *
-   * @throws Error if the request fails or if the response is not as expected
+   * @returns Promise containing an array of discovered devices if successful, undefined otherwise
+   * @throws Error if the discovery request fails or if the response is not as expected
    */
   public abstract discoverDevices(): Promise<Device[] | undefined>;
 
   /**
    * Pairs devices with our system. This is for adapters which require pairing
-   * with our system before they an be used.
-   * @param devices - The device to pair
-   * @throws Error if the request fails or if the response is not as expected
-   * @throws Error if the pairing fails
+   * before devices can be used.
+   *
+   * @param devices - Array of Device objects to pair
+   * @throws Error if the pairing request fails or if the response is not as expected
    */
-  public abstract pairDevices(device: Device[]): Promise<void>;
+  public abstract pairDevices(devices: Device[]): Promise<void>;
 
   /**
-   * Gets a single device's state and information. This may be undefined if the device is not found.
+   * Pairs devices with our system using device IDs.
    *
-   * This may throw an error if the request fails or if the response is not as expected.
+   * @param deviceIds - Array of device IDs to pair
+   * @throws Error if the pairing request fails or if the response is not as expected
+   */
+  public abstract pairDevices(deviceIds: string[]): Promise<void>;
+
+  /**
+   * Unpairs devices from our system. This removes the pairing relationship
+   * between our system and the devices.
    *
-   * @param deviceId - The device's id
-   * @returns Promise containing the device with its state or undefined if not found
+   * @param devices - Array of Device objects to unpair
+   * @throws Error if the unpairing request fails or if the response is not as expected
+   */
+  public abstract unpairDevices(devices: Device[]): Promise<void>;
+
+  /**
+   * Unpairs devices from our system using device IDs.
+   *
+   * @param deviceIds - Array of device IDs to unpair
+   * @throws Error if the unpairing request fails or if the response is not as expected
+   */
+  public abstract unpairDevices(deviceIds: string[]): Promise<void>;
+
+  /**
+   * Gets a single device's state and information.
+   *
+   * @param deviceId - The device's unique identifier
+   * @returns Promise containing the device with its current state or undefined if not found
    * @throws Error if the request fails or if the response is not as expected
    */
   public abstract getDevice(
@@ -56,15 +79,40 @@ export abstract class BaseIotAdapter {
   ): Promise<DeviceWithState | undefined>;
 
   /**
-   * Gets all devices with their current state and information. Returns a list of devices (possibly empty) if successful, and undefined otherwise.
+   * Gets the current state and information for multiple devices.
    *
-   * This may throw an error if the request fails or if the response is not as expected.
-   *
-   * @param deviceIds - The ids of the devices to get the status of
-   * @returns Promise containing an array of devices with their states or undefined
+   * @param deviceIds - Array of device IDs to query
+   * @returns Promise containing an array of devices with their current states or undefined
    * @throws Error if the request fails or if the response is not as expected
    */
   public abstract getDevices(
     deviceIds: string[],
+  ): Promise<DeviceWithState[] | undefined>;
+
+  /**
+   * Changes a device's state.
+   *
+   * This method doesn't validate the state before sending the request.
+   *
+   * @param deviceId - The device's unique identifier
+   * @returns A promise which may return the devices state if supported by the adapter and is otherwise undefined
+   * @throws Error if the request fails or if the response is not as expected
+   */
+  public abstract setDeviceState(
+    deviceId: string,
+    state: Record<string, unknown>,
+  ): Promise<DeviceWithState | undefined>;
+
+  /**
+   * Changes the state of multiple devices.
+   *
+   * This method doesn't validate the states of the devices before sending the request.
+   *
+   * @param deviceStates - A dictionary of device IDs to their new states
+   * @returns A promise which may return the devices states if supported by the adapter and is otherwise undefined
+   * @throws Error if the request fails or if the response is not as expected
+   */
+  public abstract setDeviceStates(
+    deviceStates: Record<string, Record<string, unknown>>,
   ): Promise<DeviceWithState[] | undefined>;
 }

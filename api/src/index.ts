@@ -65,6 +65,21 @@ async function test() {
     '1c9b7e04-c216-48ae-9cf8-8a49cfd50de1',
   );
   console.log('device:', device);
+
+  // toggle the state of a device
+  if (devices?.length ?? 0 > 0) {
+    console.log('device:', devices![0].id, 'state:', devices![0].state);
+
+    await adapter.setDeviceState(devices![0].id, { on: !devices![0].state.on });
+
+    const newDevice = await adapter.getDevice(devices![0].id);
+
+    if (!newDevice) {
+      console.warn('device not found');
+    } else {
+      console.log('device:', newDevice.id, 'state:', newDevice.state);
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
