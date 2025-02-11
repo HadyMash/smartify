@@ -8,6 +8,9 @@ import {
   DeviceCapability,
   deviceCapabilitySchema,
   deviceSourceSchema,
+  DeviceWithState,
+  deviceWithStateSchema,
+  State,
 } from '../../schemas/devices';
 import { BaseIotAdapter, HealthCheck } from './base-adapter';
 
@@ -39,9 +42,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private mapCapability(capability: any): DeviceCapability {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (!capability?.type) {
       throw new Error('Invalid capability type');
     }
@@ -49,7 +50,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     switch ((capability.type as string).toLowerCase()) {
       case 'power': {
         const mc: DeviceCapability = {
-          id: 'power',
+          id: 'on',
           type: 'switch',
           name: 'power',
         };
@@ -82,6 +83,21 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       default:
         throw new Error('Unsupported capability type');
     }
+  }
+
+  /**
+   * Maps the device state to the internal state
+   * @param device - The device state from the external API
+   * @param capabilities - The device capabilities
+   * @returns The device's state
+   */
+  private mapState(device: any, capabilities: DeviceCapability[]) {
+    const state: State = {};
+    //Object.fromEntries(capabilities.map(capability => [capability.id, device[capability.id]]))
+    for (const capability of capabilities) {
+      state[capability.id] = device[capability.id];
+    }
+    return state;
   }
 
   public async discoverDevices(): Promise<Device[] | undefined> {
@@ -141,6 +157,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
         console.log(e.message);
+        return;
       }
     }
   }
@@ -159,12 +176,95 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
         console.log(e.message);
+        return;
       }
-      throw new Error('Failed to pair device');
     }
   }
 
   public async pairDevices(device: Device[]): Promise<void> {
     await Promise.all(device.map((d) => this.pairDevice(d)));
+  }
+
+  public async getDevice(
+    deviceId: string,
+  ): Promise<DeviceWithState | undefined> {
+    try {
+      const response = await this.axiosInstance.get(`/devices/${deviceId}`);
+      if (response.status !== 200) {
+        throw new Error('Failed to get device');
+      }
+
+      const device = response.data;
+
+      const mappedCapabilites = device.capabilities.map((c: any) =>
+        this.mapCapability(c),
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      const mappedState = this.mapState(device, mappedCapabilites);
+
+      const mappedDevice: DeviceWithState = {
+        id: device.id,
+        source,
+        capabilities: mappedCapabilites,
+        state: mappedState,
+      };
+
+      // validate and return
+      return deviceWithStateSchema.parse(mappedDevice);
+    } catch (e) {
+      // TODO: Handle errors
+      if (axios.isAxiosError(e)) {
+        console.log(e.message);
+        return;
+      } else {
+        console.log('non axios error:', e);
+      }
+    }
+  }
+
+  public async getDevices(
+    deviceIds: string[],
+  ): Promise<DeviceWithState[] | undefined> {
+    try {
+      const response = await this.axiosInstance.get(`/devices`);
+      if (response.status !== 200) {
+        throw new Error('Failed to get device');
+      }
+
+      const devices = response.data;
+
+      const mappedDevices = devices
+        .filter((d: any) => deviceIds.includes(d.id as string))
+        .map((device: any) => {
+          const mappedCapabilites = device.capabilities.map((c: any) =>
+            this.mapCapability(c),
+          );
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          const mappedState = this.mapState(device, mappedCapabilites);
+
+          const mappedDevice: DeviceWithState = {
+            id: device.id,
+            source,
+            capabilities: mappedCapabilites,
+            state: mappedState,
+          };
+
+          // validate and return
+          return deviceWithStateSchema.parse(mappedDevice);
+        });
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return mappedDevices;
+    } catch (e) {
+      // TODO: Handle errors
+      if (axios.isAxiosError(e)) {
+        console.log(e.message);
+        return;
+      } else {
+        console.log('non axios error:', e);
+      }
+    }
   }
 }

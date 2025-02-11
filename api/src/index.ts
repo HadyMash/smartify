@@ -41,19 +41,30 @@ async function test() {
   }
 
   // discover devices
-  const devices = await adapter.discoverDevices();
-  console.log('devices found:', devices?.length ?? 0);
+  const discoveredDevices = await adapter.discoverDevices();
+  console.log('devices found:', discoveredDevices?.length ?? 0);
 
-  if (!devices) {
+  if (!discoveredDevices) {
     return;
   }
 
   // pair the first device
-  if ((devices.length ?? 0) > 0) {
+  if ((discoveredDevices.length ?? 0) > 0) {
     //await adapter.pairDevices([devices[0]]);
   }
 
   // get a list of paired devices
+  const devices = await adapter.getDevices([
+    '1c9b7e04-c216-48ae-9cf8-8a49cfd50de1',
+    'eb7edc76-9b00-42e0-bcaa-372c5c977bb0',
+  ]);
+  console.log('devices:', devices);
+
+  // get a particular device
+  const device = await adapter.getDevice(
+    '1c9b7e04-c216-48ae-9cf8-8a49cfd50de1',
+  );
+  console.log('device:', device);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises

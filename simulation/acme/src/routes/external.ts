@@ -106,32 +106,6 @@ externalAPIRouter.get('/discover', async (req: Request, res: Response) => {
   }
 });
 
-// Get paired devices and their states
-externalAPIRouter.get(
-  '/devices/paired',
-  async (req: Request, res: Response) => {
-    try {
-      const apiKey = (req as any).apiKey;
-      const dbService = new DBService();
-      const devices = await dbService
-        .getDevicesWithCapabilities()
-        .then((devices) => {
-          return devices.filter((d) => d.pairedApiKeys.includes(apiKey));
-        });
-      if (!devices) {
-        res.status(404).json({ error: 'No paired devices found' });
-        return;
-      }
-
-      res.status(200).json(devices);
-      return;
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
-
 // Get specific device
 externalAPIRouter.get(
   '/devices/:deviceId',

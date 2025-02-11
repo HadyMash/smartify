@@ -42,25 +42,29 @@ export abstract class BaseIotAdapter {
    */
   public abstract pairDevices(device: Device[]): Promise<void>;
 
-  public abstract getDevice(): Promise<DeviceWithState | undefined>;
-
   /**
    * Gets a single device's state and information. This may be undefined if the device is not found.
    *
    * This may throw an error if the request fails or if the response is not as expected.
    *
+   * @param deviceId - The device's id
    * @returns Promise containing the device with its state or undefined if not found
    * @throws Error if the request fails or if the response is not as expected
    */
-  public abstract getDevice(): Promise<DeviceWithState | undefined>;
+  public abstract getDevice(
+    deviceId: string,
+  ): Promise<DeviceWithState | undefined>;
 
   /**
    * Gets all devices with their current state and information. Returns a list of devices (possibly empty) if successful, and undefined otherwise.
    *
    * This may throw an error if the request fails or if the response is not as expected.
    *
+   * @param deviceIds - The ids of the devices to get the status of
    * @returns Promise containing an array of devices with their states or undefined
    * @throws Error if the request fails or if the response is not as expected
    */
-  public abstract getDevices(): Promise<DeviceWithState[] | undefined>;
+  public abstract getDevices(
+    deviceIds: string[],
+  ): Promise<DeviceWithState[] | undefined>;
 }

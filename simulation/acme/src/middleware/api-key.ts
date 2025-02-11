@@ -10,6 +10,8 @@ export const validateApiKey = async (
 
   if (!apiKey) {
     res.status(401).json({ error: 'API key is required in X-API-Key header' });
+    console.log('API key is required in X-API-Key header, request rejected');
+
     return;
   }
 
@@ -18,6 +20,7 @@ export const validateApiKey = async (
 
   if (!keyData || !keyData.isActive) {
     res.status(401).json({ error: 'Invalid or inactive API key' });
+    console.log('Invalid or inactive API key, request rejected');
     return;
   }
 
@@ -36,6 +39,8 @@ export const validateDevicePairing = async (
 
   if (!deviceId) {
     res.status(400).json({ error: 'Device ID is required' });
+    console.log('Device ID is required, request rejected');
+
     return;
   }
 
@@ -44,16 +49,22 @@ export const validateDevicePairing = async (
 
   if (!device) {
     res.status(404).json({ error: 'Device not found' });
+    console.log('Device not found, request rejected');
+
     return;
   }
 
   if (!device.connected) {
     res.status(503).json({ error: 'Device is offline' });
+    console.log('Device is offline, request rejected');
+
     return;
   }
 
   if (!device.pairedApiKeys.includes(apiKey)) {
     res.status(403).json({ error: 'API key not authorized for this device' });
+    console.log('API key not authorized for this device, request rejected');
+
     return;
   }
 
