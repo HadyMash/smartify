@@ -106,5 +106,5 @@ export class HouseholdService {
       ownerId,
     );
   }
-  // public async userPermissions(){}
+  //TODO: public async userPermissions(){}
 }

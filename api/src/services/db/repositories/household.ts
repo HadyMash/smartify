@@ -174,5 +174,5 @@ export class HouseholdRepository extends DatabaseRepository<HouseholdDoc> {
       { returnDocument: 'after' },
     );
   }
-  // public async userPermissions(){}
+  //TODO: public async userPermissions(){}
 }

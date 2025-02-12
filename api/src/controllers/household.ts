@@ -143,7 +143,7 @@ export class HouseholdController {
     }
   }
 
-  //public static async userPermissions(){}
+  //TODO: public static async userPermissions(){}
 
   public static async removeMember(req: AuthenticatedRequest, res: Response) {
     try {
