@@ -68,9 +68,16 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         return deviceCapabilitySchema.parse(mc);
       }
       case 'rgb_color': {
-        console.log(capability.type);
-
-        throw new Error('Unsupported capability type');
+        const mc: DeviceCapability = {
+          id: 'color',
+          type: 'multirange',
+          min: 0,
+          max: 255,
+          step: 1,
+          length: 3, // RGB requires exactly 3 values
+          name: 'RGB Color',
+        };
+        return deviceCapabilitySchema.parse(mc);
       }
       case 'limited_color': {
         const mc: DeviceCapability = {
