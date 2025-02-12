@@ -15,9 +15,7 @@ export class AuthSerice {
     dob: Date | undefined,
     gender: string | undefined,
   ): Promise<RequestUser> {
-    // if (await this.db.userRepository.userExists()) {
-    //   throw new Error('User already exists');
-    // }
+    // TODO: Check if the user already exists, if so deny the registration
 
     const newUser = await this.db.userRepository.createUser(
       email,
@@ -26,5 +24,51 @@ export class AuthSerice {
       gender,
     );
     return { email, password, dob, gender };
+  }
+  public async login(email: string, password: string): Promise<Partial<User>> {
+    //TODO: Check if the user exists, if so let him login otherwise deny
+    try {
+      const user = await this.db.userRepository.findUserByEmail(email);
+      console.log(user);
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+      return { email };
+    } catch (e) {
+      console.error('Error logging in', e);
+      throw new Error('User not found');
+    }
+  }
+  public async changePassword(
+    email: string,
+    password: string,
+  ): Promise<boolean> {
+    const user = await this.db.userRepository.findUserByEmail(email);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    //TODO: Check the passwords and return true if chnged otherwise false
+    return true;
+  }
+  public async deleteAccount(email: string): Promise<boolean> {
+    //TODO: Implement MFA to check that the token is valid and isnt expired and the signature is valid
+    //TODO: find the user by their email, and the delete all of their data
+    try {
+      const user = await this.db.userRepository.findUserByEmail(email);
+      console.log(user);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      try {
+        await this.db.userRepository.deleteUser(email);
+        return true;
+      } catch (_) {
+        throw new Error('Failed to delete user');
+      }
+    } catch (e) {
+      console.error('Error logging in', e);
+      throw new Error('User not found');
+    }
   }
 }

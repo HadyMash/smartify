@@ -49,4 +49,24 @@ export class UserRepository {
     console.log(newUser);
     return;
   }
+  public async findUserByEmail(
+    email: string,
+  ): Promise<Partial<RequestUser | undefined>> {
+    const user = await this.collection.findOne({ email: email });
+    return { email: email };
+  }
+  public async changePassword(
+    email: string,
+    newPassword: string,
+  ): Promise<RequestUser | undefined> {
+    const user = await this.collection.findOneAndUpdate(
+      { email: email },
+      { $set: { password: newPassword } },
+    );
+    return;
+  }
+  public async deleteUser(email: string): Promise<boolean> {
+    const user = await this.collection.findOneAndDelete({ email: email });
+    return true;
+  }
 }

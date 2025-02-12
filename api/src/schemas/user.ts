@@ -38,3 +38,17 @@ export class InvalidUserError extends Error {
     Object.setPrototypeOf(this, InvalidUserError.prototype);
   }
 }
+
+export const changePasswordSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  newPassword: z.string().min(8),
+});
+
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+
+export const deleteAccountSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+export type DeleteAccount = z.infer<typeof deleteAccountSchema>;
