@@ -112,8 +112,6 @@ export const deviceCapabilitySchema = z
       })
       .strict(),
 
-    // TODO: make the values optionally be a single value instead of an array and
-    // it would apply to all the values
     baseCapabilitySchema
       .extend({
         type: z.literal(deviceCapabilityTypesSchema.enum.multirange),
