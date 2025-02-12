@@ -1071,5 +1071,457 @@ describe('IoT Device Schema Tests', () => {
       expect(() => deviceWithStateSchema.parse(device)).toThrow();
       expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
     });
+
+    // Multimode capability state tests
+    describe('multimode capability', () => {
+      test('valid multimode states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: ['eco', 'comfort'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multimode state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: 'eco',
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid multimode state (invalid mode) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: ['eco', 'invalid'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
+
+    // Multirange capability state tests
+    describe('multirange capability', () => {
+      test('valid multirange states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('valid multirange with single min/max parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: 0,
+              max: 255,
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('valid multirange with step and length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+              step: 1,
+              length: 3,
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multirange state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+            },
+          ],
+          state: {
+            rgb: 128,
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid multirange state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+              length: 3,
+            },
+          ],
+          state: {
+            rgb: [128, 64],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
+
+    // Multinumber capability state tests
+    describe('multinumber capability', () => {
+      test('valid multinumber states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: [
+                { type: 'min', value: -90 },
+                { type: 'min', value: -180 },
+              ],
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('valid multinumber with shared min bound parses', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'min',
+                value: 0,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multinumber with shared min bound does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'min',
+                value: 0,
+              },
+            },
+          ],
+          state: {
+            coords: [-45, 90], // First value violates min bound
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('valid multinumber with shared max bound parses', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'max',
+                value: 100,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multinumber with shared max bound does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'max',
+                value: 100,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 150], // Second value violates max bound
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('valid multinumber with step and length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              step: 0.5,
+              length: 2,
+            },
+          ],
+          state: {
+            coords: [45.5, 90.0],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multinumber state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+            },
+          ],
+          state: {
+            coords: 45,
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid multinumber state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              length: 2,
+            },
+          ],
+          state: {
+            coords: [45],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
+
+    // Multivalue capability state tests
+    describe('multivalue capability', () => {
+      test('valid multivalue states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('valid multivalue with length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+              length: 3,
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid multivalue state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: 'home',
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid multivalue state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+              length: 2,
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid multivalue state (non-string values) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: ['home', 42, 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
   });
 });

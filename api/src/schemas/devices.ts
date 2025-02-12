@@ -13,6 +13,9 @@ export const deviceCapabilityTypesSchema = z.enum([
   'number',
   'mode',
   'multimode',
+  'multirange',
+  'multinumber',
+  'multivalue',
   // TODO: add custom (color, etc)
 ]);
 
@@ -31,78 +34,223 @@ const baseCapabilitySchema = z
   })
   .strict();
 
+// TODO: make inclusive booleans for mins and maxes
 /** A device's capability and the capability's parameters */
-export const deviceCapabilitySchema = z.discriminatedUnion('type', [
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(deviceCapabilityTypesSchema.enum.switch),
-    })
-    .strict(),
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(deviceCapabilityTypesSchema.enum.range),
-      /** The minimum number in the range (inclusive) */
-      min: z.number(),
-      /** The maximum number in the range (inclusive) */
-      max: z.number(),
-      /** The step size */
-      step: z.number().optional(),
-      /** The unit of the range */
-      unit: z.string().optional(),
-    })
-    .strict(),
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(deviceCapabilityTypesSchema.enum.number),
-      /**
-       * An optional bound on one of the ends of the number
-       * If a bound on both ends is needed, use a range capability
-       */
-      bound: z
-        .object({
-          type: z.enum(['min', 'max']),
-          value: z.number(),
-        })
-        .optional(),
-      /** The step size */
-      step: z.number().optional(),
-      /** The unit of the number */
-      unit: z.string().optional(),
-    })
-    .strict(),
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(deviceCapabilityTypesSchema.enum.mode),
-      /** The available modes */
-      modes: z
-        .array(z.coerce.string())
-        .nonempty()
-        .refine(
-          (modes) =>
-            modes.every(
-              (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
+export const deviceCapabilitySchema = z
+  .discriminatedUnion('type', [
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.switch),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.range),
+        /** The minimum number in the range (inclusive) */
+        min: z.number(),
+        /** The maximum number in the range (inclusive) */
+        max: z.number(),
+        /** The step size */
+        step: z.number().optional(),
+        /** The unit of the range */
+        unit: z.string().optional(),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.number),
+        /**
+         * An optional bound on one of the ends of the number
+         * If a bound on both ends is needed, use a range capability
+         */
+        bound: z
+          .object({
+            type: z.enum(['min', 'max']),
+            value: z.number(),
+          })
+          .optional(),
+        /** The step size */
+        step: z.number().optional(),
+        /** The unit of the number */
+        unit: z.string().optional(),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.mode),
+        /** The available modes */
+        modes: z
+          .array(z.coerce.string())
+          .nonempty()
+          .refine(
+            (modes) =>
+              modes.every(
+                (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
+              ),
+            { message: 'Modes cannot be objects' },
+          ),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.multimode),
+        /** The available modes that can be selected */
+        modes: z
+          .array(z.coerce.string())
+          .nonempty()
+          .refine(
+            (modes) =>
+              modes.every(
+                (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
+              ),
+            { message: 'Modes cannot be objects' },
+          ),
+      })
+      .strict(),
+
+    // TODO: make the values optionally be a single value instead of an array and
+    // it would apply to all the values
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.multirange),
+        /** The minimum numbers in the range (inclusive) */
+        min: z.union([z.number(), z.array(z.number()).nonempty()]),
+        /** The maximum numbers in the range (inclusive) */
+        max: z.union([z.number(), z.array(z.number()).nonempty()]),
+        /** The step sizes */
+        step: z.union([z.number(), z.array(z.number())]).optional(),
+        /** The units of the ranges */
+        unit: z.union([z.string(), z.array(z.string())]).optional(),
+        /** Optional fixed length requirement */
+        length: z.number().optional(),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.multinumber),
+        /**
+         * Optional bounds on the numbers
+         * If bounds on both ends are needed, use a range capability
+         */
+        bound: z
+          .union([
+            z.object({
+              type: z.enum(['min', 'max']),
+              value: z.number(),
+            }),
+            z.array(
+              z
+                .object({
+                  type: z.enum(['min', 'max']),
+                  value: z.number(),
+                })
+                .optional(),
             ),
-          { message: 'Modes cannot be objects' },
-        ),
-    })
-    .strict(),
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(deviceCapabilityTypesSchema.enum.multimode),
-      /** The available modes that can be selected */
-      modes: z
-        .array(z.coerce.string())
-        .nonempty()
-        .refine(
-          (modes) =>
-            modes.every(
-              (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
-            ),
-          { message: 'Modes cannot be objects' },
-        ),
-    })
-    .strict(),
-]);
+          ])
+          .optional(),
+        /** The step sizes */
+        step: z.union([z.number(), z.array(z.number())]).optional(),
+        /** The units of the numbers */
+        unit: z.union([z.string(), z.array(z.string())]).optional(),
+        /** Optional fixed length requirement */
+        length: z.number().optional(),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.multivalue),
+        /** Optional fixed length requirement */
+        length: z.number().optional(),
+      })
+      .strict(),
+  ])
+  .refine(
+    (capability) => {
+      type BoundType = { type: 'min' | 'max'; value: number };
+      type CapabilityValue =
+        | number
+        | string
+        | boolean
+        | BoundType
+        | Array<number | string | BoundType | undefined>;
+
+      // Helper function to get length of any field that might be an array
+      const getLength = (
+        field: CapabilityValue | undefined,
+        defaultLength?: number,
+      ): number | null => {
+        if (field === undefined) return defaultLength ?? null;
+        if (Array.isArray(field)) return field.length;
+        return null;
+      };
+
+      // Helper function to validate all lengths match
+      const validateLengths = (
+        lengths: (number | null)[],
+        requiredLength?: number,
+      ): boolean => {
+        const definedLengths = lengths.filter(
+          (len): len is number => len !== null,
+        );
+        if (definedLengths.length === 0) return true;
+
+        const referenceLength = requiredLength ?? definedLengths[0];
+
+        if (!referenceLength) return true; // No arrays or length requirement
+        return definedLengths.every((len) => len === referenceLength);
+      };
+
+      switch (capability.type) {
+        case 'multirange': {
+          const minLength = getLength(capability.min);
+          const maxLength = getLength(capability.max);
+          const stepLength = getLength(capability.step);
+          const unitLength = getLength(capability.unit);
+
+          return validateLengths(
+            [minLength, maxLength, stepLength, unitLength],
+            capability.length,
+          );
+        }
+
+        case 'multinumber': {
+          const boundLength = capability.bound
+            ? Array.isArray(capability.bound)
+              ? capability.bound.length
+              : null
+            : null;
+          const stepLength = getLength(capability.step);
+          const unitLength = getLength(capability.unit);
+
+          return validateLengths(
+            [boundLength, stepLength, unitLength],
+            capability.length,
+          );
+        }
+
+        case 'multimode':
+        case 'multivalue': {
+          // These types only have a length constraint which is already validated
+          // by the state validation, but we could add more complex validation here
+          // if needed in the future
+          return true;
+        }
+
+        default:
+          return true;
+      }
+    },
+    {
+      message:
+        'All array parameters must have consistent lengths and match any specified length requirement',
+    },
+  );
 
 /** An IoT device without state */
 export const deviceSchema = z.object({
@@ -199,6 +347,85 @@ export const deviceWithStateSchema = deviceSchema
                   typeof mode === 'string' && capability.modes.includes(mode),
               )
             );
+          case 'multirange':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+
+            return value.every((v, idx) => {
+              if (typeof v !== 'number') return false;
+
+              const min = Array.isArray(capability.min)
+                ? capability.min[idx]
+                : capability.min;
+              const max = Array.isArray(capability.max)
+                ? capability.max[idx]
+                : capability.max;
+
+              if (v < min || v > max) return false;
+
+              if (capability.step !== undefined) {
+                const step = Array.isArray(capability.step)
+                  ? capability.step[idx]
+                  : capability.step;
+                const steps = (v - min) / step;
+                return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
+              }
+              return true;
+            });
+          case 'multinumber':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+
+            return value.every((v, idx) => {
+              if (typeof v !== 'number') return false;
+
+              if (Array.isArray(capability.bound)) {
+                const bound = capability.bound[idx];
+                if (bound) {
+                  if (bound.type === 'min' && v < bound.value) return false;
+                  if (bound.type === 'max' && v > bound.value) return false;
+                }
+              } else if (capability.bound) {
+                if (
+                  capability.bound.type === 'min' &&
+                  v < capability.bound.value
+                )
+                  return false;
+                if (
+                  capability.bound.type === 'max' &&
+                  v > capability.bound.value
+                )
+                  return false;
+              }
+
+              if (capability.step !== undefined) {
+                const step = Array.isArray(capability.step)
+                  ? capability.step[idx]
+                  : capability.step;
+                const reference = Array.isArray(capability.bound)
+                  ? (capability.bound[idx]?.value ?? 0)
+                  : (capability.bound?.value ?? 0);
+                const steps = (v - reference) / step;
+                return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
+              }
+              return true;
+            });
+          case 'multivalue':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+            return value.every((v) => typeof v === 'string');
           default:
             return false;
         }
