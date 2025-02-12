@@ -12,6 +12,7 @@ export const deviceCapabilityTypesSchema = z.enum([
   'range',
   'number',
   'mode',
+  'multimode',
   // TODO: add custom (color, etc)
 ]);
 
@@ -73,6 +74,22 @@ export const deviceCapabilitySchema = z.discriminatedUnion('type', [
     .extend({
       type: z.literal(deviceCapabilityTypesSchema.enum.mode),
       /** The available modes */
+      modes: z
+        .array(z.coerce.string())
+        .nonempty()
+        .refine(
+          (modes) =>
+            modes.every(
+              (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
+            ),
+          { message: 'Modes cannot be objects' },
+        ),
+    })
+    .strict(),
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(deviceCapabilityTypesSchema.enum.multimode),
+      /** The available modes that can be selected */
       modes: z
         .array(z.coerce.string())
         .nonempty()
@@ -174,6 +191,14 @@ export const deviceWithStateSchema = deviceSchema
             return true;
           case 'mode':
             return capability.modes.includes(String(value));
+          case 'multimode':
+            return (
+              Array.isArray(value) &&
+              value.every(
+                (mode) =>
+                  typeof mode === 'string' && capability.modes.includes(mode),
+              )
+            );
           default:
             return false;
         }
