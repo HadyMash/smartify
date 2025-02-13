@@ -1,5 +1,6 @@
 import { DatabaseService } from '../db/db';
 import { RequestUser, userSchema, User } from '../../schemas/user';
+import crypto from 'crypto';
 
 //TODO: Add comments and documentation
 export class AuthSerice {
@@ -71,4 +72,20 @@ export class AuthSerice {
       throw new Error('User not found');
     }
   }
+  //   public async requestReset(email: string): Promise<void> {
+  //     //Receives the user’s email, generates a token, stores it, and sends the reset email.
+  //     try {
+  //       const user = await this.db.userRepository.findUserByEmail(email);
+  //       console.log(user);
+  //       if (!user) {
+  //         throw new Error('User not found');
+  //       }
+  //       }
+  //       return;
+  //     } catch (e) {
+  //   return "lmao"
+  //   }
+  //   public async resetPassword(): Promise<boolean> {
+  //     return true
+  //   }
 }

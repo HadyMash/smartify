@@ -132,4 +132,9 @@ export class AuthController {
       return;
     }
   }
+
+  public static async resetRequest(req: Request, res: Response) {
+    //TODO: Validate the reset request method
+  }
+  public static async resetPassword(req: Request, res: Response) {}
 }
