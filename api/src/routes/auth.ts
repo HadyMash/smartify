@@ -16,3 +16,4 @@ authRouter.patch('/change-password', (req, res) =>
 authRouter.delete('/delete-account', (req, res) =>
   AuthController.deleteAccount(req, res),
 );
+authRouter.post('/reset-request', (req, res) => AuthController.resetRequest(req, res));
