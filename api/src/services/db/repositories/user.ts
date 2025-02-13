@@ -51,9 +51,16 @@ export class UserRepository {
   }
   public async findUserByEmail(
     email: string,
-  ): Promise<Partial<RequestUser | undefined>> {
+  ): Promise<Partial<RequestUser | null>> {
+    console.log(`Searching for user with email: ${email}`);
     const user = await this.collection.findOne({ email: email });
-    return { email: email };
+    if (user) {
+      console.log(`User found: ${JSON.stringify(user)}`);
+      return { email: user.email };
+    } else {
+      console.log('User not found');
+      return null;
+    }
   }
   public async changePassword(
     email: string,

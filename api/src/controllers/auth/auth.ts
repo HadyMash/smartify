@@ -79,18 +79,24 @@ export class AuthController {
   public static async changePassword(req: Request, res: Response) {
     //TODO: Check the schema and validate the change password method
     try {
+      //Making a variable with the schema of Change Password
       let data: ChangePassword;
       try {
-        console.log('parsing the schema');
         data = changePasswordSchema.parse(req.body);
         console.log(data);
         try {
-          console.log('initializing the auth service');
           const as = new AuthSerice();
-          const user = await as.changePassword(data.email, data.password);
-          res.status(200).send(user);
+          const user = await as.changePassword(
+            data.email,
+            data.password,
+            data.newPassword,
+          );
+          res.status(200).send('Password successfully changed!');
         } catch (e) {
-          console.error('Error changing password', e);
+          res.status(400).send({
+            error: 'Email associated with this account was not found',
+            message: 'Please provide a valid email',
+          });
         }
       } catch (_) {
         console.log('Invalid user data');
@@ -112,15 +118,17 @@ export class AuthController {
   public static async deleteAccount(req: Request, res: Response) {
     let data: DeleteAccount;
     try {
-      console.log('parsing the schema');
       data = deleteAccountSchema.parse(req.body);
       console.log(data);
       try {
-        console.log('initializing the auth service');
         const as = new AuthSerice();
         const user = await as.deleteAccount(data.email);
-        res.status(200).send(user);
+        res.status(200).send('Account deleted successfully!');
       } catch (_) {
+        res.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Please try again later',
+        });
         console.error('Error deleting account');
       }
     } catch (_) {

@@ -44,6 +44,7 @@ export class AuthSerice {
   public async changePassword(
     email: string,
     password: string,
+    newPassword: string,
   ): Promise<boolean> {
     const user = await this.db.userRepository.findUserByEmail(email);
     if (!user) {
