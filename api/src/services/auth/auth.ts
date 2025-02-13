@@ -74,7 +74,7 @@ export class AuthSerice {
     }
   }
   //   public async requestReset(email: string): Promise<void> {
-  //     //Receives the user’s email, generates a token, stores it, and sends the reset email.
+  // TODO:Implement a reset password when MFA is integrated into the code
   //     try {
   //       const user = await this.db.userRepository.findUserByEmail(email);
   //       console.log(user);
