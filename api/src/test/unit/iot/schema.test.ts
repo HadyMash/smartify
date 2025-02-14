@@ -31,6 +31,16 @@ describe('IoT Device Schema Tests', () => {
       expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
       expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
     });
+
+    test('valid readonly switch capability should parse', () => {
+      const capability: DeviceCapability = {
+        type: 'switch',
+        id: 'on',
+        readonly: true,
+      };
+      expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+      expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+    });
     test('valid switch capability with name should parse', () => {
       const capability: DeviceCapability = {
         type: 'switch',
@@ -624,6 +634,28 @@ describe('IoT Device Schema Tests', () => {
       expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
     });
 
+    test('valid range states with readonly parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+            readonly: true,
+          },
+        ],
+        state: {
+          brightness: 50,
+        },
+      };
+
+      expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+    });
+
     test('valid range states with step parse', () => {
       const device = {
         id: 'device-1',
@@ -740,6 +772,26 @@ describe('IoT Device Schema Tests', () => {
           {
             type: 'number',
             id: 'temperature',
+          },
+        ],
+        state: {
+          temperature: 22.5,
+        },
+      };
+
+      expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid readonly number states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            readonly: true,
           },
         ],
         state: {

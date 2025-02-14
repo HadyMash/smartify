@@ -31,6 +31,8 @@ const baseCapabilitySchema = z
     type: deviceCapabilityTypesSchema,
     /** Human readable name */
     name: z.string().optional(),
+    /** Whether the capability is readonly */
+    readonly: z.boolean().optional(),
   })
   .strict();
 
