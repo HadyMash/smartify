@@ -1,6 +1,30 @@
 import { Router, Request, Response } from 'express';
 import { validateApiKey, validateDevicePairing } from '../middleware/api-key';
 import { DBService } from '../services/db-service';
+import { DeviceType, deviceTypeSchema } from '../schemas/device';
+
+// Define read-only fields mapping
+const deviceReadOnlyFields: Record<DeviceType, string[]> = {
+  [deviceTypeSchema.enum.BULB_ON_OFF]: [],
+  [deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS]: [],
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS]: [],
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
+  [deviceTypeSchema.enum.CURTAIN]: [],
+  [deviceTypeSchema.enum.AC]: [],
+  [deviceTypeSchema.enum.GARAGE_DOOR]: [],
+  [deviceTypeSchema.enum.SOLAR_PANEL]: [
+    'currentPowerOutput',
+    'totalDailyOutput',
+    'isExportingToGrid',
+  ],
+  [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
+  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
+  [deviceTypeSchema.enum.POWER_METER]: [
+    'currentConsumption',
+    'totalConsumption',
+    'lastUpdated',
+  ],
+};
 
 export const externalAPIRouter = Router();
 
@@ -138,6 +162,27 @@ externalAPIRouter.patch(
   async (req: Request, res: Response) => {
     try {
       const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.deviceId);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      // Check for read-only fields
+      const readOnlyFields = deviceReadOnlyFields[device.type];
+      const attemptedReadOnlyUpdate = Object.keys(req.body).some((field) =>
+        readOnlyFields.includes(field),
+      );
+
+      if (attemptedReadOnlyUpdate) {
+        res.status(400).json({
+          error: 'Cannot modify read-only fields',
+          readOnlyFields,
+        });
+        return;
+      }
+
       const updatedDevice = await dbService.updateDeviceState(
         req.params.deviceId,
         req.body,

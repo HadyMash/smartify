@@ -7,9 +7,11 @@ export const deviceTypeSchema = z.enum([
   'BULB_LIMITED_COLOR',
   'CURTAIN',
   'AC',
-  'COFFEE_MACHINE',
   'GARAGE_DOOR',
   'SOLAR_PANEL',
+  'THERMOMETER',
+  'HUMIDITY_SENSOR',
+  'POWER_METER',
 ]);
 
 // Base device schema with required type and id fields
@@ -61,16 +63,34 @@ export const acSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.AC),
 });
 
-export const coffeeMachineSchema = baseDeviceSchema.extend({
-  type: z.literal(deviceTypeSchema.enum.COFFEE_MACHINE),
-});
-
 export const garageDoorSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.GARAGE_DOOR),
 });
 
 export const solarPanelSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.SOLAR_PANEL),
+  currentPowerOutput: z.number().min(0),
+  totalDailyOutput: z.number().min(0),
+  isExportingToGrid: z.boolean(),
+});
+
+export const thermometerSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.THERMOMETER),
+  temperature: z.number(),
+  lastUpdated: z.string().datetime(),
+});
+
+export const humiditySchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.HUMIDITY_SENSOR),
+  humidity: z.number().min(0).max(100),
+  lastUpdated: z.string().datetime(),
+});
+
+export const powerMeterSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.POWER_METER),
+  currentConsumption: z.number().min(0),
+  totalConsumption: z.number().min(0),
+  lastUpdated: z.string().datetime(),
 });
 
 export const deviceSchema = z.union([
@@ -80,9 +100,11 @@ export const deviceSchema = z.union([
   limitedColorBulbSchema,
   curtainSchema,
   acSchema,
-  coffeeMachineSchema,
   garageDoorSchema,
   solarPanelSchema,
+  thermometerSchema,
+  humiditySchema,
+  powerMeterSchema,
 ]);
 
 // Types
@@ -98,9 +120,26 @@ export type LimitedColorBrightnessBulb = z.infer<
 export type LimitedColorBulb = z.infer<typeof limitedColorBulbSchema>;
 export type Curtain = z.infer<typeof curtainSchema>;
 export type AC = z.infer<typeof acSchema>;
-export type CoffeeMachine = z.infer<typeof coffeeMachineSchema>;
 export type GarageDoor = z.infer<typeof garageDoorSchema>;
 export type SolarPanel = z.infer<typeof solarPanelSchema>;
+export type Thermometer = z.infer<typeof thermometerSchema>;
+export type HumiditySensor = z.infer<typeof humiditySchema>;
+export type PowerMeter = z.infer<typeof powerMeterSchema>;
+
+// Read-only fields per device type
+export const readOnlyFields: Record<DeviceType, string[]> = {
+  BULB_ON_OFF: [],
+  BULB_RGB_BRIGHTNESS: [],
+  BULB_LIMITED_COLOR_BRIGHTNESS: [],
+  BULB_LIMITED_COLOR: [],
+  CURTAIN: [],
+  AC: [],
+  GARAGE_DOOR: [],
+  SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
+  THERMOMETER: ['temperature', 'lastUpdated'],
+  HUMIDITY_SENSOR: ['humidity', 'lastUpdated'],
+  POWER_METER: ['currentConsumption', 'totalConsumption', 'lastUpdated'],
+};
 
 // Default states for device creation
 export const defaultStates: Record<DeviceType, any> = {
@@ -127,9 +166,33 @@ export const defaultStates: Record<DeviceType, any> = {
   },
   CURTAIN: { connected: true, pairedApiKeys: [] },
   AC: { connected: true, pairedApiKeys: [] },
-  COFFEE_MACHINE: { connected: true, pairedApiKeys: [] },
   GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
-  SOLAR_PANEL: { connected: true, pairedApiKeys: [] },
+  SOLAR_PANEL: {
+    connected: true,
+    pairedApiKeys: [],
+    currentPowerOutput: 0,
+    totalDailyOutput: 0,
+    isExportingToGrid: false,
+  },
+  THERMOMETER: {
+    connected: true,
+    pairedApiKeys: [],
+    temperature: 20,
+    lastUpdated: new Date().toISOString(),
+  },
+  HUMIDITY_SENSOR: {
+    connected: true,
+    pairedApiKeys: [],
+    humidity: 50,
+    lastUpdated: new Date().toISOString(),
+  },
+  POWER_METER: {
+    connected: true,
+    pairedApiKeys: [],
+    currentConsumption: 0,
+    totalConsumption: 0,
+    lastUpdated: new Date().toISOString(),
+  },
 };
 
 // Type guards
@@ -149,8 +212,6 @@ export const isCurtain = (device: Device): device is Curtain =>
   device.type === deviceTypeSchema.enum.CURTAIN;
 export const isAC = (device: Device): device is AC =>
   device.type === deviceTypeSchema.enum.AC;
-export const isCoffeeMachine = (device: Device): device is CoffeeMachine =>
-  device.type === deviceTypeSchema.enum.COFFEE_MACHINE;
 export const isGarageDoor = (device: Device): device is GarageDoor =>
   device.type === deviceTypeSchema.enum.GARAGE_DOOR;
 export const isSolarPanel = (device: Device): device is SolarPanel =>

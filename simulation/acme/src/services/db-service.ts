@@ -8,7 +8,6 @@ import {
   deviceTypeSchema,
   Curtain,
   AC,
-  CoffeeMachine,
   GarageDoor,
   SolarPanel,
   isOnOffBulb,
@@ -108,8 +107,6 @@ export class DBService {
             return baseDevice as Curtain;
           case deviceTypeSchema.enum.AC:
             return baseDevice as AC;
-          case deviceTypeSchema.enum.COFFEE_MACHINE:
-            return baseDevice as CoffeeMachine;
           case deviceTypeSchema.enum.GARAGE_DOOR:
             return baseDevice as GarageDoor;
           case deviceTypeSchema.enum.SOLAR_PANEL:

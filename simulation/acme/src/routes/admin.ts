@@ -9,10 +9,49 @@ import {
   limitedColorBulbSchema,
   onOffBulbSchema,
   rgbBulbSchema,
+  DeviceType,
 } from '../schemas/device';
-import { ZodObject, ZodSchema } from 'zod';
+import { ZodObject } from 'zod';
+
+// Define read-only fields mapping
+const deviceReadOnlyFields: Record<DeviceType, string[]> = {
+  [deviceTypeSchema.enum.BULB_ON_OFF]: [],
+  [deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS]: [],
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS]: [],
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
+  [deviceTypeSchema.enum.CURTAIN]: [],
+  [deviceTypeSchema.enum.AC]: [],
+  [deviceTypeSchema.enum.GARAGE_DOOR]: [],
+  [deviceTypeSchema.enum.SOLAR_PANEL]: [
+    'currentPowerOutput',
+    'totalDailyOutput',
+    'isExportingToGrid',
+  ],
+  [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
+  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
+  [deviceTypeSchema.enum.POWER_METER]: [
+    'currentConsumption',
+    'totalConsumption',
+    'lastUpdated',
+  ],
+};
 
 export const adminRouter = Router();
+
+adminRouter.get('/devices/types', (req: Request, res: Response) => {
+  try {
+    // Return list of device types that can be created
+    const creatableDevices = Object.keys(defaultStates).map((type) => ({
+      type,
+      defaultState: defaultStates[type as DeviceType],
+    }));
+
+    res.status(200).json(creatableDevices);
+  } catch (e) {
+    console.error('error', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 adminRouter.get('/devices/', async (req: Request, res: Response) => {
   try {
@@ -144,6 +183,20 @@ adminRouter.patch('/devices/:id', async (req: Request, res: Response) => {
     }
 
     try {
+      // Check for read-only fields first
+      const readOnlyFields = deviceReadOnlyFields[device.type];
+      const attemptedReadOnlyUpdate = Object.keys(req.body).some((field) =>
+        readOnlyFields.includes(field),
+      );
+
+      if (attemptedReadOnlyUpdate) {
+        res.status(400).json({
+          error: 'Cannot modify read-only fields',
+          readOnlyFields,
+        });
+        return;
+      }
+
       let validatedState;
       if (device.type === deviceTypeSchema.enum.BULB_ON_OFF) {
         validatedState = onOffBulbSchema.partial().parse(req.body);
