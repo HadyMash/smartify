@@ -65,11 +65,11 @@ export class UserRepository {
   public async changePassword(
     email: string,
     salt: string,
-    mod: string,
+    modExp: string,
   ): Promise<RequestUser | undefined> {
     const userPass = await this.collection.findOneAndUpdate(
       { email: email },
-      { $set: { password: mod } },
+      { $set: { password: modExp } },
     );
     const userSalt = await this.collection.findOneAndUpdate(
       { email: email },

@@ -40,9 +40,9 @@ export class AuthController {
       return;
     } catch (e) {
       console.error('error registering', e);
-      res.status(500).send({
-        error: 'Internal Server Error',
-        message: 'Please try again later',
+      res.status(400).send({
+        error: 'User already exists',
+        message: 'Please type a different email',
       });
       return;
     }

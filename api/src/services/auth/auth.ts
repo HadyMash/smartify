@@ -19,6 +19,10 @@ export class AuthService {
   ) {
     // TODO: Check if the user already exists, if so deny the registration
     const srp = new SRP();
+    const foundUser = await this.db.userRepository.findUserByEmail(email);
+    if (foundUser) {
+      throw new Error('User already exists');
+    }
     const { salt, modExp } = await srp.generateKey(password);
 
     const newUser = await this.db.userRepository.createUser(
@@ -62,7 +66,7 @@ export class AuthService {
           .update(serverSessionKey.toString())
           .digest('hex');
 
-        return sessionKey;
+        return 'This is your session key: ' + sessionKey;
       } catch (_) {}
     } catch (e) {
       console.error('Error logging in', e);
@@ -80,6 +84,13 @@ export class AuthService {
     }
     const srp = new SRP();
     const { salt, modExp } = await srp.generateKey(newPassword);
+    console.log(
+      'The salt for the new password is: \n' +
+        salt +
+        '\n' +
+        'The modExp for the new password is: \n' +
+        modExp,
+    );
     const change = await this.db.userRepository.changePassword(
       salt,
       modExp,
