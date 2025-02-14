@@ -129,7 +129,6 @@ export class HouseholdController {
         response: boolean;
       };
       const hs = new HouseholdService();
-
       const updatedHousehold = await hs.respondToInvite(
         inviteId,
         response,
