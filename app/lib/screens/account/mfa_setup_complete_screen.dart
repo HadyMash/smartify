@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MFASetupCompleteScreen extends StatelessWidget {
-  const MFASetupCompleteScreen({Key? key}) : super(key: key);
+  const MFASetupCompleteScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,15 +12,6 @@ class MFASetupCompleteScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Back Button
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
               const SizedBox(height: 24),
 
               // Title and Description
@@ -59,13 +50,6 @@ class MFASetupCompleteScreen extends StatelessWidget {
                   // Navigate to the home screen or any other screen
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
                 child: const Text(
                   'Finish',
                   style: TextStyle(color: Colors.white),

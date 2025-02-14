@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class IntroScreen extends StatefulWidget {
+  const IntroScreen({super.key});
+
   @override
   _IntroScreenState createState() => _IntroScreenState();
 }
@@ -11,7 +13,7 @@ class _IntroScreenState extends State<IntroScreen> {
   void initState() {
     super.initState();
     // Automatically navigate to SignInScreen after 2 seconds
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
       Navigator.pushReplacementNamed(context, '/signin');
     });
   }
@@ -21,7 +23,7 @@ class _IntroScreenState extends State<IntroScreen> {
     return Scaffold(
       body: Center(
         child: AnimatedContainer(
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
           curve: Curves.easeInOut,
           width: 100.w,
           height: 100.w,

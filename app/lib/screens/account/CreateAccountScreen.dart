@@ -1,172 +1,348 @@
 import 'package:flutter/material.dart';
+import 'package:email_validator/email_validator.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/gestures.dart';
 import 'qr_setup_screen.dart';
+import 'package:smartify/widgets/back_button.dart';
 
 class CreateAccountScreen extends StatefulWidget {
+  const CreateAccountScreen({super.key});
+
   @override
-  _CreateAccountScreenState createState() => _CreateAccountScreenState();
+  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final TextEditingController emailController = TextEditingController();w
-  final TextEditingController passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  String? _selectedGender;
+  DateTime? _selectedDate;
 
-  String? gender;
-  String? selectedMonth;
-  String? selectedYear;
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-  final List<String> months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            datePickerTheme: const DatePickerThemeData(
+              backgroundColor: Colors.white,
+              headerBackgroundColor: Colors.black,
+              headerForegroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              dayStyle: TextStyle(color: Colors.black),
+              yearStyle: TextStyle(color: Colors.black),
+              weekdayStyle: TextStyle(color: Colors.black),
+              headerHeadlineStyle: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              headerHelpStyle: TextStyle(color: Colors.white),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (pickedDate != null && pickedDate != _selectedDate) {
+      setState(() {
+        _selectedDate = pickedDate;
+      });
+    }
+  }
+
+  void _handleSignUp() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const QRSetupScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Account")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gender Field
-            Text(
-              "What’s your gender? (optional)",
-              style: textTheme.bodyLarge,
-            ),
-            Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: RadioListTile<String>(
-                    title: const Text("Male"),
-                    value: "Male",
-                    groupValue: gender,
-                    onChanged: (value) {
-                      setState(() {
-                        gender = value;
-                      });
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: RadioListTile<String>(
-                    title: const Text("Female"),
-                    value: "Female",
-                    groupValue: gender,
-                    onChanged: (value) {
-                      setState(() {
-                        gender = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Date of Birth Field
-            Text(
-              "What’s your date of birth?",
-              style: textTheme.bodyLarge,
-            ),
-            Row(
-              children: [
-                // Month Dropdown
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: "Month",
-                      border: OutlineInputBorder(),
+                Row(
+                  children: [
+                    const CustomBackButton(),
+                    const SizedBox(width: 16),
+                    Text(
+                      'Create An Account',
+                      style: textTheme.displayMedium,
                     ),
-                    items: months.map((month) {
-                      return DropdownMenuItem(
-                        value: month,
-                        child: Text(month),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedMonth = value;
-                      });
-                    },
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(height: 32),
 
-                // Year Dropdown
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: "Year",
-                      border: OutlineInputBorder(),
+                // Email Field
+                Text(
+                  'Email',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!EmailValidator.validate(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Password Field
+                Text(
+                  'Password',
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
                     ),
-                    items: List.generate(100, (index) {
-                      final year = (2025 - index).toString();
-                      return DropdownMenuItem(
-                        value: year,
-                        child: Text(year),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedYear = value;
-                      });
-                    },
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
+                    }
+                    if (!value.contains(RegExp(r'[0-9]'))) {
+                      return 'Password must contain at least one number';
+                    }
+                    if (!value.contains(RegExp(r'[A-Z]')) ||
+                        !value.contains(RegExp(r'[a-z]'))) {
+                      return 'Password must contain upper and lower case letters';
+                    }
+                    return null;
+                  },
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Sign Up Button
-            Center(
-            child: ElevatedButton(
-            onPressed: () {
-              print("Email: ${emailController.text}");
-              print("Password: ${passwordController.text}");
-              print("Gender: $gender");
-              print("DOB: $selectedMonth $selectedYear");
-
-      // Navigate to QRSetupScreen
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => QRSetupScreen()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
-      backgroundColor: colorScheme.secondary,
-      foregroundColor: colorScheme.onSecondary,
-    ),
-    child: const Text("Sign up"),
-  ),
-),
-
-            Center(
-              child: Text(
-                "By creating an account, you agree to the Terms of use and Privacy Policy.",
-                textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  // Navigate to Sign In
-                },
-                child: Text(
-                  "Already have an Account? Sign In",
+                const SizedBox(height: 8),
+                // Password requirements
+                Text(
+                  '• Use 8 or more characters',
                   style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.primary,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
-              ),
+                Text(
+                  '• Use a number (e.g. 1234)',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+                Text(
+                  '• Use upper and lower case letters (e.g. Aa)',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Gender Selection
+                Text(
+                  "What's your gender? (optional)",
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Radio<String>(
+                      value: 'Male',
+                      groupValue: _selectedGender,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _selectedGender = value;
+                        });
+                      },
+                      activeColor: theme.colorScheme.secondary,
+                    ),
+                    Text('Male', style: textTheme.bodyLarge),
+                    const SizedBox(width: 24),
+                    Radio<String>(
+                      value: 'Female',
+                      groupValue: _selectedGender,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _selectedGender = value;
+                        });
+                      },
+                      activeColor: theme.colorScheme.secondary,
+                    ),
+                    Text('Female', style: textTheme.bodyLarge),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Date of Birth
+                Text(
+                  "What's your date of birth?",
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () => _selectDate(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.secondary),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _selectedDate == null
+                              ? 'Select Date'
+                              : DateFormat('MMMM d, y').format(_selectedDate!),
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: _selectedDate == null
+                                ? theme.colorScheme.onSurface.withOpacity(0.6)
+                                : theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        Icon(
+                          Icons.calendar_today,
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Sign Up Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _handleSignUp,
+                    child: Text(
+                      'Sign up',
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Terms and Privacy Policy
+                Center(
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'By creating an account, you agree to the ',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Terms of use',
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              // Handle Terms of use tap
+                            },
+                        ),
+                        const TextSpan(text: ' and '),
+                        TextSpan(
+                          text: 'Privacy Policy',
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              // Handle Privacy Policy tap
+                            },
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Sign In Link
+                Center(
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'Already have an Account? ',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Sign In',
+                          style: TextStyle(
+                            color: theme.colorScheme.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.pop(context);
+                            },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:smartify/widgets/back_button.dart'; // Import the custom back button widget
 import 'mfa_verification_screen.dart';
 
 class QRSetupScreen extends StatelessWidget {
-  const QRSetupScreen({Key? key}) : super(key: key);
+  const QRSetupScreen({super.key});
 
   final String secretCode = 'B22QH A49AD K7G0Q';
 
@@ -28,11 +29,13 @@ class QRSetupScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Status Bar and Back Button
-              Row(
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
+                  SizedBox(
+                    width: 40, // Fixed width for the back button
+                    child:
+                        CustomBackButton(), // Use the custom back button widget
                   ),
                 ],
               ),
@@ -119,13 +122,6 @@ class QRSetupScreen extends StatelessWidget {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
                 child: const Text(
                   'Next',
                   style: TextStyle(color: Colors.white),
