@@ -36,13 +36,15 @@ export class UserRepository {
 
   public async createUser(
     email: string,
-    password: string,
+    passwordHash: string,
+    salt: string,
     dob: Date | undefined,
     gender: string | undefined,
   ) {
     const newUser = await this.collection.insertOne({
       email: email,
-      password: password,
+      password: passwordHash,
+      salt: salt,
       dob: dob,
       gender: gender,
     });

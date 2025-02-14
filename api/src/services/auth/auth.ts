@@ -1,9 +1,10 @@
 import { DatabaseService } from '../db/db';
 import { RequestUser, userSchema, User } from '../../schemas/user';
 import crypto from 'crypto';
+import { bigint } from 'zod';
 
 //TODO: Add comments and documentation
-export class AuthSerice {
+export class AuthService {
   protected readonly db: DatabaseService;
 
   constructor() {
@@ -15,16 +16,19 @@ export class AuthSerice {
     password: string,
     dob: Date | undefined,
     gender: string | undefined,
-  ): Promise<RequestUser> {
+  ) {
     // TODO: Check if the user already exists, if so deny the registration
+    const srp = new SRP();
+    const { salt, modExp } = await srp.generateKey(password);
 
     const newUser = await this.db.userRepository.createUser(
       email,
-      password,
+      modExp,
+      salt,
       dob,
       gender,
     );
-    return { email, password, dob, gender };
+    return { email: email, gender: gender };
   }
   public async login(email: string, password: string): Promise<Partial<User>> {
     //TODO: Check if the user exists, if so let him login otherwise deny
@@ -89,4 +93,47 @@ export class AuthSerice {
   //   public async resetPassword(): Promise<boolean> {
   //     return true
   //   }
+}
+export class SRP {
+  private readonly N: bigint;
+  private readonly g: bigint;
+
+  constructor() {
+    this.N = BigInt(
+      '125617018995153554710546479714086468246499594858746646874671447258204721048803',
+    );
+    this.g = BigInt(2);
+  }
+  public async generateKey(
+    password: string,
+  ): Promise<{ modExp: string; salt: string }> {
+    //Generating salt
+    const salt = crypto.randomBytes(32).toString('hex');
+    const randomB = crypto.randomBytes(32);
+    const randomBI = BigInt('0x' + randomB.toString('hex'));
+
+    //Creating a hash
+    const hash = crypto
+      .createHash('sha256')
+      .update(salt + password)
+      .digest('hex');
+    const hashBI = BigInt('0x' + hash);
+    //Calculating the exponent
+    const modExp = this.modExp(this.g, hashBI, this.N);
+
+    return { modExp: modExp.toString(), salt };
+  }
+  private modExp(base: bigint, exp: bigint, mod: bigint): bigint {
+    let res = BigInt(1);
+    let b = base % mod;
+    let e = exp;
+    while (e > 0) {
+      if (e % BigInt(2) == BigInt(1)) {
+        res = (res * b) % mod;
+      }
+      e = e / BigInt(2);
+      b = (b * b) % mod;
+    }
+    return res;
+  }
 }

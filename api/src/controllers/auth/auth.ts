@@ -9,7 +9,7 @@ import {
   deleteAccountSchema,
   DeleteAccount,
 } from '../../schemas/user';
-import { AuthSerice } from '../../services/auth/auth';
+import { AuthService } from '../../services/auth/auth';
 //TODO: Add comments and documentation
 export class AuthController {
   public static async register(req: Request, res: Response) {
@@ -28,7 +28,7 @@ export class AuthController {
         return;
       }
       console.log('creating as');
-      const as = new AuthSerice();
+      const as = new AuthService();
       console.log('calling the auth service');
       const user = await as.register(
         data.email,
@@ -64,7 +64,7 @@ export class AuthController {
         return;
       }
       console.log('initializing the auth service');
-      const as = new AuthSerice();
+      const as = new AuthService();
       const user = await as.login(data.email, data.password);
       res.status(200).send(user);
     } catch (_) {
@@ -85,7 +85,7 @@ export class AuthController {
         data = changePasswordSchema.parse(req.body);
         console.log(data);
         try {
-          const as = new AuthSerice();
+          const as = new AuthService();
           const user = await as.changePassword(
             data.email,
             data.password,
@@ -121,7 +121,7 @@ export class AuthController {
       data = deleteAccountSchema.parse(req.body);
       console.log(data);
       try {
-        const as = new AuthSerice();
+        const as = new AuthService();
         const user = await as.deleteAccount(data.email);
         res.status(200).send('Account deleted successfully!');
       } catch (_) {
