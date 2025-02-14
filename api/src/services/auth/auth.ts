@@ -30,16 +30,40 @@ export class AuthService {
     );
     return { email: email, gender: gender };
   }
-  public async login(email: string, password: string): Promise<Partial<User>> {
+  public async login(email: string, password: string) {
     //TODO: Check if the user exists, if so let him login otherwise deny
+    const srp = new SRP();
+    const A = BigInt(
+      '125617018995153554710546479714086468246499594858746646874671447258204721048803',
+    );
+
     try {
       const user = await this.db.userRepository.findUserByEmail(email);
-      console.log(user);
-
       if (!user) {
         throw new Error('User not found');
       }
-      return { email };
+      const { salt, password } = user;
+      try {
+        const bMod = await srp.generatePublicValue();
+        const bModBig = BigInt(bMod);
+        const hashSP = await crypto
+          .createHash('sha256')
+          .update(A + bMod)
+          .digest('hex');
+        const hexHashSP = BigInt('0x' + hashSP);
+        const serverSessionKey = await srp.serverSessionKeyGenerator(
+          A,
+          password,
+          hexHashSP,
+          bModBig,
+        );
+        const sessionKey = crypto
+          .createHash('sha256')
+          .update(serverSessionKey.toString())
+          .digest('hex');
+
+        return sessionKey;
+      } catch (_) {}
     } catch (e) {
       console.error('Error logging in', e);
       throw new Error('User not found');
@@ -54,6 +78,13 @@ export class AuthService {
     if (!user) {
       throw new Error('User not found');
     }
+    const srp = new SRP();
+    const { salt, modExp } = await srp.generateKey(newPassword);
+    const change = await this.db.userRepository.changePassword(
+      salt,
+      modExp,
+      email,
+    );
     //TODO: Check the passwords and return true if chnged otherwise false
     return true;
   }
@@ -135,5 +166,29 @@ export class SRP {
       b = (b * b) % mod;
     }
     return res;
+  }
+  public async generatePublicValue() {
+    const pV = this.modExp(
+      this.g,
+      BigInt('0x' + crypto.randomBytes(32).toString('hex')),
+      this.N,
+    );
+    const stringPV = pV.toString();
+    return stringPV;
+  }
+  //Generateing a public value
+  public async generateB(password: string) {
+    const privateBKey = BigInt('0x' + crypto.randomBytes(32).toString('hex'));
+    const B = this.modExp(this.g, privateBKey, this.N);
+    return { B: B.toString(), privateBKey };
+  }
+  public async serverSessionKeyGenerator(
+    A: bigint,
+    password: string,
+    hexHashSP: bigint,
+    Bmod: bigint,
+  ) {
+    const v = BigInt(password);
+    return this.modExp(A * this.modExp(v, hexHashSP, this.N), Bmod, this.N);
   }
 }

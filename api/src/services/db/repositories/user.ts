@@ -51,14 +51,12 @@ export class UserRepository {
     console.log(newUser);
     return;
   }
-  public async findUserByEmail(
-    email: string,
-  ): Promise<Partial<RequestUser | null>> {
+  public async findUserByEmail(email: string) {
     console.log(`Searching for user with email: ${email}`);
     const user = await this.collection.findOne({ email: email });
     if (user) {
       console.log(`User found: ${JSON.stringify(user)}`);
-      return { email: user.email };
+      return { email: user.email, password: user.password, salt: user.salt };
     } else {
       console.log('User not found');
       return null;
@@ -66,12 +64,18 @@ export class UserRepository {
   }
   public async changePassword(
     email: string,
-    newPassword: string,
+    salt: string,
+    mod: string,
   ): Promise<RequestUser | undefined> {
-    const user = await this.collection.findOneAndUpdate(
+    const userPass = await this.collection.findOneAndUpdate(
       { email: email },
-      { $set: { password: newPassword } },
+      { $set: { password: mod } },
     );
+    const userSalt = await this.collection.findOneAndUpdate(
+      { email: email },
+      { $set: { salt: salt } },
+    );
+
     return;
   }
   public async deleteUser(email: string): Promise<boolean> {
