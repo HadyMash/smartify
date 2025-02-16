@@ -24,6 +24,7 @@ export class AuthService {
     if (foundUser) {
       throw new Error('User already exists');
     }
+
     const { salt, modExp } = await srp.generateKey(password);
 
     const newUser = await this.db.userRepository.createUser(
@@ -239,6 +240,7 @@ export class AuthService {
     }
   }
 }
+
 class SRP {
   private readonly N: bigint;
   private readonly g: bigint;
