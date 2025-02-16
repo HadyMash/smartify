@@ -53,6 +53,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           id: 'on',
           type: 'switch',
           name: 'power',
+          readonly: capability.isReadOnly || false,
         };
         // validate the capability and return
         return deviceCapabilitySchema.parse(mc);
@@ -64,6 +65,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           min: (capability.min as number) || 0,
           max: (capability.max as number) || 100,
           unit: '%',
+          readonly: capability.isReadOnly || false,
         };
         return deviceCapabilitySchema.parse(mc);
       }
@@ -76,6 +78,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           step: 1,
           length: 3, // RGB requires exactly 3 values
           name: 'RGB Color',
+          readonly: capability.isReadOnly || false,
         };
         return deviceCapabilitySchema.parse(mc);
       }
@@ -84,6 +87,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           id: 'color',
           type: 'mode',
           modes: capability.availableColors,
+          readonly: capability.isReadOnly || false,
         };
         return deviceCapabilitySchema.parse(mc);
       }
@@ -317,6 +321,21 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     state: Record<string, unknown>,
   ): Promise<DeviceWithState | undefined> {
     try {
+      // Get current device state to check readonly fields
+      const device = await this.getDevice(deviceId);
+      if (!device) {
+        throw new Error('Device not found');
+      }
+
+      // Check if any of the state updates are for readonly capabilities
+      const readonlyAttempt = device.capabilities.some(
+        (cap) => cap.readonly && state[cap.id] !== undefined,
+      );
+
+      if (readonlyAttempt) {
+        throw new Error('Cannot modify readonly capabilities');
+      }
+
       const response = await this.axiosInstance.patch(
         `/devices/${deviceId}/state`,
         state,
@@ -339,11 +358,44 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   public async setDeviceStates(
     deviceStates: Record<string, Record<string, unknown>>,
   ): Promise<DeviceWithState[] | undefined> {
-    await Promise.all(
-      Object.entries(deviceStates).map(([id, state]) =>
-        this.setDeviceState(id, state),
-      ),
-    );
-    return;
+    try {
+      // Get all devices first to validate readonly states
+      const deviceIds = Object.keys(deviceStates);
+      const devices = await this.getDevices(deviceIds);
+
+      if (!devices) {
+        throw new Error('Failed to fetch devices');
+      }
+
+      // Create a map for quick lookup
+      const deviceMap = new Map(devices.map((d) => [d.id, d]));
+
+      // Check for readonly violations first
+      for (const [id, state] of Object.entries(deviceStates)) {
+        const device = deviceMap.get(id);
+        if (!device) continue;
+
+        const readonlyAttempt = device.capabilities.some(
+          (cap) => cap.readonly && state[cap.id] !== undefined,
+        );
+
+        if (readonlyAttempt) {
+          throw new Error(
+            `Cannot modify readonly capabilities for device ${id}`,
+          );
+        }
+      }
+
+      // If all checks pass, update the states
+      await Promise.all(
+        Object.entries(deviceStates).map(([id, state]) =>
+          this.setDeviceState(id, state),
+        ),
+      );
+      return;
+    } catch (e) {
+      console.error('Failed to set device states:', e);
+      throw e;
+    }
   }
 }
