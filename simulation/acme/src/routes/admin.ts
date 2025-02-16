@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import util from 'util';
 import { DBService } from '../services/db-service';
+import { ActionCapability, DeviceAction } from '../schemas/capabilities';
 import {
   defaultStates,
   Device,
@@ -38,7 +39,7 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
 
 export const adminRouter = Router();
 
-adminRouter.get('/devices/types', (req: Request, res: Response) => {
+adminRouter.get('/devices/types', (_: Request, res: Response) => {
   try {
     // Return list of device types that can be created
     const creatableDevices = Object.keys(defaultStates).map((type) => ({
@@ -53,7 +54,7 @@ adminRouter.get('/devices/types', (req: Request, res: Response) => {
   }
 });
 
-adminRouter.get('/devices/', async (req: Request, res: Response) => {
+adminRouter.get('/devices/', async (_: Request, res: Response) => {
   try {
     let devices: Device[] | undefined = await new DBService().getDevices();
 
@@ -164,6 +165,172 @@ adminRouter.delete('/devices/:id', async (req: Request, res: Response) => {
     console.error('error', e);
     res.status(500).send({ error: 'Internal server error' });
     return;
+  }
+});
+
+// Execute device action
+adminRouter.post(
+  '/devices/:id/actions/:actionName',
+  async (req: Request, res: Response) => {
+    try {
+      const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.id);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      // Check if device has the specified action capability
+      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
+        req.params.id,
+      );
+      const actionCapability = deviceWithCaps?.capabilities.find(
+        (cap) =>
+          cap.type === 'ACTION' &&
+          (cap as ActionCapability).name === req.params.actionName,
+      );
+
+      if (!actionCapability) {
+        res.status(400).json({
+          error: 'Action not supported by device',
+          actionName: req.params.actionName,
+        });
+        return;
+      }
+
+      // Generate unique action ID
+      const actionId = `${req.params.actionName}-${Date.now()}`;
+
+      // Create action entry
+      const actionEntry: DeviceAction = {
+        name: req.params.actionName,
+        status: 'PENDING',
+        startedAt: new Date().toISOString(),
+      };
+
+      // Update device with new action
+      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
+        activeActions: {
+          ...device.activeActions,
+          [actionId]: actionEntry,
+        },
+      });
+
+      if (!updatedDevice) {
+        res.status(500).json({ error: 'Failed to initiate action' });
+        return;
+      }
+
+      res.status(202).json({
+        actionId,
+        status: actionEntry.status,
+        startedAt: actionEntry.startedAt,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+
+// Update device action status
+adminRouter.patch(
+  '/devices/:id/actions/:actionId',
+  async (req: Request, res: Response) => {
+    try {
+      const { status, error } = req.body;
+      const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.id);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const action = device.activeActions[req.params.actionId];
+      if (!action) {
+        res.status(404).json({ error: 'Action not found' });
+        return;
+      }
+
+      // Validate status transition
+      if (!status || !['IN_PROGRESS', 'COMPLETED', 'FAILED'].includes(status)) {
+        res.status(400).json({ error: 'Invalid status' });
+        return;
+      }
+
+      const updatedAction = {
+        ...action,
+        status,
+        ...(status === 'COMPLETED' || status === 'FAILED'
+          ? { completedAt: new Date().toISOString() }
+          : {}),
+        ...(error && status === 'FAILED' ? { error } : {}),
+      };
+
+      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
+        activeActions: {
+          ...device.activeActions,
+          [req.params.actionId]: updatedAction,
+        },
+      });
+
+      if (!updatedDevice) {
+        res.status(500).json({ error: 'Failed to update action status' });
+        return;
+      }
+
+      res.json(updatedAction);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+
+// Get device action status
+adminRouter.get(
+  '/devices/:id/actions/:actionId',
+  async (req: Request, res: Response) => {
+    try {
+      const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.id);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const action = device.activeActions[req.params.actionId];
+      if (!action) {
+        res.status(404).json({ error: 'Action not found' });
+        return;
+      }
+
+      res.json(action);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+
+// Get all device actions
+adminRouter.get('/devices/:id/actions', async (req: Request, res: Response) => {
+  try {
+    const dbService = new DBService();
+    const device = await dbService.getDevice(req.params.id);
+
+    if (!device) {
+      res.status(404).json({ error: 'Device not found' });
+      return;
+    }
+
+    res.json(device.activeActions);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

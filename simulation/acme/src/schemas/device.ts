@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { deviceActionSchema } from './capabilities';
 
 export const deviceTypeSchema = z.enum([
   'BULB_ON_OFF',
@@ -20,6 +21,7 @@ const baseDeviceSchema = z.object({
   type: deviceTypeSchema,
   connected: z.boolean(),
   pairedApiKeys: z.array(z.string()).default([]),
+  activeActions: z.record(deviceActionSchema).default({}),
 });
 
 // bulbs

@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { validateApiKey, validateDevicePairing } from '../middleware/api-key';
 import { DBService } from '../services/db-service';
 import { DeviceType, deviceTypeSchema } from '../schemas/device';
+import { ActionCapability } from '../schemas/capabilities';
+import { ActionManager } from '../services/action-manager';
 
 // Define read-only fields mapping
 const deviceReadOnlyFields: Record<DeviceType, string[]> = {
@@ -29,7 +31,7 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
 export const externalAPIRouter = Router();
 
 // Public endpoints
-externalAPIRouter.get('/health', (req, res) => {
+externalAPIRouter.get('/health', (_, res) => {
   res.status(200).send();
 });
 
@@ -148,6 +150,78 @@ externalAPIRouter.get(
 
       const { pairedApiKeys, ...deviceData } = device;
       res.json(deviceData);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+
+// Execute device action
+externalAPIRouter.post(
+  '/devices/:deviceId/actions/:actionName',
+  validateDevicePairing,
+  async (req: Request, res: Response) => {
+    try {
+      const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.deviceId);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      // Check if device has the specified action capability
+      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
+        req.params.deviceId,
+      );
+      const actionCapability = deviceWithCaps?.capabilities.find(
+        (cap) =>
+          cap.type === 'ACTION' &&
+          (cap as ActionCapability).name === req.params.actionName,
+      ) as ActionCapability;
+
+      const actionManager = ActionManager.getInstance();
+      const { actionId, action } = await actionManager.startAction(
+        req.params.deviceId,
+        req.params.actionName,
+        actionCapability.duration,
+        actionCapability.hooks,
+      );
+
+      res.status(202).json({
+        actionId,
+        status: action.status,
+        startedAt: action.startedAt,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+
+// Get device action status
+externalAPIRouter.get(
+  '/devices/:deviceId/actions/:actionId',
+  validateDevicePairing,
+  async (req: Request, res: Response) => {
+    try {
+      const dbService = new DBService();
+      const device = await dbService.getDevice(req.params.deviceId);
+
+      if (!device) {
+        res.status(404).json({ error: 'Device not found' });
+        return;
+      }
+
+      const action = device.activeActions[req.params.actionId];
+      if (!action) {
+        res.status(404).json({ error: 'Action not found' });
+        return;
+      }
+
+      res.json(action);
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: 'Internal server error' });
