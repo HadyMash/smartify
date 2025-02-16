@@ -155,4 +155,37 @@ export const deviceCapabilityMap: Record<
   THERMOMETER: [], // Pure sensor, no controllable capabilities
   HUMIDITY_SENSOR: [], // Pure sensor, no controllable capabilities
   POWER_METER: [], // Pure sensor, no controllable capabilities
+  BULB_TEMP_COLOR: [
+    { type: capabilityTypeSchema.enum.POWER },
+    {
+      type: capabilityTypeSchema.enum.LIMITED_COLOR,
+      availableColors: ['warm', 'neutral', 'cool'],
+      isReadOnly: true,
+    },
+  ],
+  COFFEE_MACHINE: [
+    { type: capabilityTypeSchema.enum.POWER },
+    {
+      type: capabilityTypeSchema.enum.ACTION,
+      name: 'brew',
+      description: 'Brew a cup of coffee',
+      duration: 180000, // 3 minutes
+      hooks: {
+        onStart: 'echo "Starting coffee brew"',
+        onComplete: 'echo "Coffee ready"',
+        onFail: 'echo "Brew failed"',
+      },
+    },
+    {
+      type: capabilityTypeSchema.enum.ACTION,
+      name: 'clean',
+      description: 'Run cleaning cycle',
+      duration: 300000, // 5 minutes
+      hooks: {
+        onStart: 'echo "Starting cleaning cycle"',
+        onComplete: 'echo "Cleaning complete"',
+        onFail: 'echo "Cleaning failed"',
+      },
+    },
+  ],
 };

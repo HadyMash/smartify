@@ -6,8 +6,10 @@ export const deviceTypeSchema = z.enum([
   'BULB_RGB_BRIGHTNESS',
   'BULB_LIMITED_COLOR_BRIGHTNESS',
   'BULB_LIMITED_COLOR',
+  'BULB_TEMP_COLOR',
   'CURTAIN',
   'AC',
+  'COFFEE_MACHINE',
   'GARAGE_DOOR',
   'SOLAR_PANEL',
   'THERMOMETER',
@@ -95,6 +97,25 @@ export const powerMeterSchema = baseDeviceSchema.extend({
   lastUpdated: z.string().datetime(),
 });
 
+export const tempColorBulbSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.BULB_TEMP_COLOR),
+  on: z.boolean(),
+  rgb: z.tuple([
+    z.number().min(0).max(255),
+    z.number().min(0).max(255),
+    z.number().min(0).max(255),
+  ]),
+  temperature: z.number(),
+});
+
+export const coffeeMachineSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.COFFEE_MACHINE),
+  on: z.boolean(),
+  waterLevel: z.number().min(0).max(100),
+  beansLevel: z.number().min(0).max(100),
+  lastMaintenance: z.string().datetime(),
+});
+
 export const deviceSchema = z.union([
   onOffBulbSchema,
   rgbBulbSchema,
@@ -107,6 +128,8 @@ export const deviceSchema = z.union([
   thermometerSchema,
   humiditySchema,
   powerMeterSchema,
+  tempColorBulbSchema,
+  coffeeMachineSchema,
 ]);
 
 // Types
@@ -141,6 +164,8 @@ export const readOnlyFields: Record<DeviceType, string[]> = {
   THERMOMETER: ['temperature', 'lastUpdated'],
   HUMIDITY_SENSOR: ['humidity', 'lastUpdated'],
   POWER_METER: ['currentConsumption', 'totalConsumption', 'lastUpdated'],
+  BULB_TEMP_COLOR: ['rgb'], // RGB values are determined by temperature
+  COFFEE_MACHINE: ['waterLevel', 'beansLevel', 'lastMaintenance'], // these are sensor readings
 };
 
 // Default states for device creation
@@ -194,6 +219,21 @@ export const defaultStates: Record<DeviceType, any> = {
     currentConsumption: 0,
     totalConsumption: 0,
     lastUpdated: new Date().toISOString(),
+  },
+  BULB_TEMP_COLOR: {
+    on: false,
+    rgb: [255, 255, 255], // Default to white
+    temperature: 20,
+    connected: true,
+    pairedApiKeys: [],
+  },
+  COFFEE_MACHINE: {
+    on: false,
+    waterLevel: 100,
+    beansLevel: 100,
+    lastMaintenance: new Date().toISOString(),
+    connected: true,
+    pairedApiKeys: [],
   },
 };
 
