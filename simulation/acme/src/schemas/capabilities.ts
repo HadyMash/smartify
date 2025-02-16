@@ -10,67 +10,90 @@ export const capabilityTypeSchema = z.enum([
 
 export type CapabilityType = z.infer<typeof capabilityTypeSchema>;
 
-export interface BaseCapability {
-  type: CapabilityType;
-  isReadOnly?: boolean;
-}
+export const baseCapabilitySchema = z.object({
+  type: capabilityTypeSchema,
+  isReadOnly: z.boolean().optional(),
+});
 
-export interface PowerCapability extends BaseCapability {
-  type: 'POWER';
-}
+export const powerCapabilitySchema = baseCapabilitySchema.extend({
+  type: z.literal(capabilityTypeSchema.enum.POWER),
+});
 
-export interface BrightnessCapability extends BaseCapability {
-  type: 'BRIGHTNESS';
-  minValue: number;
-  maxValue: number;
-}
+export const brightnessCapabilitySchema = baseCapabilitySchema.extend({
+  type: z.literal(capabilityTypeSchema.enum.BRIGHTNESS),
+  minValue: z.number(),
+  maxValue: z.number(),
+});
 
-export interface RGBColorCapability extends BaseCapability {
-  type: 'RGB_COLOR';
-  minValue: number;
-  maxValue: number;
-}
+export const rgbColorCapabilitySchema = baseCapabilitySchema.extend({
+  type: z.literal(capabilityTypeSchema.enum.RGB_COLOR),
+  minValue: z.number(),
+  maxValue: z.number(),
+});
 
-export interface LimitedColorCapability extends BaseCapability {
-  type: 'LIMITED_COLOR';
-  availableColors: ['warm', 'neutral', 'cool'];
-}
+export const limitedColorCapabilitySchema = baseCapabilitySchema.extend({
+  type: z.literal(capabilityTypeSchema.enum.LIMITED_COLOR),
+  availableColors: z.tuple([
+    z.literal('warm'),
+    z.literal('neutral'),
+    z.literal('cool'),
+  ]),
+});
 
-export type DeviceCapability =
-  | PowerCapability
-  | BrightnessCapability
-  | RGBColorCapability
-  | LimitedColorCapability;
+export const deviceCapabilitySchema = z.discriminatedUnion('type', [
+  powerCapabilitySchema,
+  brightnessCapabilitySchema,
+  rgbColorCapabilitySchema,
+  limitedColorCapabilitySchema,
+]);
+
+export type BaseCapability = z.infer<typeof baseCapabilitySchema>;
+export type PowerCapability = z.infer<typeof powerCapabilitySchema>;
+export type BrightnessCapability = z.infer<typeof brightnessCapabilitySchema>;
+export type RGBColorCapability = z.infer<typeof rgbColorCapabilitySchema>;
+export type LimitedColorCapability = z.infer<
+  typeof limitedColorCapabilitySchema
+>;
+export type DeviceCapability = z.infer<typeof deviceCapabilitySchema>;
 
 // Map device types to their capabilities
-export const deviceCapabilityMap: Record<DeviceType, DeviceCapability[]> = {
-  BULB_ON_OFF: [{ type: 'POWER' }],
+export const deviceCapabilityMap: Record<
+  DeviceType,
+  z.infer<typeof deviceCapabilitySchema>[]
+> = {
+  BULB_ON_OFF: [{ type: capabilityTypeSchema.enum.POWER }],
   BULB_RGB_BRIGHTNESS: [
-    { type: 'POWER' },
-    { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
-    { type: 'RGB_COLOR', minValue: 0, maxValue: 255 },
+    { type: capabilityTypeSchema.enum.POWER },
+    { type: capabilityTypeSchema.enum.BRIGHTNESS, minValue: 0, maxValue: 100 },
+    { type: capabilityTypeSchema.enum.RGB_COLOR, minValue: 0, maxValue: 255 },
   ],
   BULB_LIMITED_COLOR_BRIGHTNESS: [
-    { type: 'POWER' },
-    { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 },
-    { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
+    { type: capabilityTypeSchema.enum.POWER },
+    { type: capabilityTypeSchema.enum.BRIGHTNESS, minValue: 0, maxValue: 100 },
+    {
+      type: capabilityTypeSchema.enum.LIMITED_COLOR,
+      availableColors: ['warm', 'neutral', 'cool'],
+    },
   ],
   BULB_LIMITED_COLOR: [
-    { type: 'POWER' },
-    { type: 'LIMITED_COLOR', availableColors: ['warm', 'neutral', 'cool'] },
+    { type: capabilityTypeSchema.enum.POWER },
+    {
+      type: capabilityTypeSchema.enum.LIMITED_COLOR,
+      availableColors: ['warm', 'neutral', 'cool'],
+    },
   ],
   CURTAIN: [
-    { type: 'POWER' }, // For open/close functionality
-    { type: 'BRIGHTNESS', minValue: 0, maxValue: 100 }, // For position percentage
+    { type: capabilityTypeSchema.enum.POWER }, // For open/close functionality
+    { type: capabilityTypeSchema.enum.BRIGHTNESS, minValue: 0, maxValue: 100 }, // For position percentage
   ],
   AC: [
-    { type: 'POWER' }, // For on/off
-    { type: 'BRIGHTNESS', minValue: 16, maxValue: 30 }, // For temperature control
+    { type: capabilityTypeSchema.enum.POWER }, // For on/off
+    { type: capabilityTypeSchema.enum.BRIGHTNESS, minValue: 16, maxValue: 30 }, // For temperature control
   ],
   GARAGE_DOOR: [
-    { type: 'POWER' }, // For open/close functionality
+    { type: capabilityTypeSchema.enum.POWER }, // For open/close functionality
   ],
-  SOLAR_PANEL: [{ type: 'POWER', isReadOnly: true }],
+  SOLAR_PANEL: [{ type: capabilityTypeSchema.enum.POWER, isReadOnly: true }],
   THERMOMETER: [], // Pure sensor, no controllable capabilities
   HUMIDITY_SENSOR: [], // Pure sensor, no controllable capabilities
   POWER_METER: [], // Pure sensor, no controllable capabilities
