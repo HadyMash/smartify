@@ -8,6 +8,10 @@ import {
   ChangePassword,
   deleteAccountSchema,
   DeleteAccount,
+  requestResetPasswordSchema,
+  RequestResetPassword,
+  resetPasswordSchema,
+  ResetPassword,
 } from '../../schemas/user';
 import { AuthService } from '../../services/auth/auth';
 //TODO: Add comments and documentation
@@ -140,9 +144,55 @@ export class AuthController {
       return;
     }
   }
+  public static async requestReset(req: Request, res: Response) {
+    //TODO: Validate the request reset method
+    let data: RequestResetPassword;
 
-  public static async resetRequest(req: Request, res: Response) {
-    //TODO: Validate the reset request method
+    try {
+      console.log('Starting the parsing');
+      data = requestResetPasswordSchema.parse(req.body);
+      console.log(data);
+      const as = new AuthService();
+      const reset = await as.requestResetPassword(data.email);
+      console.log(reset);
+      res
+        .status(200)
+        .send('Reset Password request sent. Here is your code: ' + reset);
+    } catch (_) {
+      console.error('Error requesting reset');
+      res.status(400).send({
+        error: 'User with that email not found',
+        message: 'Please provide a valid email',
+      });
+    }
   }
-  public static async resetPassword(req: Request, res: Response) {}
+  public static async resetPassword(req: Request, res: Response) {
+    let data: ResetPassword;
+    try {
+      data = resetPasswordSchema.parse(req.body);
+      console.log(data);
+      try {
+        const as = new AuthService();
+        const reset = await as.resetPassword(
+          data.email,
+          data.code,
+          data.newPassword,
+        );
+        res.status(200).send('Password successfully reset!');
+      } catch (_) {
+        res.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Please try again later',
+        });
+        console.error('Error resetting password');
+      }
+    } catch (_) {
+      console.log('Invalid user data');
+      res.status(400).send({
+        error: 'Invalid user data',
+        message: 'Please provide a valid email and password',
+      });
+      return;
+    }
+  }
 }

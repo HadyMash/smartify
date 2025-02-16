@@ -9,11 +9,16 @@ authRouter.post('/register', (req, res) => AuthController.register(req, res));
 
 authRouter.post('/login', (req, res) => AuthController.login(req, res));
 
-authRouter.patch('/change-password', (req, res) =>
+authRouter.post('/change-password', (req, res) =>
   AuthController.changePassword(req, res),
 );
 
 authRouter.delete('/delete-account', (req, res) =>
   AuthController.deleteAccount(req, res),
 );
-authRouter.post('/reset-request', (req, res) => AuthController.resetRequest(req, res));
+authRouter.post('/reset-request', (req, res) =>
+  AuthController.requestReset(req, res),
+);
+authRouter.post('/reset-password', (req, res) =>
+  AuthController.resetPassword(req, res),
+);
