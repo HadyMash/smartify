@@ -137,6 +137,47 @@ export class AuthController {
       try {
         data = changePasswordSchema.parse(req.body);
         console.log(data);
+        const pass = data.newPassword;
+        console.log(pass);
+
+        try {
+          if (!pass) {
+            res.status(401).json({ message: 'Password not found' });
+          }
+          const minLength = 8;
+          const hasUppercase = /[A-Z]/.test(pass);
+          const hasLowercase = /[a-z]/.test(pass);
+          const hasNumber = /[0-9]/.test(pass);
+          const hasSymbol = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass);
+          if (pass.length < minLength) {
+            res.status(400).json('Password must be at least 8 characters long');
+            return;
+          }
+          if (!hasUppercase) {
+            res
+              .status(400)
+              .json({ message: 'Password must have an uppercase character' });
+            return;
+          }
+          if (!hasLowercase) {
+            res
+              .status(400)
+              .json({ message: 'Password must have a lowercase character' });
+            return;
+          }
+          if (!hasNumber) {
+            res.status(400).json({ message: 'Password must have a number' });
+            return;
+          }
+          if (!hasSymbol) {
+            res.status(400).json({ message: 'Password must have a symbol' });
+            return;
+          }
+        } catch (error) {
+          console.error('Error validating your password');
+          res.status(400).json({ message: 'Error validating your password' });
+          return;
+        }
         try {
           const as = new AuthService();
           const user = await as.changePassword(
@@ -147,8 +188,8 @@ export class AuthController {
           res.status(200).send('Password successfully changed!');
         } catch (e) {
           res.status(400).send({
-            error: 'Email associated with this account was not found',
-            message: 'Please provide a valid email',
+            error: 'Passwords cannot be the same',
+            message: 'Please enter a different new password',
           });
         }
       } catch (_) {

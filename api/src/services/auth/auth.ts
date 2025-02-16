@@ -118,24 +118,31 @@ export class AuthService {
   }
   public async changePassword(
     email: string,
-    oldPassword: string,
+    oldpassword: string,
     newPassword: string,
   ): Promise<boolean> {
+    console.log('start of change password');
     const user = await this.db.userRepository.findUserByEmail(email);
     if (!user) {
       throw new Error('User not found');
     }
-    const { password } = user;
+
+    const { password, salt: oldSalt } = user;
     if (!password) {
       console.log('No password');
     }
-    console.log(password);
     const sPassword = password.toString();
-    console.log(sPassword);
+    console.log('This is the current password' + sPassword);
     if (!sPassword) {
       throw new Error('Password not found');
     }
     const srp = new SRP();
+    const newPasswordKey = await srp.generateKey(newPassword, oldSalt);
+    console.log('This is the new password:' + newPasswordKey.modExp);
+    if (newPasswordKey.modExp === password) {
+      console.log('New password cannot be the same as the old password');
+      throw new Error('New password cannot be the same as the old password');
+    }
     try {
       const { A, privateA } = await srp.generateA();
       const { B, privateB } = await srp.generateB(email);
@@ -163,7 +170,7 @@ export class AuthService {
       salt,
       modExp,
     );
-    //TODO: Check the passwords and return true if chnged otherwise false
+
     return true;
   }
   public async deleteAccount(email: string): Promise<boolean> {
@@ -255,9 +262,12 @@ class SRP {
   }
   public async generateKey(
     password: string,
+    salt?: string,
   ): Promise<{ modExp: string; salt: string }> {
     //Generating salt
-    const salt = crypto.randomBytes(32).toString('hex');
+    if (!salt) {
+      salt = crypto.randomBytes(32).toString('hex');
+    }
     const randomB = crypto.randomBytes(32);
     const randomBI = BigInt('0x' + randomB.toString('hex'));
 
