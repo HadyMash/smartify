@@ -44,30 +44,30 @@ export class AuthService {
         throw new Error('User not found');
       }
       const { salt, password } = user;
-      console.log('this is is the email ' + email);
-      console.log(
-        user +
-          '\n' +
-          'This is the password of the user:\n' +
-          password +
-          '\n' +
-          'This is the salt of the user:\n' +
-          salt,
-      );
+      // console.log('this is is the email ' + email);
+      // console.log(
+      //   user +
+      //     '\n' +
+      //     'This is the password of the user:\n' +
+      //     password +
+      //     '\n' +
+      //     'This is the salt of the user:\n' +
+      //     salt,
+      // );
 
       try {
-        console.log('start of SRP');
+        // console.log('start of SRP');
         const { A, privateA } = await srp.generateA();
-        console.log(
-          'This is A:\n' + A + '\n' + 'This is private A:\n' + privateA,
-        );
+        // console.log(
+        //   'This is A:\n' + A + '\n' + 'This is private A:\n' + privateA,
+        // );
         const { B, privateB } = await srp.generateB(email);
 
-        console.log(
-          'This is B:\n' + B + '\n ' + ' This is private B:\n' + privateB,
-        );
+        // console.log(
+        //   'This is B:\n' + B + '\n ' + ' This is private B:\n' + privateB,
+        // );
         const sP = await srp.scrambleParam(A, B);
-        console.log('This is scrambling parameter:\n', sP);
+        // console.log('This is scrambling parameter:\n', sP);
         const serverSessionKey = await srp.serverSessionKeyGenerator(
           BigInt('0x' + A),
           password,
@@ -95,11 +95,11 @@ export class AuthService {
         // const clientK = await srp.deriveSessionKey(clientSessionKey);
         // console.log('This is derived client session key:\n', clientK);
         const serverK = await srp.deriveSessionKey(serverSessionKey);
-        console.log('This is derived server session key:\n', serverK);
+        //console.log('This is derived server session key:\n', serverK);
         const clientProof = await srp.proofClient(A, B, serverK);
-        console.log('This is client proof:\n', clientProof);
+        //console.log('This is client proof:\n', clientProof);
         const serverProof = await srp.proofServer(A, B, serverK);
-        console.log('This is server proof:\n', serverProof);
+        //console.log('This is server proof:\n', serverProof);
         if (clientProof === serverProof) {
           console.log('Proofs match');
         }
@@ -111,20 +111,50 @@ export class AuthService {
         console.error('Error logging in: Passwords do not match');
       }
     } catch (e) {
-      console.error('Error logging in: lmao ', e);
+      console.error('Error logging in ', e);
       throw new Error('User not found');
     }
   }
   public async changePassword(
     email: string,
-    password: string,
+    oldPassword: string,
     newPassword: string,
   ): Promise<boolean> {
     const user = await this.db.userRepository.findUserByEmail(email);
     if (!user) {
       throw new Error('User not found');
     }
+    const { password } = user;
+    if (!password) {
+      console.log('No password');
+    }
+    console.log(password);
+    const sPassword = password.toString();
+    console.log(sPassword);
+    if (!sPassword) {
+      throw new Error('Password not found');
+    }
     const srp = new SRP();
+    try {
+      const { A, privateA } = await srp.generateA();
+      const { B, privateB } = await srp.generateB(email);
+      const sP = await srp.scrambleParam(A, B);
+      const serverSessionKey = await srp.serverSessionKeyGeneratorCP(
+        BigInt('0x' + A),
+        sPassword,
+        sP,
+        privateB,
+      );
+      const serverK = await srp.deriveSessionKey(serverSessionKey);
+      const clientProof = await srp.proofClient(A, B, serverK);
+      const serverProof = await srp.proofServer(A, B, serverK);
+      if (clientProof !== serverProof) {
+        throw new Error('Proofs do not match');
+      }
+    } catch (e) {
+      console.error('Error changing password', e);
+      return false;
+    }
     const { salt, modExp } = await srp.generateKey(newPassword);
 
     const change = await this.db.userRepository.changePassword(
@@ -271,18 +301,18 @@ class SRP {
   //Generateing a public value B (Server side)
   public async generateB(email: string) {
     try {
-      console.log('Start of extraction of the verifier:');
+      // console.log('Start of extraction of the verifier:');
       const verifier = BigInt(
         await this.db.userRepository.extractVerifier(email),
       );
-      console.log('This is the verifier: ' + verifier);
-      console.log('start of privateB');
+      // console.log('This is the verifier: ' + verifier);
+      // console.log('start of privateB');
       const privateB = BigInt('0x' + crypto.randomBytes(32).toString('hex'));
-      console.log('This is your privateB: ' + privateB);
+      // console.log('This is your privateB: ' + privateB);
       const gPowB = this.modExp(this.g, privateB, this.N);
-      console.log('This is your g^B: ' + gPowB);
+      // console.log('This is your g^B: ' + gPowB);
       const B = (verifier + gPowB) % this.N;
-      console.log('This is your B: ' + B);
+      // console.log('This is your B: ' + B);
       // const B = B.toString();
       return { B: B.toString(16), privateB };
     } catch (e) {
@@ -297,6 +327,21 @@ class SRP {
     return sP;
   }
   public async serverSessionKeyGenerator(
+    A: bigint,
+    password: string,
+    sP: bigint,
+    privateB: bigint,
+  ) {
+    const v = BigInt(password);
+    const serverSessionKey = this.modExp(
+      A * this.modExp(v, sP, this.N),
+      privateB,
+      this.N,
+    );
+    return serverSessionKey;
+  }
+
+  public async serverSessionKeyGeneratorCP(
     A: bigint,
     password: string,
     sP: bigint,
