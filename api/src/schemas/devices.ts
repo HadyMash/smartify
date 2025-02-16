@@ -5,18 +5,26 @@ import { z } from 'zod';
 /** The supported device sources/manufacturers */
 export const deviceSourceSchema = z.enum(['acme']);
 
-/* Types of capabilities a device can have */
+/** Basic capability types that can be used as both device capabilities and action arguments */
+export const basicCapabilityTypesSchema = z.enum([
+  'value', // string value
+  'switch', // boolean value
+  'range', // number with min/max bounds
+  'number', // number with optional single bound
+  'mode', // enumerated string values
+]);
+
+/** All capability types a device can have, extending basic types with multi-variants and actions */
 export const deviceCapabilityTypesSchema = z.enum([
   // basic capabilities
-  'switch',
-  'range',
-  'number',
-  'mode',
-  'multimode',
-  'multirange',
-  'multinumber',
-  'multivalue',
-  // TODO: add custom (color, etc)
+  ...basicCapabilityTypesSchema.options,
+  // multi-value capabilities (arrays of basic types)
+  'multiswitch',
+  'multimode', // array of modes
+  'multirange', // array of ranges
+  'multinumber', // array of numbers
+  'multivalue', // array of values
+  'action', // action with basic capability arguments
 ]);
 
 /** The base device capability schema
@@ -35,6 +43,65 @@ const baseCapabilitySchema = z
     readonly: z.boolean().optional(),
   })
   .strict();
+
+/** Schema for basic capabilities that can be used as action arguments or device capabilities */
+export const basicCapabilitySchema = z.discriminatedUnion('type', [
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(basicCapabilityTypesSchema.enum.switch),
+    })
+    .strict(),
+
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(basicCapabilityTypesSchema.enum.range),
+      /** The minimum number in the range (inclusive) */
+      min: z.number(),
+      /** The maximum number in the range (inclusive) */
+      max: z.number(),
+      /** The step size */
+      step: z.number().optional(),
+      /** The unit of the range */
+      unit: z.string().optional(),
+    })
+    .strict(),
+
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(basicCapabilityTypesSchema.enum.number),
+      bound: z
+        .object({
+          type: z.enum(['min', 'max']),
+          value: z.number(),
+        })
+        .optional(),
+      step: z.number().optional(),
+      unit: z.string().optional(),
+    })
+    .strict(),
+
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(basicCapabilityTypesSchema.enum.mode),
+      modes: z
+        .array(z.coerce.string())
+        .nonempty()
+        .refine(
+          (modes) =>
+            modes.every(
+              (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
+            ),
+          { message: 'Modes cannot be objects' },
+        ),
+    })
+    .strict(),
+
+  baseCapabilitySchema
+    .extend({
+      type: z.literal(basicCapabilityTypesSchema.enum.value),
+    })
+    .strict(),
+]);
 
 // TODO: make inclusive booleans for mins and maxes
 /** A device's capability and the capability's parameters */
@@ -96,6 +163,12 @@ export const deviceCapabilitySchema = z
           ),
       })
       .strict(),
+
+    baseCapabilitySchema.extend({
+      type: z.literal(deviceCapabilityTypesSchema.enum.multiswitch),
+      /** Optional fixed length requirement */
+      length: z.number().optional(),
+    }),
 
     baseCapabilitySchema
       .extend({
@@ -167,6 +240,16 @@ export const deviceCapabilitySchema = z
         type: z.literal(deviceCapabilityTypesSchema.enum.multivalue),
         /** Optional fixed length requirement */
         length: z.number().optional(),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.action),
+        /** Arguments for the action */
+        arguments: z.array(basicCapabilitySchema),
+        /** Fields that are locked during this action */
+        lockedFields: z.array(z.string()),
       })
       .strict(),
   ])
@@ -262,13 +345,30 @@ export const deviceSchema = z.object({
   capabilities: z.array(deviceCapabilitySchema).nonempty(),
 });
 
-/** The schema for a device's state */
+/** The schema for a device's state or action state */
 export const stateSchema = z.record(z.string(), z.unknown());
+
+/** The schema for tracking ongoing actions */
+export const actionStateSchema = z.record(
+  z.string(),
+  z.object({
+    /** The action being performed */
+    actionId: z.string(),
+    /** The progress description */
+    progress: z.string(),
+    /** Start time of the action */
+    startTime: z.date(),
+    /** Optional data specific to this action */
+    data: z.record(z.string(), z.unknown()).optional(),
+  }),
+);
 
 /** An IoT device with its state */
 export const deviceWithStateSchema = deviceSchema
   .extend({
     state: stateSchema,
+    /** Optional active actions and their states */
+    actionStates: actionStateSchema.optional(),
   })
   .refine(
     (d) => {
@@ -339,6 +439,13 @@ export const deviceWithStateSchema = deviceSchema
             return true;
           case 'mode':
             return capability.modes.includes(String(value));
+          case 'multiswitch':
+            return (
+              Array.isArray(value) &&
+              (capability.length === undefined ||
+                value.length === capability.length) &&
+              value.every((v) => typeof v === 'boolean')
+            );
           case 'multimode':
             return (
               Array.isArray(value) &&
@@ -453,6 +560,9 @@ export type Device = z.infer<typeof deviceSchema>;
 
 /** A device's state */
 export type State = z.infer<typeof stateSchema>;
+
+/** The state of an ongoing action */
+export type ActionState = z.infer<typeof actionStateSchema>;
 
 /** A device with its state */
 export type DeviceWithState = z.infer<typeof deviceWithStateSchema>;

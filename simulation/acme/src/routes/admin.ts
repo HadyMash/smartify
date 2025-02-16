@@ -35,6 +35,12 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
     'totalConsumption',
     'lastUpdated',
   ],
+  [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
+  [deviceTypeSchema.enum.COFFEE_MACHINE]: [
+    'waterLevel',
+    'beansLevel',
+    'lastMaintenance',
+  ], // these are sensor readings
 };
 
 export const adminRouter = Router();

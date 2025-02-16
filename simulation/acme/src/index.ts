@@ -1,7 +1,6 @@
 import express, { Express } from 'express';
 import cookieParser from 'cookie-parser';
 import { adminRouter } from './routes/admin';
-import { DBService } from './services/db-service';
 import { logMiddleware } from './middleware/log';
 import { externalAPIRouter } from './routes/external';
 
