@@ -34,7 +34,7 @@ export const deviceCapabilityTypesSchema = z.enum([
 const baseCapabilitySchema = z
   .object({
     /** The capability's id */
-    id: z.string(),
+    id: z.string().min(1),
     /** The capability  */
     type: deviceCapabilityTypesSchema,
     /** Human readable name */
@@ -45,63 +45,145 @@ const baseCapabilitySchema = z
   .strict();
 
 /** Schema for basic capabilities that can be used as action arguments or device capabilities */
-export const basicCapabilitySchema = z.discriminatedUnion('type', [
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(basicCapabilityTypesSchema.enum.switch),
-    })
-    .strict(),
+export const basicCapabilitySchema = z
+  .discriminatedUnion('type', [
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.switch),
+      })
+      .strict(),
 
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(basicCapabilityTypesSchema.enum.range),
-      /** The minimum number in the range (inclusive) */
-      min: z.number(),
-      /** The maximum number in the range (inclusive) */
-      max: z.number(),
-      /** The step size */
-      step: z.number().optional(),
-      /** The unit of the range */
-      unit: z.string().optional(),
-    })
-    .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.range),
+        /** The minimum number in the range (inclusive) */
+        min: z.number(),
+        /** The maximum number in the range (inclusive) */
+        max: z.number(),
+        /** The step size */
+        step: z.number().optional(),
+        /** The unit of the range */
+        unit: z.string().optional(),
+      })
+      .strict(),
 
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(basicCapabilityTypesSchema.enum.number),
-      bound: z
-        .object({
-          type: z.enum(['min', 'max']),
-          value: z.number(),
-        })
-        .optional(),
-      step: z.number().optional(),
-      unit: z.string().optional(),
-    })
-    .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.number),
+        bound: z
+          .object({
+            type: z.enum(['min', 'max']),
+            value: z.number(),
+          })
+          .optional(),
+        step: z.number().optional(),
+        unit: z.string().optional(),
+      })
+      .strict(),
 
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(basicCapabilityTypesSchema.enum.mode),
-      modes: z
-        .array(z.coerce.string())
-        .nonempty()
-        .refine(
-          (modes) =>
-            modes.every(
-              (m) => m.toLowerCase() !== '[object Object]'.toLowerCase(),
-            ),
-          { message: 'Modes cannot be objects' },
-        ),
-    })
-    .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.mode),
+        modes: z.array(z.coerce.string()).nonempty(),
+      })
+      .strict(),
 
-  baseCapabilitySchema
-    .extend({
-      type: z.literal(basicCapabilityTypesSchema.enum.value),
-    })
-    .strict(),
-]);
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.value),
+      })
+      .strict(),
+  ])
+  .refine(
+    (capability) => {
+      switch (capability.type) {
+        case 'range':
+          // Validate maximum is greater than minimum
+          if (capability.max <= capability.min) {
+            return false;
+          }
+          // If step is provided, validate it's positive
+          if (capability.step !== undefined && capability.step <= 0) {
+            return false;
+          }
+          return true;
+
+        case 'number':
+          // If step is provided, validate it's positive
+          if (capability.step !== undefined && capability.step <= 0) {
+            return false;
+          }
+          return true;
+
+        case 'mode': {
+          // Check mode uniqueness and ensure no objects
+          if (
+            !Array.isArray(capability.modes) ||
+            capability.modes.length === 0
+          ) {
+            return false;
+          }
+          const seen = new Set<string>();
+          return capability.modes.every((m) => {
+            if (
+              m.toLowerCase() === '[object Object]'.toLowerCase() ||
+              seen.has(m)
+            ) {
+              return false;
+            }
+            seen.add(m);
+            return true;
+          });
+        }
+
+        default:
+          return true;
+      }
+    },
+    {
+      message:
+        'Invalid capability configuration: ranges must have max > min, steps must be positive, and modes must be unique strings',
+    },
+  )
+  .refine((capability) => {
+    switch (capability.type) {
+      case 'range':
+        // Validate that max is greater than min
+        if (capability.max <= capability.min) {
+          return false;
+        }
+        // If step is provided, validate it divides the range cleanly
+        if (capability.step !== undefined) {
+          const range = capability.max - capability.min;
+          const steps = range / capability.step;
+          return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
+        }
+        return true;
+
+      case 'number':
+        // If step is provided, validate it's positive
+        if (capability.step !== undefined && capability.step <= 0) {
+          return false;
+        }
+        return true;
+
+      case 'mode': {
+        // Additional safety check for modes (though also handled by the schema)
+        if (!Array.isArray(capability.modes) || capability.modes.length === 0) {
+          return false;
+        }
+        // Check for uniqueness (case-sensitive)
+        const uniqueModes = new Set(capability.modes);
+        if (uniqueModes.size !== capability.modes.length) {
+          return false;
+        }
+        return true;
+      }
+
+      default:
+        return true;
+    }
+  }, 'Invalid capability configuration: ranges must have max > min, steps must divide ranges cleanly, and modes must be unique');
 
 // TODO: make inclusive booleans for mins and maxes
 /** A device's capability and the capability's parameters */
@@ -247,12 +329,102 @@ export const deviceCapabilitySchema = z
       .extend({
         type: z.literal(deviceCapabilityTypesSchema.enum.action),
         /** Arguments for the action */
-        arguments: z.array(basicCapabilitySchema),
+        arguments: z.array(basicCapabilitySchema).nonempty(),
         /** Fields that are locked during this action */
-        lockedFields: z.array(z.string()),
+        lockedFields: z.array(z.string()).nonempty(),
       })
       .strict(),
   ])
+  .refine(
+    (capability) => {
+      switch (capability.type) {
+        case 'range':
+          // Validate maximum is greater than minimum
+          if (capability.max <= capability.min) {
+            return false;
+          }
+          // If step is provided, validate it's positive
+          if (capability.step !== undefined && capability.step <= 0) {
+            return false;
+          }
+          return true;
+
+        case 'number':
+          // If step is provided, validate it's positive
+          if (capability.step !== undefined && capability.step <= 0) {
+            return false;
+          }
+          return true;
+
+        case 'mode': {
+          // Check mode uniqueness and ensure no objects
+          if (
+            !Array.isArray(capability.modes) ||
+            capability.modes.length === 0
+          ) {
+            return false;
+          }
+          const seen = new Set<string>();
+          return capability.modes.every((m) => {
+            if (
+              m.toLowerCase() === '[object Object]'.toLowerCase() ||
+              seen.has(m)
+            ) {
+              return false;
+            }
+            seen.add(m);
+            return true;
+          });
+        }
+
+        default:
+          return true;
+      }
+    },
+    {
+      message:
+        'Invalid capability configuration: ranges must have max > min, steps must be positive, and modes must be unique strings',
+    },
+  )
+  .refine((capability) => {
+    switch (capability.type) {
+      case 'range':
+        // Validate that max is greater than min
+        if (capability.max <= capability.min) {
+          return false;
+        }
+        // If step is provided, validate it divides the range cleanly
+        if (capability.step !== undefined) {
+          const range = capability.max - capability.min;
+          const steps = range / capability.step;
+          return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
+        }
+        return true;
+
+      case 'number':
+        // If step is provided, validate it's positive
+        if (capability.step !== undefined && capability.step <= 0) {
+          return false;
+        }
+        return true;
+
+      case 'mode': {
+        // Additional safety check for modes (though also handled by the schema)
+        if (!Array.isArray(capability.modes) || capability.modes.length === 0) {
+          return false;
+        }
+        // Check for uniqueness (case-sensitive)
+        const uniqueModes = new Set(capability.modes);
+        if (uniqueModes.size !== capability.modes.length) {
+          return false;
+        }
+        return true;
+      }
+
+      default:
+        return true;
+    }
+  }, 'Invalid capability configuration: ranges must have max > min, steps must divide ranges cleanly, and modes must be unique')
   .refine(
     (capability) => {
       type BoundType = { type: 'min' | 'max'; value: number };
@@ -338,11 +510,26 @@ export const deviceCapabilitySchema = z
 /** An IoT device without state */
 export const deviceSchema = z.object({
   /** Device ID */
-  id: z.string(),
+  id: z.string().min(1),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
   /** Device capabilities */
-  capabilities: z.array(deviceCapabilitySchema).nonempty(),
+  capabilities: z
+    .array(deviceCapabilitySchema)
+    .nonempty()
+    .refine(
+      (capabilities) => {
+        const ids = new Set();
+        return capabilities.every((cap) => {
+          if (ids.has(cap.id)) {
+            return false;
+          }
+          ids.add(cap.id);
+          return true;
+        });
+      },
+      { message: 'Capability IDs must be unique' },
+    ),
 });
 
 /** The schema for a device's state or action state */
@@ -394,6 +581,8 @@ export const deviceWithStateSchema = deviceSchema
         if (!capability) return false;
 
         switch (capability.type) {
+          case 'action':
+            return value === null; // Action capabilities should have null state
           case 'switch':
             return typeof value === 'boolean';
           case 'range':
