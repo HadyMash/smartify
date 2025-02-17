@@ -115,4 +115,33 @@ export abstract class BaseIotAdapter {
   public abstract setDeviceStates(
     deviceStates: Record<string, Record<string, unknown>>,
   ): Promise<DeviceWithState[] | undefined>;
+
+  /**
+   * Starts an action on a device.
+   *
+   * @param deviceId - The device's unique identifier
+   * @param actionId - The ID of the action to start
+   * @param args - Arguments for the action, must match the action's defined argument capabilities
+   * @returns Promise containing the device with its current state including action state, or undefined if not supported
+   * @throws Error if the request fails, action is not supported, or arguments are invalid
+   */
+  public abstract startAction(
+    deviceId: string,
+    actionId: string,
+    args: Record<string, unknown>,
+  ): Promise<DeviceWithState | undefined>;
+
+  /**
+   * Starts actions on multiple devices.
+   *
+   * @param actions - Dictionary mapping device IDs to their action details (actionId and args)
+   * @returns Promise containing array of devices with their current states including action states, or undefined if not supported
+   * @throws Error if any request fails, action is not supported, or arguments are invalid
+   */
+  public abstract startActions(
+    actions: Record<
+      string,
+      { actionId: string; args: Record<string, unknown> }
+    >,
+  ): Promise<DeviceWithState[] | undefined>;
 }
