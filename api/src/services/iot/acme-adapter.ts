@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import axios from 'axios';
+import axios from 'axios' ;
 import {
   Device,
   DeviceCapability,
@@ -395,6 +396,51 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       return;
     } catch (e) {
       console.error('Failed to set device states:', e);
+      throw e;
+    }
+  }
+  public async startAction(deviceId: string, actionId: string, args: Record<string, unknown>,): Promise<DeviceWithState | undefined> {
+    try {
+      const payload = {
+        actionId,
+        args,
+      };
+      const response = await this.axiosInstance.post(
+        `/devices/${deviceId}/actions`,
+        payload
+      );
+      if (response.status !== 200) {
+        throw new Error('Failed to start action');
+      }
+      const device = response.data;
+      const mappedCapabilites = device.capabilities.map((c: any) =>
+        this.mapCapability(c)
+      );
+
+      const mappedState = this.mapState(device, mappedCapabilites);
+      const mappedDevice: DeviceWithState = {
+        id: device.id,
+        source,
+        capabilities: mappedCapabilites,
+        state: mappedState,
+      };
+      return deviceWithStateSchema.parse(mappedDevice);
+    } catch (e) {
+      console.error('Failed to start action:', e);
+      return;
+    }
+  }
+
+  public async startActions(actions: Record< string, { actionId: string; args: Record<string, unknown> } >, ): Promise<DeviceWithState[] | undefined> {
+    try {
+      const results = await Promise.all(
+        Object.entries(actions).map(async ([deviceId, { actionId, args }]) => {
+          return this.startAction(deviceId, actionId, args);
+        })
+      );
+      return results.filter((result): result is DeviceWithState => result !== undefined);
+    } catch (e) {
+      console.error('Failed to start actions:', e);
       throw e;
     }
   }
