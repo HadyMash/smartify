@@ -2,25 +2,22 @@ package utils
 
 import (
     "context"
-    "fmt"
-    "log"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+    "log"
 )
 
-func ConnectMongoDB(uri string) (*mongo.Client, error) {
-    clientOptions := options.Client().ApplyURI(uri)
-    client, err := mongo.Connect(context.Background(), clientOptions)
-    if err != nil {
-        return nil, err
-    }
+// MongoClient will hold the MongoDB client
+var MongoClient *mongo.Client
 
-    // Ping the database to verify the connection
-    err = client.Ping(context.Background(), nil)
+func InitMongoClient(uri string) {
+    client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
     if err != nil {
-        return nil, err
+        log.Fatalf("Error connecting to MongoDB: %v", err)
     }
+    MongoClient = client
+}
 
-    fmt.Println("Connected to MongoDB!")
-    return client, nil
+func GetDatabase(dbName string) *mongo.Database {
+    return MongoClient.Database(dbName)
 }
