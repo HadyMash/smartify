@@ -17,7 +17,7 @@ import {
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
 import { APIKey } from '../schemas/api-key';
-import { DeviceCapability } from '../schemas/capabilities';
+import { DeviceCapability, deviceCapabilityMap } from '../schemas/capabilities';
 
 export class DBService {
   private static _db: JsonDB;
@@ -263,41 +263,9 @@ export class DBService {
   }
 
   private getDeviceCapabilities(device: Device): DeviceCapability[] {
-    const capabilities: DeviceCapability[] = [];
-
-    if (
-      isOnOffBulb(device) ||
-      isRGBBulb(device) ||
-      isLimitedColorBulb(device) ||
-      isLimitedColorBrightnessBulb(device)
-    ) {
-      capabilities.push({ type: 'POWER' });
-    }
-
-    if (isRGBBulb(device) || isLimitedColorBrightnessBulb(device)) {
-      capabilities.push({
-        type: 'BRIGHTNESS',
-        minValue: 0,
-        maxValue: 100,
-      });
-    }
-
-    if (isRGBBulb(device)) {
-      capabilities.push({
-        type: 'RGB_COLOR',
-        minValue: 0,
-        maxValue: 255,
-      });
-    }
-
-    if (isLimitedColorBulb(device) || isLimitedColorBrightnessBulb(device)) {
-      capabilities.push({
-        type: 'LIMITED_COLOR',
-        availableColors: ['warm', 'neutral', 'cool'],
-      });
-    }
-
-    return capabilities;
+    // Import the deviceCapabilityMap and use it directly
+    const { deviceCapabilityMap } = require('../schemas/capabilities');
+    return deviceCapabilityMap[device.type];
   }
 
   public async getDevicesWithCapabilities(): Promise<

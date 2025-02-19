@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import axios from 'axios' ;
+import axios from 'axios';
 import {
   Device,
   DeviceCapability,
@@ -249,7 +249,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         this.mapCapability(c),
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const mappedState = this.mapState(device, mappedCapabilites);
 
       const mappedDevice: DeviceWithState = {
@@ -290,7 +289,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
             this.mapCapability(c),
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           const mappedState = this.mapState(device, mappedCapabilites);
 
           const mappedDevice: DeviceWithState = {
@@ -343,7 +341,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       );
 
       if (response.status !== 200) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         throw new Error(response?.data?.error || 'Failed to set device state');
       }
       return;
@@ -399,7 +396,11 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       throw e;
     }
   }
-  public async startAction(deviceId: string, actionId: string, args: Record<string, unknown>,): Promise<DeviceWithState | undefined> {
+  public async startAction(
+    deviceId: string,
+    actionId: string,
+    args: Record<string, unknown>,
+  ): Promise<DeviceWithState | undefined> {
     try {
       const payload = {
         actionId,
@@ -407,14 +408,14 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       };
       const response = await this.axiosInstance.post(
         `/devices/${deviceId}/actions`,
-        payload
+        payload,
       );
       if (response.status !== 200) {
         throw new Error('Failed to start action');
       }
       const device = response.data;
       const mappedCapabilites = device.capabilities.map((c: any) =>
-        this.mapCapability(c)
+        this.mapCapability(c),
       );
 
       const mappedState = this.mapState(device, mappedCapabilites);
@@ -431,14 +432,21 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     }
   }
 
-  public async startActions(actions: Record< string, { actionId: string; args: Record<string, unknown> } >, ): Promise<DeviceWithState[] | undefined> {
+  public async startActions(
+    actions: Record<
+      string,
+      { actionId: string; args: Record<string, unknown> }
+    >,
+  ): Promise<DeviceWithState[] | undefined> {
     try {
       const results = await Promise.all(
         Object.entries(actions).map(async ([deviceId, { actionId, args }]) => {
           return this.startAction(deviceId, actionId, args);
-        })
+        }),
       );
-      return results.filter((result): result is DeviceWithState => result !== undefined);
+      return results.filter(
+        (result): result is DeviceWithState => result !== undefined,
+      );
     } catch (e) {
       console.error('Failed to start actions:', e);
       throw e;

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z, ZodObject, ZodSchema } from 'zod';
 import { deviceActionSchema } from './capabilities';
 
 export const deviceTypeSchema = z.enum([
@@ -135,6 +135,23 @@ export const deviceSchema = z.union([
 // Types
 export type DeviceType = z.infer<typeof deviceTypeSchema>;
 export type Device = z.infer<typeof deviceSchema>;
+
+export const deviceSchemaMap: Record<DeviceType, ZodObject<any>> = {
+  [deviceTypeSchema.enum.BULB_ON_OFF]: onOffBulbSchema,
+  [deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS]: rgbBulbSchema,
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS]:
+    limitedColorBrightnessBulbSchema,
+  [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: limitedColorBulbSchema,
+  [deviceTypeSchema.enum.CURTAIN]: curtainSchema, // Using onOffBulbSchema as base, might need curtainSchema
+  [deviceTypeSchema.enum.AC]: acSchema, // Using onOffBulbSchema as base, might need acSchema
+  [deviceTypeSchema.enum.GARAGE_DOOR]: garageDoorSchema, // Using onOffBulbSchema as base, might need garageDoorSchema
+  [deviceTypeSchema.enum.SOLAR_PANEL]: solarPanelSchema, // Using onOffBulbSchema as base, might need solarPanelSchema
+  [deviceTypeSchema.enum.THERMOMETER]: thermometerSchema, // Using onOffBulbSchema as base, might need thermometerSchema
+  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: humiditySchema, // Using onOffBulbSchema as base, might need humiditySchema
+  [deviceTypeSchema.enum.POWER_METER]: powerMeterSchema, // Using onOffBulbSchema as base, might need powerMeterSchema
+  [deviceTypeSchema.enum.BULB_TEMP_COLOR]: tempColorBulbSchema, // Using limitedColorBulbSchema as it's most similar
+  [deviceTypeSchema.enum.COFFEE_MACHINE]: coffeeMachineSchema, // Using onOffBulbSchema as base, might need coffeeMachineSchema
+};
 
 // Specific device types
 export type OnOffBulb = z.infer<typeof onOffBulbSchema>;

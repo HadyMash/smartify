@@ -11,6 +11,9 @@ import {
   onOffBulbSchema,
   rgbBulbSchema,
   DeviceType,
+  curtainSchema,
+  acSchema,
+  deviceSchemaMap,
 } from '../schemas/device';
 import { ZodObject } from 'zod';
 
@@ -99,6 +102,8 @@ adminRouter.get('/devices/:id', async (req: Request, res: Response) => {
 
 adminRouter.post('/devices/new', async (req: Request, res: Response) => {
   try {
+    console.log(req.body);
+
     const { type } = req.body as { type: keyof typeof defaultStates };
     let deviceInfo: Omit<Device, 'id'>;
 
@@ -110,22 +115,12 @@ adminRouter.post('/devices/new', async (req: Request, res: Response) => {
 
       const p = (s: ZodObject<any>) => s.omit({ id: true }).parse(baseInfo);
 
-      switch (type) {
-        case deviceTypeSchema.enum.BULB_ON_OFF:
-          deviceInfo = p(onOffBulbSchema) as any;
-          break;
-        case deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS:
-          deviceInfo = p(rgbBulbSchema) as any;
-          break;
-        case deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS:
-          deviceInfo = p(limitedColorBrightnessBulbSchema) as any;
-          break;
-        case deviceTypeSchema.enum.BULB_LIMITED_COLOR:
-          deviceInfo = p(limitedColorBulbSchema) as any;
-          break;
-        default:
-          throw new Error('Invalid device type');
+      const schema = deviceSchemaMap[type];
+      if (!schema) {
+        throw new Error('Invalid device type');
       }
+
+      deviceInfo = p(schema) as any;
     } catch (e) {
       console.log('schema error', util.inspect(e, false));
       console.log('schema issues:', util.inspect((e as any).issues, false));

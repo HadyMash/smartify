@@ -35,18 +35,60 @@ export const baseCapabilitySchema = z.object({
   isReadOnly: z.boolean().optional(),
 });
 
-export const actionStatusHookSchema = z.object({
-  onStart: z.string().optional(), // Command to run when action starts
-  onComplete: z.string().optional(), // Command to run when action completes
-  onFail: z.string().optional(), // Command to run when action fails
+// Define what properties an action can lock
+export const actionLockSchema = z.object({
+  properties: z.array(z.string()),
+  description: z.string().optional(),
+});
+
+// Define the hook context that will be passed to hooks
+export const hookContextSchema = z.object({
+  deviceId: z.string(),
+  actionName: z.string(),
+  currentState: z.record(z.any()),
+  updateState: z
+    .function()
+    .args(z.record(z.any()))
+    .returns(z.promise(z.void())),
+});
+
+export type HookContext = z.infer<typeof hookContextSchema>;
+
+// Updated hook schema with context
+export const actionHookSchema = z.object({
+  onStart: z
+    .function()
+    .args(hookContextSchema)
+    .returns(z.promise(z.void()))
+    .optional(),
+  onComplete: z
+    .function()
+    .args(hookContextSchema)
+    .returns(z.promise(z.void()))
+    .optional(),
+  onFail: z
+    .function()
+    .args(hookContextSchema)
+    .returns(z.promise(z.void()))
+    .optional(),
+});
+
+// Action configuration schema for dynamic configuration
+export const actionConfigSchema = z.object({
+  duration: z.number().min(0).optional(),
+  parameters: z.record(z.any()).optional(),
 });
 
 export const actionCapabilitySchema = baseCapabilitySchema.extend({
   type: z.literal(capabilityTypeSchema.enum.ACTION),
   name: z.string().min(1),
   description: z.string().optional(),
-  duration: z.number().min(0), // Duration in milliseconds
-  hooks: actionStatusHookSchema.optional(),
+  defaultDuration: z.number().min(0), // Default duration in milliseconds
+  minDuration: z.number().min(0).optional(), // Minimum allowed duration
+  maxDuration: z.number().optional(), // Maximum allowed duration
+  parameters: z.record(z.any()).optional(), // Custom parameters schema
+  locks: actionLockSchema.optional(), // Properties this action locks
+  hooks: actionHookSchema.optional(),
 });
 
 export const powerCapabilitySchema = baseCapabilitySchema.extend({
@@ -134,9 +176,15 @@ export const deviceCapabilityMap: Record<
       description: 'Close the garage door',
       duration: 15000, // 15 seconds
       hooks: {
-        onStart: 'echo "Starting garage door close"',
-        onComplete: 'echo "Garage door closed"',
-        onFail: 'echo "Garage door close failed"',
+        onStart: async () => {
+          console.log('Starting garage door close');
+        },
+        onComplete: async () => {
+          console.log('Garage door closed');
+        },
+        onFail: async () => {
+          console.log('Garage door close failed');
+        },
       },
     },
     {
@@ -145,9 +193,15 @@ export const deviceCapabilityMap: Record<
       description: 'Open the garage door',
       duration: 15000, // 15 seconds
       hooks: {
-        onStart: 'echo "Starting garage door open"',
-        onComplete: 'echo "Garage door opened"',
-        onFail: 'echo "Garage door open failed"',
+        onStart: async () => {
+          console.log('Starting garage door open');
+        },
+        onComplete: async () => {
+          console.log('Garage door opened');
+        },
+        onFail: async () => {
+          console.log('Garage door open failed');
+        },
       },
     },
   ],
@@ -171,9 +225,15 @@ export const deviceCapabilityMap: Record<
       description: 'Brew a cup of coffee',
       duration: 180000, // 3 minutes
       hooks: {
-        onStart: 'echo "Starting coffee brew"',
-        onComplete: 'echo "Coffee ready"',
-        onFail: 'echo "Brew failed"',
+        onStart: async () => {
+          console.log('Starting coffee brew');
+        },
+        onComplete: async () => {
+          console.log('Coffee ready');
+        },
+        onFail: async () => {
+          console.log('Brew failed');
+        },
       },
     },
     {
@@ -182,9 +242,15 @@ export const deviceCapabilityMap: Record<
       description: 'Run cleaning cycle',
       duration: 300000, // 5 minutes
       hooks: {
-        onStart: 'echo "Starting cleaning cycle"',
-        onComplete: 'echo "Cleaning complete"',
-        onFail: 'echo "Cleaning failed"',
+        onStart: async () => {
+          console.log('Starting cleaning cycle');
+        },
+        onComplete: async () => {
+          console.log('Cleaning complete');
+        },
+        onFail: async () => {
+          console.log('Cleaning failed');
+        },
       },
     },
   ],
