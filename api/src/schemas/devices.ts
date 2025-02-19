@@ -197,6 +197,12 @@ export const deviceCapabilitySchema = z
 
     baseCapabilitySchema
       .extend({
+        type: z.literal(deviceCapabilityTypesSchema.enum.value),
+      })
+      .strict(),
+
+    baseCapabilitySchema
+      .extend({
         type: z.literal(deviceCapabilityTypesSchema.enum.range),
         /** The minimum number in the range (inclusive) */
         min: z.number(),
@@ -576,6 +582,192 @@ export const deviceWithStateSchema = deviceSchema
   .refine(
     (d) => {
       // Validate that each state value matches its capability type
+      return Object.entries(d.state ?? {}).every(([key, value]) => {
+        const capability = d.capabilities.find((c) => c.id === key);
+        if (!capability) return false;
+
+        switch (capability.type) {
+          case 'action':
+            return value === null; // Action capabilities should have null state
+          case 'value':
+            return typeof value === 'string';
+          case 'switch':
+            return typeof value === 'boolean';
+          case 'range':
+            if (
+              typeof value !== 'number' ||
+              value < capability.min ||
+              value > capability.max
+            )
+              return false;
+
+            if (capability.step !== undefined) {
+              const steps = (value - capability.min) / capability.step;
+              // Use a more lenient epsilon for floating point comparisons
+              const FLOAT_EPSILON = 1e-10;
+              if (Math.abs(Math.round(steps) - steps) > FLOAT_EPSILON)
+                return false;
+            }
+            return true;
+          case 'number':
+            if (typeof value !== 'number') return false;
+
+            // Check bounds
+            if (capability.bound) {
+              if (
+                capability.bound.type === 'min' &&
+                value < capability.bound.value
+              )
+                return false;
+              if (
+                capability.bound.type === 'max' &&
+                value > capability.bound.value
+              )
+                return false;
+            }
+
+            // Check step
+            if (capability.step !== undefined) {
+              const reference = capability.bound?.value ?? 0;
+              const steps = (value - reference) / capability.step;
+              // Use a more lenient epsilon for floating point comparisons
+              const FLOAT_EPSILON = 1e-10;
+              if (Math.abs(Math.round(steps) - steps) > FLOAT_EPSILON)
+                return false;
+            }
+            return true;
+          case 'mode':
+            return capability.modes.includes(String(value));
+          case 'multiswitch':
+            return (
+              Array.isArray(value) &&
+              (capability.length === undefined ||
+                value.length === capability.length) &&
+              value.every((v) => typeof v === 'boolean')
+            );
+          case 'multimode':
+            return (
+              Array.isArray(value) &&
+              value.every(
+                (mode) =>
+                  typeof mode === 'string' && capability.modes.includes(mode),
+              )
+            );
+          case 'multirange':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+
+            return value.every((v, idx) => {
+              if (typeof v !== 'number') return false;
+
+              const min = Array.isArray(capability.min)
+                ? capability.min[idx]
+                : capability.min;
+              const max = Array.isArray(capability.max)
+                ? capability.max[idx]
+                : capability.max;
+
+              if (v < min || v > max) return false;
+
+              if (capability.step !== undefined) {
+                const step = Array.isArray(capability.step)
+                  ? capability.step[idx]
+                  : capability.step;
+                const steps = (v - min) / step;
+                // Use a more lenient epsilon for floating point comparisons
+                const FLOAT_EPSILON = 1e-10;
+                return Math.abs(Math.round(steps) - steps) <= FLOAT_EPSILON;
+              }
+              return true;
+            });
+          case 'multinumber':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+
+            return value.every((v, idx) => {
+              if (typeof v !== 'number') return false;
+
+              if (Array.isArray(capability.bound)) {
+                const bound = capability.bound[idx];
+                if (bound) {
+                  if (bound.type === 'min' && v < bound.value) return false;
+                  if (bound.type === 'max' && v > bound.value) return false;
+                }
+              } else if (capability.bound) {
+                if (
+                  capability.bound.type === 'min' &&
+                  v < capability.bound.value
+                )
+                  return false;
+                if (
+                  capability.bound.type === 'max' &&
+                  v > capability.bound.value
+                )
+                  return false;
+              }
+
+              if (capability.step !== undefined) {
+                const step = Array.isArray(capability.step)
+                  ? capability.step[idx]
+                  : capability.step;
+                const reference = Array.isArray(capability.bound)
+                  ? (capability.bound[idx]?.value ?? 0)
+                  : (capability.bound?.value ?? 0);
+                const steps = (v - reference) / step;
+                // Use a more lenient epsilon for floating point comparisons
+                const FLOAT_EPSILON = 1e-10;
+                return Math.abs(Math.round(steps) - steps) <= FLOAT_EPSILON;
+              }
+              return true;
+            });
+          case 'multivalue':
+            if (!Array.isArray(value)) return false;
+            if (
+              capability.length !== undefined &&
+              value.length !== capability.length
+            )
+              return false;
+            return value.every((v) => typeof v === 'string');
+          default:
+            return false;
+        }
+      });
+    },
+    {
+      message:
+        'State values do not match their capability types or are out of bounds',
+    },
+  );
+
+/** An IoT device with partial state */
+export const deviceWithPartialStateSchema = deviceSchema
+  .extend({
+    state: stateSchema.optional().default({}),
+    /** Optional active actions and their states */
+    actionStates: actionStateSchema.optional(),
+  })
+  .refine(
+    (d) => {
+      // Validate that any state keys provided correspond to capabilities
+      return Object.keys(d.state ?? {}).every((key) =>
+        d.capabilities.some((c) => c.id === key),
+      );
+    },
+    {
+      message: 'State contains keys not in capabilities',
+    },
+  )
+  .refine(
+    (d) => {
+      // Validate that each state value matches its capability type
       return Object.entries(d.state).every(([key, value]) => {
         const capability = d.capabilities.find((c) => c.id === key);
         if (!capability) return false;
@@ -583,6 +775,8 @@ export const deviceWithStateSchema = deviceSchema
         switch (capability.type) {
           case 'action':
             return value === null; // Action capabilities should have null state
+          case 'value':
+            return typeof value === 'string';
           case 'switch':
             return typeof value === 'boolean';
           case 'range':
@@ -755,3 +949,8 @@ export type ActionState = z.infer<typeof actionStateSchema>;
 
 /** A device with its state */
 export type DeviceWithState = z.infer<typeof deviceWithStateSchema>;
+
+/** An IoT device with partial state */
+export type DeviceWithPartialState = z.infer<
+  typeof deviceWithPartialStateSchema
+>;

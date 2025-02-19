@@ -448,7 +448,7 @@ adminRouter.patch('/api-keys', async (req: Request, res: Response) => {
     }
 
     // Only allow updating certain fields
-    const allowedUpdates = ['name', 'isActive'];
+    const allowedUpdates = ['name', 'isActive', 'webhookUrl'];
     const hasDisallowedField = Object.keys(updates).some(
       (key) => !allowedUpdates.includes(key),
     );

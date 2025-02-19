@@ -5,6 +5,7 @@ import {
   deviceSchema,
   DeviceSource,
   deviceSourceSchema,
+  deviceWithPartialStateSchema,
   deviceWithStateSchema,
 } from '../../../schemas/devices';
 
@@ -1057,6 +1058,123 @@ describe('IoT Device Schema Tests', () => {
       expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
     });
 
+    // Value capability state tests
+    describe('value capability', () => {
+      test('valid value state should parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: 'Living Room Light',
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('valid empty value state should parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: '',
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid value state (number) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: 42,
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid value state (boolean) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: true,
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid value state (object) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: {},
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid value state (array) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'value',
+              id: 'name',
+            },
+          ],
+          state: {
+            name: ['test'],
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
+
     // Number capability state tests
     test('valid number states parse', () => {
       const device = {
@@ -1449,6 +1567,48 @@ describe('IoT Device Schema Tests', () => {
           };
           expect(() => deviceWithStateSchema.parse(device)).toThrow();
         });
+      });
+    });
+
+    // Value capability tests
+    describe('Value capability', () => {
+      test('valid value capability should parse', () => {
+        const capability = {
+          type: 'value' as const,
+          id: 'name',
+        };
+        expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+        expect(basicCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('valid value capability with name should parse', () => {
+        const capability = {
+          type: 'value' as const,
+          id: 'name',
+          name: 'Device Name',
+        };
+        expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+        expect(basicCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('valid value capability with readonly should parse', () => {
+        const capability = {
+          type: 'value' as const,
+          id: 'name',
+          readonly: true,
+        };
+        expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+        expect(basicCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('invalid value capability with extra properties should not parse', () => {
+        const capability = {
+          type: 'value' as const,
+          id: 'name',
+          extraProp: 'test',
+        };
+        expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        expect(basicCapabilitySchema.safeParse(capability).success).toBe(false);
       });
     });
 
@@ -2457,6 +2617,1875 @@ describe('IoT Device Schema Tests', () => {
 
         expect(() => deviceWithStateSchema.parse(device)).toThrow();
         expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+    });
+  });
+
+  describe('Device with partial state and actions schema', () => {
+    test('parses without state', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+    test('empty state parses', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {},
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+    test("invalid state type (string) doesn't parse", () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: 'x',
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+    test("invalid state type (number) doesn't parse", () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: 0,
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+    test("invalid state type (array) doesn't parse", () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: [],
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+    test('missing state keys parses', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          power: true,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+    test("invalid state key doesn't parse", () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          invalid: 'x',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+    test("all state keys present with invalid states (invalid types) doesn't parse", () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          power: 'x',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+    test('valid state parses', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          power: true,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    // Switch capability state tests
+    test('valid switch states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          power: false, // Testing both true and false
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid switch state (number) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          power: 1,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid switch state (string) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+        ],
+        state: {
+          power: 'on',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    // Range capability state tests
+    test('valid range states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+        ],
+        state: {
+          brightness: 50,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid range states with readonly parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+            readonly: true,
+          },
+        ],
+        state: {
+          brightness: 50,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid range states with step parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+            step: 0.5,
+          },
+        ],
+        state: {
+          brightness: 99.5,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid range state (not matching step) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+            step: 0.5,
+          },
+        ],
+        state: {
+          brightness: 50.7,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid range state (below min) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+        ],
+        state: {
+          brightness: -1,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid range state (above max) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+        ],
+        state: {
+          brightness: 101,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid range state (wrong type) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+        ],
+        state: {
+          brightness: '50',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    // Number capability state tests
+    test('valid number states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+          },
+        ],
+        state: {
+          temperature: 22.5,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid readonly number states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            readonly: true,
+          },
+        ],
+        state: {
+          temperature: 22.5,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid number states with step parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            step: 0.5,
+          },
+        ],
+        state: {
+          temperature: 22.5,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid number state (not matching step) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            step: 0.5,
+          },
+        ],
+        state: {
+          temperature: 22.7,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('valid number states with step and min bound parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            step: 0.5,
+            bound: {
+              type: 'min',
+              value: 0,
+            },
+          },
+        ],
+        state: {
+          temperature: 22.5,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('valid number state with min bound parses', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            bound: {
+              type: 'min',
+              value: 0,
+            },
+          },
+        ],
+        state: {
+          temperature: 1,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid number state (below min bound) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            bound: {
+              type: 'min',
+              value: 0,
+            },
+          },
+        ],
+        state: {
+          temperature: -1,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('valid number state with max bound parses', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            bound: {
+              type: 'max',
+              value: 100,
+            },
+          },
+        ],
+        state: {
+          temperature: 99,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid number state (above max bound) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+            bound: {
+              type: 'max',
+              value: 100,
+            },
+          },
+        ],
+        state: {
+          temperature: 101,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid number state (wrong type) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'number',
+            id: 'temperature',
+          },
+        ],
+        state: {
+          temperature: '22.5',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    // Mode capability state tests
+    test('valid mode states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          speed: 'auto',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid mode state (not in modes list) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          speed: 'turbo',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('invalid mode state (wrong type) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          speed: 1,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    // Validation refinement tests
+    describe('Validation refinements', () => {
+      describe('Range validation', () => {
+        test('should validate step divides range cleanly', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'range',
+                id: 'temp',
+                min: 0,
+                max: 100,
+                step: 0.5, // Divides cleanly into range
+              },
+            ],
+            state: {
+              temp: 50,
+            },
+          };
+          expect(() =>
+            deviceWithPartialStateSchema.parse(device),
+          ).not.toThrow();
+        });
+
+        test('should not validate when step does not divide range cleanly', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'range',
+                id: 'temp',
+                min: 0,
+                max: 100,
+                step: 0.3, // Does not divide cleanly into range
+              },
+            ],
+            state: {
+              temp: 50,
+            },
+          };
+          expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        });
+      });
+
+      describe('Mode validation', () => {
+        test('should validate case-sensitive unique modes', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'mode',
+                id: 'mode',
+                modes: ['Auto', 'auto', 'LOW'], // Different cases are considered unique
+              },
+            ],
+            state: {
+              mode: 'Auto',
+            },
+          };
+          expect(() =>
+            deviceWithPartialStateSchema.parse(device),
+          ).not.toThrow();
+        });
+
+        test('should not validate duplicate modes (case-sensitive)', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'mode',
+                id: 'mode',
+                modes: ['auto', 'low', 'auto'], // Exact duplicate
+              },
+            ],
+            state: {
+              mode: 'auto',
+            },
+          };
+          expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        });
+
+        test('should not validate empty modes array', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'mode',
+                id: 'mode',
+                modes: [], // Empty array
+              },
+            ],
+            state: {
+              mode: 'auto',
+            },
+          };
+          expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        });
+
+        test('should not validate non-array modes', () => {
+          const device = {
+            id: 'device-1',
+            source: 'acme',
+            capabilities: [
+              {
+                type: 'mode',
+                id: 'mode',
+                modes: 'auto', // String instead of array
+              },
+            ],
+            state: {
+              mode: 'auto',
+            },
+          };
+          expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        });
+      });
+    });
+
+    // Basic capability refinement tests
+    describe('Basic capability refinements', () => {
+      describe('Range capability validation', () => {
+        test('should reject range when max is less than min', () => {
+          const capability = {
+            type: 'range' as const,
+            id: 'temp',
+            min: 100,
+            max: 50, // Invalid: max < min
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject range with negative step', () => {
+          const capability = {
+            type: 'range' as const,
+            id: 'temp',
+            min: 0,
+            max: 100,
+            step: -1, // Invalid: negative step
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject range with zero step', () => {
+          const capability = {
+            type: 'range' as const,
+            id: 'temp',
+            min: 0,
+            max: 100,
+            step: 0, // Invalid: zero step
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+      });
+
+      describe('Number capability validation', () => {
+        test('should reject number with negative step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+            step: -1, // Invalid: negative step
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject number with zero step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+            step: 0, // Invalid: zero step
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should accept number with positive step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+            step: 1,
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        });
+
+        test('should accept number with undefined step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        });
+
+        test('should accept number with small positive step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+            step: 0.0001,
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        });
+
+        test('should reject number with very small negative step', () => {
+          const capability = {
+            type: 'number' as const,
+            id: 'count',
+            step: -0.0001,
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+          expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        });
+      });
+
+      describe('Mode capability validation', () => {
+        test('should reject non-array modes', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+            modes: 'not-an-array' as any,
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject empty modes array', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            modes: [],
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject modes with object string representation', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            modes: ['[object Object]'],
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should reject duplicate modes', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            modes: ['auto', 'heat', 'auto'], // Duplicate 'auto'
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).toThrow();
+        });
+
+        test('should accept valid unique modes', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            modes: ['auto', 'heat', 'cool'],
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+        });
+
+        test('should accept case-sensitive unique modes', () => {
+          const capability = {
+            type: 'mode' as const,
+            id: 'mode',
+            modes: ['Auto', 'auto', 'AUTO'], // Different cases are considered unique
+          };
+          expect(() => basicCapabilitySchema.parse(capability)).not.toThrow();
+        });
+      });
+    });
+
+    // Multiple capabilities state tests
+    test('valid multiple capabilities states parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          power: true,
+          brightness: 75,
+          speed: 'medium',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('invalid multiple capabilities states (one invalid) does not parse', () => {
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'switch',
+            id: 'power',
+          },
+          {
+            type: 'range',
+            id: 'brightness',
+            min: 0,
+            max: 100,
+          },
+          {
+            type: 'mode',
+            id: 'speed',
+            modes: ['auto', 'low', 'medium', 'high'],
+          },
+        ],
+        state: {
+          power: true,
+          brightness: 'full', // Invalid
+          speed: 'medium',
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('valid device with actionStates should parse', () => {
+      const device = {
+        id: 'coffee-maker-1',
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'switch' as const,
+            id: 'power',
+          },
+          {
+            type: 'action' as const,
+            id: 'brew',
+            arguments: [
+              {
+                type: 'mode' as const,
+                id: 'strength',
+                modes: ['light', 'medium', 'strong'],
+              },
+            ],
+            lockedFields: ['power'],
+          },
+        ],
+        state: {
+          power: true,
+          brew: null, // Adding state for the action capability
+        },
+        actionStates: {
+          'brew-1': {
+            actionId: 'brew',
+            progress: 'Heating water',
+            startTime: new Date(),
+            data: {
+              strength: 'medium',
+            },
+          },
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(true);
+    });
+
+    test('device with invalid actionStates should not parse', () => {
+      const device = {
+        id: 'coffee-maker-1',
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'switch' as const,
+            id: 'power',
+          },
+        ],
+        state: {
+          power: true,
+        },
+        actionStates: {
+          'brew-1': {
+            // Missing required fields
+            data: {
+              strength: 'medium',
+            },
+          },
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('device with invalid actionStates date should not parse', () => {
+      const device = {
+        id: 'coffee-maker-1',
+        source: 'acme' as const,
+        capabilities: [
+          {
+            type: 'switch' as const,
+            id: 'power',
+          },
+        ],
+        state: {
+          power: true,
+        },
+        actionStates: {
+          'brew-1': {
+            actionId: 'brew',
+            progress: 'Heating water',
+            startTime: 'invalid-date', // Should be a Date object
+            data: {
+              strength: 'medium',
+            },
+          },
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    test('device with unknown capability type in state validation does not parse', () => {
+      // Create a device with a capability that has an unknown type
+      const device = {
+        id: 'device-1',
+        source: 'acme',
+        capabilities: [
+          {
+            type: 'unknown-type', // This is not one of the known types
+            id: 'test',
+          },
+        ],
+        state: {
+          test: true,
+        },
+      };
+
+      expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+      expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+        false,
+      );
+    });
+
+    // Multimode capability state tests
+    describe('multimode capability', () => {
+      test('valid multimode states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: ['eco', 'comfort'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multimode state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: 'eco',
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multimode state (invalid mode) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multimode',
+              id: 'zones',
+              modes: ['off', 'eco', 'comfort'],
+            },
+          ],
+          state: {
+            zones: ['eco', 'invalid'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+    });
+
+    // Multirange capability state tests
+    describe('multirange capability', () => {
+      test('valid multirange states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('valid multirange with single min/max parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: 0,
+              max: 255,
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('valid multirange with step and length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+              step: 1,
+              length: 3,
+            },
+          ],
+          state: {
+            rgb: [128, 64, 255],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multirange state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+            },
+          ],
+          state: {
+            rgb: 128,
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multirange state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multirange',
+              id: 'rgb',
+              min: [0, 0, 0],
+              max: [255, 255, 255],
+              length: 3,
+            },
+          ],
+          state: {
+            rgb: [128, 64],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+    });
+
+    // Multinumber capability state tests
+    describe('multinumber capability', () => {
+      test('valid multinumber states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: [
+                { type: 'min', value: -90 },
+                { type: 'min', value: -180 },
+              ],
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('valid multinumber with shared min bound parses', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'min',
+                value: 0,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multinumber with shared min bound does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'min',
+                value: 0,
+              },
+            },
+          ],
+          state: {
+            coords: [-45, 90], // First value violates min bound
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('valid multinumber with shared max bound parses', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'max',
+                value: 100,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 90],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multinumber with shared max bound does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              bound: {
+                type: 'max',
+                value: 100,
+              },
+            },
+          ],
+          state: {
+            coords: [45, 150], // Second value violates max bound
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('valid multinumber with step and length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              step: 0.5,
+              length: 2,
+            },
+          ],
+          state: {
+            coords: [45.5, 90.0],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multinumber state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+            },
+          ],
+          state: {
+            coords: 45,
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multinumber state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multinumber',
+              id: 'coords',
+              length: 2,
+            },
+          ],
+          state: {
+            coords: [45],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+    });
+
+    // Multivalue capability state tests
+    // Action capability tests
+    describe('action capability', () => {
+      test('valid action capability should parse', () => {
+        const capability: DeviceCapability = {
+          type: 'action',
+          id: 'brew',
+          arguments: [
+            {
+              type: 'mode',
+              id: 'strength',
+              modes: ['light', 'medium', 'strong'],
+            },
+            {
+              type: 'range',
+              id: 'temperature',
+              min: 85,
+              max: 100,
+              unit: '°C',
+            },
+          ],
+          lockedFields: ['power', 'water_level'],
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('valid action capability with name should parse', () => {
+        const capability: DeviceCapability = {
+          type: 'action',
+          id: 'brew',
+          name: 'Brew Coffee',
+          arguments: [
+            {
+              type: 'mode',
+              id: 'strength',
+              modes: ['light', 'medium', 'strong'],
+            },
+          ],
+          lockedFields: ['power'],
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('action capability without arguments should not parse', () => {
+        const capability = {
+          type: 'action',
+          id: 'brew',
+          lockedFields: ['power'],
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
+          false,
+        );
+      });
+
+      test('action capability without lockedFields should not parse', () => {
+        const capability = {
+          type: 'action',
+          id: 'brew',
+          arguments: [
+            {
+              type: 'mode',
+              id: 'strength',
+              modes: ['light', 'medium', 'strong'],
+            },
+          ],
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
+          false,
+        );
+      });
+
+      test('action capability with invalid argument type should not parse', () => {
+        const capability = {
+          type: 'action',
+          id: 'brew',
+          arguments: [
+            {
+              type: 'invalid',
+              id: 'strength',
+            },
+          ],
+          lockedFields: ['power'],
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
+          false,
+        );
+      });
+
+      test('action capability with invalid lockedFields type should not parse', () => {
+        const capability = {
+          type: 'action',
+          id: 'brew',
+          arguments: [
+            {
+              type: 'mode',
+              id: 'strength',
+              modes: ['light', 'medium', 'strong'],
+            },
+          ],
+          lockedFields: 'power', // should be an array
+        };
+
+        expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
+          false,
+        );
+      });
+    });
+
+    // Multiswitch capability state tests
+    describe('multiswitch capability', () => {
+      test('valid multiswitch states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multiswitch',
+              id: 'outlets',
+            },
+          ],
+          state: {
+            outlets: [true, false, true],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('valid multiswitch with length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multiswitch',
+              id: 'outlets',
+              length: 2,
+            },
+          ],
+          state: {
+            outlets: [true, false],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multiswitch state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multiswitch',
+              id: 'outlets',
+            },
+          ],
+          state: {
+            outlets: true,
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multiswitch state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multiswitch',
+              id: 'outlets',
+              length: 2,
+            },
+          ],
+          state: {
+            outlets: [true, false, true],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multiswitch state (non-boolean values) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multiswitch',
+              id: 'outlets',
+            },
+          ],
+          state: {
+            outlets: [true, 1, false],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+    });
+
+    describe('multivalue capability', () => {
+      test('valid multivalue states parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('valid multivalue with length parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+              length: 3,
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+
+      test('invalid multivalue state (non-array) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: 'home',
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multivalue state (wrong length) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+              length: 2,
+            },
+          ],
+          state: {
+            tags: ['home', 'office', 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
+      });
+
+      test('invalid multivalue state (non-string values) does not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'multivalue',
+              id: 'tags',
+            },
+          ],
+          state: {
+            tags: ['home', 42, 'kitchen'],
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          false,
+        );
       });
     });
   });

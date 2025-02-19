@@ -10,8 +10,9 @@ import {
   AC,
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
-import { APIKey } from '../schemas/api-key';
+import { APIKey, apiKeySchema } from '../schemas/api-key';
 import { DeviceCapability, deviceCapabilityMap } from '../schemas/capabilities';
+import { WebhookService } from './webhook-service';
 
 export class DBService {
   private static _db: JsonDB;
@@ -179,6 +180,10 @@ export class DBService {
       if (!currentKey) return undefined;
 
       const updatedKey = { ...currentKey, ...updates };
+
+      // valdidate updated key
+      apiKeySchema.parse(updatedKey);
+
       await this.db.push(`${DBService.API_KEY_DB_PATH}/${key}`, updatedKey);
       return updatedKey;
     } catch (e) {
@@ -240,14 +245,32 @@ export class DBService {
       const currentDevice = await this.getDevice<T>(id);
       if (!currentDevice) return;
 
-      const updatedState: Partial<Omit<T, 'id'>> & { id?: string } = {
+      // Create new state object without id
+      const { id: _, ...stateWithoutId } = {
         ...currentDevice,
         ...partialState,
       };
 
-      delete updatedState.id; // Remove id before updating
-      await this.db.push(`${DBService.DEVICE_DB_PATH}/${id}`, updatedState);
-      return await this.getDevice<T>(id);
+      await this.db.push(`${DBService.DEVICE_DB_PATH}/${id}`, stateWithoutId);
+
+      const updatedDevice = await this.getDevice<T>(id);
+      if (updatedDevice) {
+        // Notify webhooks for all paired API keys
+        const webhookService = WebhookService.getInstance();
+        for (const apiKeyId of currentDevice.pairedApiKeys) {
+          const apiKey = await this.getApiKey(apiKeyId);
+          if (apiKey?.webhookUrl) {
+            await webhookService.notifyWebhook(
+              apiKey,
+              updatedDevice,
+              currentDevice,
+              partialState as Partial<Device>,
+            );
+          }
+        }
+      }
+
+      return updatedDevice;
     } catch (e) {
       if (!(e instanceof DataError)) {
         throw e;

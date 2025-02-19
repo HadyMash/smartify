@@ -5,6 +5,7 @@ import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { BaseIotAdapter, HealthCheck } from './services/iot/base-adapter';
 import { AcmeIoTAdapter } from './services/iot/acme-adapter';
+import { webhookRouter } from './routes/webhook';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ router.get('/health', (_, res) => {
 });
 
 router.use('/auth', authRouter);
+router.use('/webhooks', webhookRouter);
 
 app.use('/api', router);
 

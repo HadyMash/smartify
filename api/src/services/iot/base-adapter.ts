@@ -1,4 +1,9 @@
-import { Device, DeviceWithState } from '../../schemas/devices';
+import {
+  Device,
+  //DeviceCapability,
+  //DeviceWithPartialState,
+  DeviceWithState,
+} from '../../schemas/devices';
 
 export interface HealthCheck {
   healthCheck(): Promise<boolean>;
@@ -23,6 +28,22 @@ export abstract class BaseIotAdapter {
   public isHealthCheck(): this is BaseIotAdapter & HealthCheck {
     return BaseIotAdapter.isHealthCheck(this);
   }
+
+  //public abstract mapCapabliity(capability: unknown): DeviceCapability;
+  //
+  //public abstract mapCapabliities(capabilities: unknown[]): DeviceCapability[];
+  //
+  //public abstract mapDevice(device: unknown): Device;
+  //
+  //public abstract mapDevices(devices: unknown[]): Device[];
+  //
+  //public abstract mapDeviceWithState(device: unknown): DeviceWithState;
+  //
+  //public abstract mapDevicesWithState(devices: unknown[]): DeviceWithState[];
+  //
+  //public abstract mapDeviceWithPartialState(device: unknown): DeviceWithPartialState;
+  //
+  //public abstract mapDevicesWithPartialState(devices: unknown[]): DeviceWithPartialState[];
 
   /**
    * Discover unpaired devices that are available for pairing.
