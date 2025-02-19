@@ -11,7 +11,7 @@ export const deviceTypeSchema = z.enum([
   'AC',
   //'COFFEE_MACHINE',
   //'GARAGE_DOOR',
-  //'SOLAR_PANEL',
+  'SOLAR_PANEL',
   'THERMOMETER',
   'HUMIDITY_SENSOR',
   'POWER_METER',
@@ -71,12 +71,12 @@ export const acSchema = baseDeviceSchema.extend({
 //  type: z.literal(deviceTypeSchema.enum.GARAGE_DOOR),
 //});
 //
-//export const solarPanelSchema = baseDeviceSchema.extend({
-//  type: z.literal(deviceTypeSchema.enum.SOLAR_PANEL),
-//  currentPowerOutput: z.number().min(0),
-//  totalDailyOutput: z.number().min(0),
-//  isExportingToGrid: z.boolean(),
-//});
+export const solarPanelSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.SOLAR_PANEL),
+  currentPowerOutput: z.number().min(0),
+  totalDailyOutput: z.number().min(0),
+  isExportingToGrid: z.boolean(),
+});
 
 export const thermometerSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.THERMOMETER),
@@ -124,7 +124,7 @@ export const deviceSchema = z.union([
   curtainSchema,
   acSchema,
   //garageDoorSchema,
-  //solarPanelSchema,
+  solarPanelSchema,
   thermometerSchema,
   humiditySchema,
   powerMeterSchema,
@@ -145,7 +145,7 @@ export const deviceSchemaMap: Record<DeviceType, ZodObject<any>> = {
   [deviceTypeSchema.enum.CURTAIN]: curtainSchema, // Using onOffBulbSchema as base, might need curtainSchema
   [deviceTypeSchema.enum.AC]: acSchema, // Using onOffBulbSchema as base, might need acSchema
   //[deviceTypeSchema.enum.GARAGE_DOOR]: garageDoorSchema, // Using onOffBulbSchema as base, might need garageDoorSchema
-  //[deviceTypeSchema.enum.SOLAR_PANEL]: solarPanelSchema, // Using onOffBulbSchema as base, might need solarPanelSchema
+  [deviceTypeSchema.enum.SOLAR_PANEL]: solarPanelSchema, // Using onOffBulbSchema as base, might need solarPanelSchema
   [deviceTypeSchema.enum.THERMOMETER]: thermometerSchema, // Using onOffBulbSchema as base, might need thermometerSchema
   [deviceTypeSchema.enum.HUMIDITY_SENSOR]: humiditySchema, // Using onOffBulbSchema as base, might need humiditySchema
   [deviceTypeSchema.enum.POWER_METER]: powerMeterSchema, // Using onOffBulbSchema as base, might need powerMeterSchema
@@ -163,7 +163,7 @@ export type LimitedColorBulb = z.infer<typeof limitedColorBulbSchema>;
 export type Curtain = z.infer<typeof curtainSchema>;
 export type AC = z.infer<typeof acSchema>;
 //export type GarageDoor = z.infer<typeof garageDoorSchema>;
-//export type SolarPanel = z.infer<typeof solarPanelSchema>;
+export type SolarPanel = z.infer<typeof solarPanelSchema>;
 export type Thermometer = z.infer<typeof thermometerSchema>;
 export type HumiditySensor = z.infer<typeof humiditySchema>;
 export type PowerMeter = z.infer<typeof powerMeterSchema>;
@@ -177,7 +177,7 @@ export const readOnlyFields: Record<DeviceType, string[]> = {
   CURTAIN: [],
   AC: [],
   //GARAGE_DOOR: [],
-  //SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
+  SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
   THERMOMETER: ['temperature', 'lastUpdated'],
   HUMIDITY_SENSOR: ['humidity', 'lastUpdated'],
   POWER_METER: ['currentConsumption', 'totalConsumption', 'lastUpdated'],
@@ -211,13 +211,13 @@ export const defaultStates: Record<DeviceType, any> = {
   CURTAIN: { connected: true, pairedApiKeys: [] },
   AC: { connected: true, pairedApiKeys: [] },
   //GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
-  //SOLAR_PANEL: {
-  //  connected: true,
-  //  pairedApiKeys: [],
-  //  currentPowerOutput: 0,
-  //  totalDailyOutput: 0,
-  //  isExportingToGrid: false,
-  //},
+  SOLAR_PANEL: {
+    connected: true,
+    pairedApiKeys: [],
+    currentPowerOutput: 0,
+    totalDailyOutput: 0,
+    isExportingToGrid: false,
+  },
   THERMOMETER: {
     connected: true,
     pairedApiKeys: [],
@@ -273,5 +273,5 @@ export const isAC = (device: Device): device is AC =>
   device.type === deviceTypeSchema.enum.AC;
 //export const isGarageDoor = (device: Device): device is GarageDoor =>
 //  device.type === deviceTypeSchema.enum.GARAGE_DOOR;
-//export const isSolarPanel = (device: Device): device is SolarPanel =>
-//  device.type === deviceTypeSchema.enum.SOLAR_PANEL;
+export const isSolarPanel = (device: Device): device is SolarPanel =>
+  device.type === deviceTypeSchema.enum.SOLAR_PANEL;

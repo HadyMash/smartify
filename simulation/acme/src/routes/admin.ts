@@ -26,11 +26,11 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
   [deviceTypeSchema.enum.CURTAIN]: [],
   [deviceTypeSchema.enum.AC]: [],
   //[deviceTypeSchema.enum.GARAGE_DOOR]: [],
-  //[deviceTypeSchema.enum.SOLAR_PANEL]: [
-  //  'currentPowerOutput',
-  //  'totalDailyOutput',
-  //  'isExportingToGrid',
-  //],
+  [deviceTypeSchema.enum.SOLAR_PANEL]: [
+    'currentpoweroutput',
+    'totalDailyOutput',
+    'isExportingToGrid',
+  ],
   [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
   [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
   [deviceTypeSchema.enum.POWER_METER]: [

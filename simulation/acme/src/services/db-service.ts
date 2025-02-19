@@ -8,6 +8,7 @@ import {
   deviceTypeSchema,
   Curtain,
   AC,
+  SolarPanel,
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
 import { APIKey, apiKeySchema } from '../schemas/api-key';
@@ -104,8 +105,8 @@ export class DBService {
             return baseDevice as AC;
           //case deviceTypeSchema.enum.GARAGE_DOOR:
           //  return baseDevice as GarageDoor;
-          //case deviceTypeSchema.enum.SOLAR_PANEL:
-          //  return baseDevice as SolarPanel;
+          case deviceTypeSchema.enum.SOLAR_PANEL:
+            return baseDevice as SolarPanel;
           default:
             throw new Error('Invalid device type');
         }

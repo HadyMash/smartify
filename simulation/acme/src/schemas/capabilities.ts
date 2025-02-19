@@ -205,7 +205,7 @@ export const deviceCapabilityMap: Record<
   //    },
   //  },
   //],
-  //SOLAR_PANEL: [{ type: capabilityTypeSchema.enum.POWER, isReadOnly: true }],
+  SOLAR_PANEL: [{ type: capabilityTypeSchema.enum.POWER, isReadOnly: true }],
   THERMOMETER: [], // Pure sensor, no controllable capabilities
   HUMIDITY_SENSOR: [], // Pure sensor, no controllable capabilities
   POWER_METER: [], // Pure sensor, no controllable capabilities
