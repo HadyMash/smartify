@@ -1,16 +1,14 @@
 package models
 
-import "time"
-
 type DeviceData struct {
-	DeviceID  string    `bson:"device_id"`
-	Timestamp time.Time `bson:"timestamp"`
-	Value     float64   `bson:"value"`
+    DeviceID        string  `json:"device_id" bson:"device_id"`
+    EnergyConsumed  float64 `json:"energy_consumed" bson:"energy_consumed"`
+    Timestamp       int64   `json:"timestamp" bson:"timestamp"`
 }
 
 type AnalysisResult struct {
-	DeviceID          string  `bson:"device_id"`
-	AvgConsumption    float64 `bson:"avg_consumption"`
-	MaxConsumption    float64 `bson:"max_consumption"`
-	StdDevConsumption float64 `bson:"std_dev_consumption"`
+    AverageEnergy   float64 `json:"average_energy"`
+    MaxEnergy       float64 `json:"max_energy"`
+    MinEnergy       float64 `json:"min_energy"`
+    StdDeviation    float64 `json:"std_deviation"`
 }
