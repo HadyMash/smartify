@@ -9,9 +9,9 @@ export const deviceTypeSchema = z.enum([
   'BULB_TEMP_COLOR',
   'CURTAIN',
   'AC',
-  'COFFEE_MACHINE',
-  'GARAGE_DOOR',
-  'SOLAR_PANEL',
+  //'COFFEE_MACHINE',
+  //'GARAGE_DOOR',
+  //'SOLAR_PANEL',
   'THERMOMETER',
   'HUMIDITY_SENSOR',
   'POWER_METER',
@@ -67,16 +67,16 @@ export const acSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.AC),
 });
 
-export const garageDoorSchema = baseDeviceSchema.extend({
-  type: z.literal(deviceTypeSchema.enum.GARAGE_DOOR),
-});
-
-export const solarPanelSchema = baseDeviceSchema.extend({
-  type: z.literal(deviceTypeSchema.enum.SOLAR_PANEL),
-  currentPowerOutput: z.number().min(0),
-  totalDailyOutput: z.number().min(0),
-  isExportingToGrid: z.boolean(),
-});
+//export const garageDoorSchema = baseDeviceSchema.extend({
+//  type: z.literal(deviceTypeSchema.enum.GARAGE_DOOR),
+//});
+//
+//export const solarPanelSchema = baseDeviceSchema.extend({
+//  type: z.literal(deviceTypeSchema.enum.SOLAR_PANEL),
+//  currentPowerOutput: z.number().min(0),
+//  totalDailyOutput: z.number().min(0),
+//  isExportingToGrid: z.boolean(),
+//});
 
 export const thermometerSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.THERMOMETER),
@@ -108,13 +108,13 @@ export const tempColorBulbSchema = baseDeviceSchema.extend({
   temperature: z.number(),
 });
 
-export const coffeeMachineSchema = baseDeviceSchema.extend({
-  type: z.literal(deviceTypeSchema.enum.COFFEE_MACHINE),
-  on: z.boolean(),
-  waterLevel: z.number().min(0).max(100),
-  beansLevel: z.number().min(0).max(100),
-  lastMaintenance: z.string().datetime(),
-});
+//export const coffeeMachineSchema = baseDeviceSchema.extend({
+//  type: z.literal(deviceTypeSchema.enum.COFFEE_MACHINE),
+//  on: z.boolean(),
+//  waterLevel: z.number().min(0).max(100),
+//  beansLevel: z.number().min(0).max(100),
+//  lastMaintenance: z.string().datetime(),
+//});
 
 export const deviceSchema = z.union([
   onOffBulbSchema,
@@ -123,13 +123,13 @@ export const deviceSchema = z.union([
   limitedColorBulbSchema,
   curtainSchema,
   acSchema,
-  garageDoorSchema,
-  solarPanelSchema,
+  //garageDoorSchema,
+  //solarPanelSchema,
   thermometerSchema,
   humiditySchema,
   powerMeterSchema,
   tempColorBulbSchema,
-  coffeeMachineSchema,
+  //coffeeMachineSchema,
 ]);
 
 // Types
@@ -144,13 +144,13 @@ export const deviceSchemaMap: Record<DeviceType, ZodObject<any>> = {
   [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: limitedColorBulbSchema,
   [deviceTypeSchema.enum.CURTAIN]: curtainSchema, // Using onOffBulbSchema as base, might need curtainSchema
   [deviceTypeSchema.enum.AC]: acSchema, // Using onOffBulbSchema as base, might need acSchema
-  [deviceTypeSchema.enum.GARAGE_DOOR]: garageDoorSchema, // Using onOffBulbSchema as base, might need garageDoorSchema
-  [deviceTypeSchema.enum.SOLAR_PANEL]: solarPanelSchema, // Using onOffBulbSchema as base, might need solarPanelSchema
+  //[deviceTypeSchema.enum.GARAGE_DOOR]: garageDoorSchema, // Using onOffBulbSchema as base, might need garageDoorSchema
+  //[deviceTypeSchema.enum.SOLAR_PANEL]: solarPanelSchema, // Using onOffBulbSchema as base, might need solarPanelSchema
   [deviceTypeSchema.enum.THERMOMETER]: thermometerSchema, // Using onOffBulbSchema as base, might need thermometerSchema
   [deviceTypeSchema.enum.HUMIDITY_SENSOR]: humiditySchema, // Using onOffBulbSchema as base, might need humiditySchema
   [deviceTypeSchema.enum.POWER_METER]: powerMeterSchema, // Using onOffBulbSchema as base, might need powerMeterSchema
   [deviceTypeSchema.enum.BULB_TEMP_COLOR]: tempColorBulbSchema, // Using limitedColorBulbSchema as it's most similar
-  [deviceTypeSchema.enum.COFFEE_MACHINE]: coffeeMachineSchema, // Using onOffBulbSchema as base, might need coffeeMachineSchema
+  //[deviceTypeSchema.enum.COFFEE_MACHINE]: coffeeMachineSchema, // Using onOffBulbSchema as base, might need coffeeMachineSchema
 };
 
 // Specific device types
@@ -162,8 +162,8 @@ export type LimitedColorBrightnessBulb = z.infer<
 export type LimitedColorBulb = z.infer<typeof limitedColorBulbSchema>;
 export type Curtain = z.infer<typeof curtainSchema>;
 export type AC = z.infer<typeof acSchema>;
-export type GarageDoor = z.infer<typeof garageDoorSchema>;
-export type SolarPanel = z.infer<typeof solarPanelSchema>;
+//export type GarageDoor = z.infer<typeof garageDoorSchema>;
+//export type SolarPanel = z.infer<typeof solarPanelSchema>;
 export type Thermometer = z.infer<typeof thermometerSchema>;
 export type HumiditySensor = z.infer<typeof humiditySchema>;
 export type PowerMeter = z.infer<typeof powerMeterSchema>;
@@ -176,13 +176,13 @@ export const readOnlyFields: Record<DeviceType, string[]> = {
   BULB_LIMITED_COLOR: [],
   CURTAIN: [],
   AC: [],
-  GARAGE_DOOR: [],
-  SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
+  //GARAGE_DOOR: [],
+  //SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
   THERMOMETER: ['temperature', 'lastUpdated'],
   HUMIDITY_SENSOR: ['humidity', 'lastUpdated'],
   POWER_METER: ['currentConsumption', 'totalConsumption', 'lastUpdated'],
   BULB_TEMP_COLOR: ['rgb'], // RGB values are determined by temperature
-  COFFEE_MACHINE: ['waterLevel', 'beansLevel', 'lastMaintenance'], // these are sensor readings
+  //COFFEE_MACHINE: ['waterLevel', 'beansLevel', 'lastMaintenance'], // these are sensor readings
 };
 
 // Default states for device creation
@@ -210,14 +210,14 @@ export const defaultStates: Record<DeviceType, any> = {
   },
   CURTAIN: { connected: true, pairedApiKeys: [] },
   AC: { connected: true, pairedApiKeys: [] },
-  GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
-  SOLAR_PANEL: {
-    connected: true,
-    pairedApiKeys: [],
-    currentPowerOutput: 0,
-    totalDailyOutput: 0,
-    isExportingToGrid: false,
-  },
+  //GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
+  //SOLAR_PANEL: {
+  //  connected: true,
+  //  pairedApiKeys: [],
+  //  currentPowerOutput: 0,
+  //  totalDailyOutput: 0,
+  //  isExportingToGrid: false,
+  //},
   THERMOMETER: {
     connected: true,
     pairedApiKeys: [],
@@ -244,14 +244,14 @@ export const defaultStates: Record<DeviceType, any> = {
     connected: true,
     pairedApiKeys: [],
   },
-  COFFEE_MACHINE: {
-    on: false,
-    waterLevel: 100,
-    beansLevel: 100,
-    lastMaintenance: new Date().toISOString(),
-    connected: true,
-    pairedApiKeys: [],
-  },
+  //COFFEE_MACHINE: {
+  //  on: false,
+  //  waterLevel: 100,
+  //  beansLevel: 100,
+  //  lastMaintenance: new Date().toISOString(),
+  //  connected: true,
+  //  pairedApiKeys: [],
+  //},
 };
 
 // Type guards
@@ -271,7 +271,7 @@ export const isCurtain = (device: Device): device is Curtain =>
   device.type === deviceTypeSchema.enum.CURTAIN;
 export const isAC = (device: Device): device is AC =>
   device.type === deviceTypeSchema.enum.AC;
-export const isGarageDoor = (device: Device): device is GarageDoor =>
-  device.type === deviceTypeSchema.enum.GARAGE_DOOR;
-export const isSolarPanel = (device: Device): device is SolarPanel =>
-  device.type === deviceTypeSchema.enum.SOLAR_PANEL;
+//export const isGarageDoor = (device: Device): device is GarageDoor =>
+//  device.type === deviceTypeSchema.enum.GARAGE_DOOR;
+//export const isSolarPanel = (device: Device): device is SolarPanel =>
+//  device.type === deviceTypeSchema.enum.SOLAR_PANEL;

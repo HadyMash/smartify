@@ -2,8 +2,6 @@ import { Router, Request, Response } from 'express';
 import { validateApiKey, validateDevicePairing } from '../middleware/api-key';
 import { DBService } from '../services/db-service';
 import { DeviceType, deviceTypeSchema } from '../schemas/device';
-import { ActionCapability } from '../schemas/capabilities';
-import { ActionManager } from '../services/action-manager';
 
 // Define read-only fields mapping
 const deviceReadOnlyFields: Record<DeviceType, string[]> = {
@@ -13,12 +11,12 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
   [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
   [deviceTypeSchema.enum.CURTAIN]: [],
   [deviceTypeSchema.enum.AC]: [],
-  [deviceTypeSchema.enum.GARAGE_DOOR]: [],
-  [deviceTypeSchema.enum.SOLAR_PANEL]: [
-    'currentPowerOutput',
-    'totalDailyOutput',
-    'isExportingToGrid',
-  ],
+  //[deviceTypeSchema.enum.GARAGE_DOOR]: [],
+  //[deviceTypeSchema.enum.SOLAR_PANEL]: [
+  //  'currentPowerOutput',
+  //  'totalDailyOutput',
+  //  'isExportingToGrid',
+  //],
   [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
   [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
   [deviceTypeSchema.enum.POWER_METER]: [
@@ -27,11 +25,11 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
     'lastUpdated',
   ],
   [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
-  [deviceTypeSchema.enum.COFFEE_MACHINE]: [
-    'waterLevel',
-    'beansLevel',
-    'lastMaintenance',
-  ], // these are sensor readings
+  //[deviceTypeSchema.enum.COFFEE_MACHINE]: [
+  //  'waterLevel',
+  //  'beansLevel',
+  //  'lastMaintenance',
+  //], // these are sensor readings
 };
 
 export const externalAPIRouter = Router();
@@ -163,77 +161,77 @@ externalAPIRouter.get(
   },
 );
 
-// Execute device action
-externalAPIRouter.post(
-  '/devices/:deviceId/actions/:actionName',
-  validateDevicePairing,
-  async (req: Request, res: Response) => {
-    try {
-      const dbService = new DBService();
-      const device = await dbService.getDevice(req.params.deviceId);
+//// Execute device action
+//externalAPIRouter.post(
+//  '/devices/:deviceId/actions/:actionName',
+//  validateDevicePairing,
+//  async (req: Request, res: Response) => {
+//    try {
+//      const dbService = new DBService();
+//      const device = await dbService.getDevice(req.params.deviceId);
+//
+//      if (!device) {
+//        res.status(404).json({ error: 'Device not found' });
+//        return;
+//      }
+//
+//      // Check if device has the specified action capability
+//      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
+//        req.params.deviceId,
+//      );
+//      const actionCapability = deviceWithCaps?.capabilities.find(
+//        (cap) =>
+//          cap.type === 'ACTION' &&
+//          (cap as ActionCapability).name === req.params.actionName,
+//      ) as ActionCapability;
+//
+//      const actionManager = ActionManager.getInstance();
+//      const { actionId, action } = await actionManager.startAction(
+//        req.params.deviceId,
+//        req.params.actionName,
+//        actionCapability.duration,
+//        actionCapability.hooks,
+//      );
+//
+//      res.status(202).json({
+//        actionId,
+//        status: action.status,
+//        startedAt: action.startedAt,
+//      });
+//    } catch (e) {
+//      console.error(e);
+//      res.status(500).json({ error: 'Internal server error' });
+//    }
+//  },
+//);
 
-      if (!device) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-
-      // Check if device has the specified action capability
-      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
-        req.params.deviceId,
-      );
-      const actionCapability = deviceWithCaps?.capabilities.find(
-        (cap) =>
-          cap.type === 'ACTION' &&
-          (cap as ActionCapability).name === req.params.actionName,
-      ) as ActionCapability;
-
-      const actionManager = ActionManager.getInstance();
-      const { actionId, action } = await actionManager.startAction(
-        req.params.deviceId,
-        req.params.actionName,
-        actionCapability.duration,
-        actionCapability.hooks,
-      );
-
-      res.status(202).json({
-        actionId,
-        status: action.status,
-        startedAt: action.startedAt,
-      });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
-
-// Get device action status
-externalAPIRouter.get(
-  '/devices/:deviceId/actions/:actionId',
-  validateDevicePairing,
-  async (req: Request, res: Response) => {
-    try {
-      const dbService = new DBService();
-      const device = await dbService.getDevice(req.params.deviceId);
-
-      if (!device) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-
-      const action = device.activeActions[req.params.actionId];
-      if (!action) {
-        res.status(404).json({ error: 'Action not found' });
-        return;
-      }
-
-      res.json(action);
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
+//// Get device action status
+//externalAPIRouter.get(
+//  '/devices/:deviceId/actions/:actionId',
+//  validateDevicePairing,
+//  async (req: Request, res: Response) => {
+//    try {
+//      const dbService = new DBService();
+//      const device = await dbService.getDevice(req.params.deviceId);
+//
+//      if (!device) {
+//        res.status(404).json({ error: 'Device not found' });
+//        return;
+//      }
+//
+//      const action = device.activeActions[req.params.actionId];
+//      if (!action) {
+//        res.status(404).json({ error: 'Action not found' });
+//        return;
+//      }
+//
+//      res.json(action);
+//    } catch (e) {
+//      console.error(e);
+//      res.status(500).json({ error: 'Internal server error' });
+//    }
+//  },
+//);
 
 // Update device state
 externalAPIRouter.patch(

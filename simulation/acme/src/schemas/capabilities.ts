@@ -25,7 +25,7 @@ export const capabilityTypeSchema = z.enum([
   'BRIGHTNESS', // Can set brightness level
   'RGB_COLOR', // Can set RGB color
   'LIMITED_COLOR', // Can set predefined colors only
-  'ACTION', // Supports custom actions
+  //'ACTION', // Supports custom actions
 ]);
 
 export type CapabilityType = z.infer<typeof capabilityTypeSchema>;
@@ -79,17 +79,17 @@ export const actionConfigSchema = z.object({
   parameters: z.record(z.any()).optional(),
 });
 
-export const actionCapabilitySchema = baseCapabilitySchema.extend({
-  type: z.literal(capabilityTypeSchema.enum.ACTION),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  defaultDuration: z.number().min(0), // Default duration in milliseconds
-  minDuration: z.number().min(0).optional(), // Minimum allowed duration
-  maxDuration: z.number().optional(), // Maximum allowed duration
-  parameters: z.record(z.any()).optional(), // Custom parameters schema
-  locks: actionLockSchema.optional(), // Properties this action locks
-  hooks: actionHookSchema.optional(),
-});
+//export const actionCapabilitySchema = baseCapabilitySchema.extend({
+//  type: z.literal(capabilityTypeSchema.enum.ACTION),
+//  name: z.string().min(1),
+//  description: z.string().optional(),
+//  defaultDuration: z.number().min(0), // Default duration in milliseconds
+//  minDuration: z.number().min(0).optional(), // Minimum allowed duration
+//  maxDuration: z.number().optional(), // Maximum allowed duration
+//  parameters: z.record(z.any()).optional(), // Custom parameters schema
+//  locks: actionLockSchema.optional(), // Properties this action locks
+//  hooks: actionHookSchema.optional(),
+//});
 
 export const powerCapabilitySchema = baseCapabilitySchema.extend({
   type: z.literal(capabilityTypeSchema.enum.POWER),
@@ -121,7 +121,7 @@ export const deviceCapabilitySchema = z.discriminatedUnion('type', [
   brightnessCapabilitySchema,
   rgbColorCapabilitySchema,
   limitedColorCapabilitySchema,
-  actionCapabilitySchema,
+  //actionCapabilitySchema,
 ]);
 
 export type BaseCapability = z.infer<typeof baseCapabilitySchema>;
@@ -132,7 +132,7 @@ export type LimitedColorCapability = z.infer<
   typeof limitedColorCapabilitySchema
 >;
 export type DeviceCapability = z.infer<typeof deviceCapabilitySchema>;
-export type ActionCapability = z.infer<typeof actionCapabilitySchema>;
+//export type ActionCapability = z.infer<typeof actionCapabilitySchema>;
 
 // Map device types to their capabilities
 export const deviceCapabilityMap: Record<
@@ -168,44 +168,44 @@ export const deviceCapabilityMap: Record<
     { type: capabilityTypeSchema.enum.POWER }, // For on/off
     { type: capabilityTypeSchema.enum.BRIGHTNESS, minValue: 16, maxValue: 30 }, // For temperature control
   ],
-  GARAGE_DOOR: [
-    { type: capabilityTypeSchema.enum.POWER }, // For open/close functionality
-    {
-      type: capabilityTypeSchema.enum.ACTION,
-      name: 'close',
-      description: 'Close the garage door',
-      duration: 15000, // 15 seconds
-      hooks: {
-        onStart: async () => {
-          console.log('Starting garage door close');
-        },
-        onComplete: async () => {
-          console.log('Garage door closed');
-        },
-        onFail: async () => {
-          console.log('Garage door close failed');
-        },
-      },
-    },
-    {
-      type: capabilityTypeSchema.enum.ACTION,
-      name: 'open',
-      description: 'Open the garage door',
-      duration: 15000, // 15 seconds
-      hooks: {
-        onStart: async () => {
-          console.log('Starting garage door open');
-        },
-        onComplete: async () => {
-          console.log('Garage door opened');
-        },
-        onFail: async () => {
-          console.log('Garage door open failed');
-        },
-      },
-    },
-  ],
-  SOLAR_PANEL: [{ type: capabilityTypeSchema.enum.POWER, isReadOnly: true }],
+  //GARAGE_DOOR: [
+  //  { type: capabilityTypeSchema.enum.POWER }, // For open/close functionality
+  //  {
+  //    type: capabilityTypeSchema.enum.ACTION,
+  //    name: 'close',
+  //    description: 'Close the garage door',
+  //    duration: 15000, // 15 seconds
+  //    hooks: {
+  //      onStart: async () => {
+  //        console.log('Starting garage door close');
+  //      },
+  //      onComplete: async () => {
+  //        console.log('Garage door closed');
+  //      },
+  //      onFail: async () => {
+  //        console.log('Garage door close failed');
+  //      },
+  //    },
+  //  },
+  //  {
+  //    type: capabilityTypeSchema.enum.ACTION,
+  //    name: 'open',
+  //    description: 'Open the garage door',
+  //    duration: 15000, // 15 seconds
+  //    hooks: {
+  //      onStart: async () => {
+  //        console.log('Starting garage door open');
+  //      },
+  //      onComplete: async () => {
+  //        console.log('Garage door opened');
+  //      },
+  //      onFail: async () => {
+  //        console.log('Garage door open failed');
+  //      },
+  //    },
+  //  },
+  //],
+  //SOLAR_PANEL: [{ type: capabilityTypeSchema.enum.POWER, isReadOnly: true }],
   THERMOMETER: [], // Pure sensor, no controllable capabilities
   HUMIDITY_SENSOR: [], // Pure sensor, no controllable capabilities
   POWER_METER: [], // Pure sensor, no controllable capabilities
@@ -217,41 +217,41 @@ export const deviceCapabilityMap: Record<
       isReadOnly: true,
     },
   ],
-  COFFEE_MACHINE: [
-    { type: capabilityTypeSchema.enum.POWER },
-    {
-      type: capabilityTypeSchema.enum.ACTION,
-      name: 'brew',
-      description: 'Brew a cup of coffee',
-      duration: 180000, // 3 minutes
-      hooks: {
-        onStart: async () => {
-          console.log('Starting coffee brew');
-        },
-        onComplete: async () => {
-          console.log('Coffee ready');
-        },
-        onFail: async () => {
-          console.log('Brew failed');
-        },
-      },
-    },
-    {
-      type: capabilityTypeSchema.enum.ACTION,
-      name: 'clean',
-      description: 'Run cleaning cycle',
-      duration: 300000, // 5 minutes
-      hooks: {
-        onStart: async () => {
-          console.log('Starting cleaning cycle');
-        },
-        onComplete: async () => {
-          console.log('Cleaning complete');
-        },
-        onFail: async () => {
-          console.log('Cleaning failed');
-        },
-      },
-    },
-  ],
+  //COFFEE_MACHINE: [
+  //  { type: capabilityTypeSchema.enum.POWER },
+  //  {
+  //    type: capabilityTypeSchema.enum.ACTION,
+  //    name: 'brew',
+  //    description: 'Brew a cup of coffee',
+  //    duration: 180000, // 3 minutes
+  //    hooks: {
+  //      onStart: async () => {
+  //        console.log('Starting coffee brew');
+  //      },
+  //      onComplete: async () => {
+  //        console.log('Coffee ready');
+  //      },
+  //      onFail: async () => {
+  //        console.log('Brew failed');
+  //      },
+  //    },
+  //  },
+  //  {
+  //    type: capabilityTypeSchema.enum.ACTION,
+  //    name: 'clean',
+  //    description: 'Run cleaning cycle',
+  //    duration: 300000, // 5 minutes
+  //    hooks: {
+  //      onStart: async () => {
+  //        console.log('Starting cleaning cycle');
+  //      },
+  //      onComplete: async () => {
+  //        console.log('Cleaning complete');
+  //      },
+  //      onFail: async () => {
+  //        console.log('Cleaning failed');
+  //      },
+  //    },
+  //  },
+  //],
 };

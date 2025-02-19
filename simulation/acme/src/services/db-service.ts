@@ -8,12 +8,6 @@ import {
   deviceTypeSchema,
   Curtain,
   AC,
-  GarageDoor,
-  SolarPanel,
-  isOnOffBulb,
-  isRGBBulb,
-  isLimitedColorBulb,
-  isLimitedColorBrightnessBulb,
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
 import { APIKey } from '../schemas/api-key';
@@ -107,10 +101,10 @@ export class DBService {
             return baseDevice as Curtain;
           case deviceTypeSchema.enum.AC:
             return baseDevice as AC;
-          case deviceTypeSchema.enum.GARAGE_DOOR:
-            return baseDevice as GarageDoor;
-          case deviceTypeSchema.enum.SOLAR_PANEL:
-            return baseDevice as SolarPanel;
+          //case deviceTypeSchema.enum.GARAGE_DOOR:
+          //  return baseDevice as GarageDoor;
+          //case deviceTypeSchema.enum.SOLAR_PANEL:
+          //  return baseDevice as SolarPanel;
           default:
             throw new Error('Invalid device type');
         }

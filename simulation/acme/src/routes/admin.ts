@@ -1,7 +1,7 @@
 import { Request, Response, Router } from 'express';
 import util from 'util';
 import { DBService } from '../services/db-service';
-import { ActionCapability, DeviceAction } from '../schemas/capabilities';
+import { DeviceAction } from '../schemas/capabilities';
 import {
   defaultStates,
   Device,
@@ -25,12 +25,12 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
   [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
   [deviceTypeSchema.enum.CURTAIN]: [],
   [deviceTypeSchema.enum.AC]: [],
-  [deviceTypeSchema.enum.GARAGE_DOOR]: [],
-  [deviceTypeSchema.enum.SOLAR_PANEL]: [
-    'currentPowerOutput',
-    'totalDailyOutput',
-    'isExportingToGrid',
-  ],
+  //[deviceTypeSchema.enum.GARAGE_DOOR]: [],
+  //[deviceTypeSchema.enum.SOLAR_PANEL]: [
+  //  'currentPowerOutput',
+  //  'totalDailyOutput',
+  //  'isExportingToGrid',
+  //],
   [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
   [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
   [deviceTypeSchema.enum.POWER_METER]: [
@@ -39,11 +39,11 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
     'lastUpdated',
   ],
   [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
-  [deviceTypeSchema.enum.COFFEE_MACHINE]: [
-    'waterLevel',
-    'beansLevel',
-    'lastMaintenance',
-  ], // these are sensor readings
+  //[deviceTypeSchema.enum.COFFEE_MACHINE]: [
+  //  'waterLevel',
+  //  'beansLevel',
+  //  'lastMaintenance',
+  //], // these are sensor readings
 };
 
 export const adminRouter = Router();
@@ -169,71 +169,71 @@ adminRouter.delete('/devices/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Execute device action
-adminRouter.post(
-  '/devices/:id/actions/:actionName',
-  async (req: Request, res: Response) => {
-    try {
-      const dbService = new DBService();
-      const device = await dbService.getDevice(req.params.id);
-
-      if (!device) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-
-      // Check if device has the specified action capability
-      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
-        req.params.id,
-      );
-      const actionCapability = deviceWithCaps?.capabilities.find(
-        (cap) =>
-          cap.type === 'ACTION' &&
-          (cap as ActionCapability).name === req.params.actionName,
-      );
-
-      if (!actionCapability) {
-        res.status(400).json({
-          error: 'Action not supported by device',
-          actionName: req.params.actionName,
-        });
-        return;
-      }
-
-      // Generate unique action ID
-      const actionId = `${req.params.actionName}-${Date.now()}`;
-
-      // Create action entry
-      const actionEntry: DeviceAction = {
-        name: req.params.actionName,
-        status: 'PENDING',
-        startedAt: new Date().toISOString(),
-      };
-
-      // Update device with new action
-      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
-        activeActions: {
-          ...device.activeActions,
-          [actionId]: actionEntry,
-        },
-      });
-
-      if (!updatedDevice) {
-        res.status(500).json({ error: 'Failed to initiate action' });
-        return;
-      }
-
-      res.status(202).json({
-        actionId,
-        status: actionEntry.status,
-        startedAt: actionEntry.startedAt,
-      });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
+//// Execute device action
+//adminRouter.post(
+//  '/devices/:id/actions/:actionName',
+//  async (req: Request, res: Response) => {
+//    try {
+//      const dbService = new DBService();
+//      const device = await dbService.getDevice(req.params.id);
+//
+//      if (!device) {
+//        res.status(404).json({ error: 'Device not found' });
+//        return;
+//      }
+//
+//      // Check if device has the specified action capability
+//      const deviceWithCaps = await dbService.getDeviceWithCapabilities(
+//        req.params.id,
+//      );
+//      const actionCapability = deviceWithCaps?.capabilities.find(
+//        (cap) =>
+//          cap.type === 'ACTION' &&
+//          (cap as ActionCapability).name === req.params.actionName,
+//      );
+//
+//      if (!actionCapability) {
+//        res.status(400).json({
+//          error: 'Action not supported by device',
+//          actionName: req.params.actionName,
+//        });
+//        return;
+//      }
+//
+//      // Generate unique action ID
+//      const actionId = `${req.params.actionName}-${Date.now()}`;
+//
+//      // Create action entry
+//      const actionEntry: DeviceAction = {
+//        name: req.params.actionName,
+//        status: 'PENDING',
+//        startedAt: new Date().toISOString(),
+//      };
+//
+//      // Update device with new action
+//      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
+//        activeActions: {
+//          ...device.activeActions,
+//          [actionId]: actionEntry,
+//        },
+//      });
+//
+//      if (!updatedDevice) {
+//        res.status(500).json({ error: 'Failed to initiate action' });
+//        return;
+//      }
+//
+//      res.status(202).json({
+//        actionId,
+//        status: actionEntry.status,
+//        startedAt: actionEntry.startedAt,
+//      });
+//    } catch (e) {
+//      console.error(e);
+//      res.status(500).json({ error: 'Internal server error' });
+//    }
+//  },
+//);
 
 // Update device action status
 adminRouter.patch(
