@@ -71,12 +71,15 @@ export const memberSchema = z
   })
   .refine(
     ({ role, permissions }) => {
-      return role === memberRoleSchema.enum.dweller && !!permissions;
+      if (role === 'dweller') {
+        return !!permissions;
+      }
+      return true;
     },
-    () => ({
+    {
       path: ['permissions'],
       message: 'Permissions are required for dwellers',
-    }),
+    },
   );
 
 export type Member = z.infer<typeof memberSchema>;
