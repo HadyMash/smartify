@@ -12,3 +12,4 @@ type AnalysisResult struct {
     MinEnergy       float64 `json:"min_energy"`
     StdDeviation    float64 `json:"std_deviation"`
 }
+//
