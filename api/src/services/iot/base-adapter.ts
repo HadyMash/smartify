@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Device,
-  //DeviceCapability,
-  //DeviceWithPartialState,
+  DeviceCapability,
+  DeviceWithPartialState,
   DeviceWithState,
 } from '../../schemas/devices';
 
@@ -29,21 +30,35 @@ export abstract class BaseIotAdapter {
     return BaseIotAdapter.isHealthCheck(this);
   }
 
-  //public abstract mapCapabliity(capability: unknown): DeviceCapability;
-  //
-  //public abstract mapCapabliities(capabilities: unknown[]): DeviceCapability[];
-  //
-  //public abstract mapDevice(device: unknown): Device;
-  //
-  //public abstract mapDevices(devices: unknown[]): Device[];
-  //
-  //public abstract mapDeviceWithState(device: unknown): DeviceWithState;
-  //
-  //public abstract mapDevicesWithState(devices: unknown[]): DeviceWithState[];
-  //
-  //public abstract mapDeviceWithPartialState(device: unknown): DeviceWithPartialState;
-  //
-  //public abstract mapDevicesWithPartialState(devices: unknown[]): DeviceWithPartialState[];
+  /**
+   * Maps a capability from the IoT platform to our internal representation.
+   * @param capability - The capability object from the IoT platform
+   * @returns The internal representation of the capability
+   */
+  public abstract mapCapability(capability: any): DeviceCapability | undefined;
+
+  /**
+   * Maps a device from the IoT platform to our internal device representation.
+   * @param device - The device object from the IoT platform
+   * @returns The internal representation of the device
+   */
+  public abstract mapDevice(device: any): Device | undefined;
+
+  /**
+   * Maps a device and its current state from the IoT platform to our internal representation.
+   * @param device - The device object with state from the IoT platform
+   * @returns The internal representation of the device with its full state
+   */
+  public abstract mapDeviceWithState(device: any): DeviceWithState | undefined;
+
+  /**
+   * Maps a device with partial state information from the IoT platform to our internal representation.
+   * @param device - The device object with partial state from the IoT platform
+   * @returns The internal representation of the device with its partial state
+   */
+  public abstract mapDeviceWithPartialState(
+    device: any,
+  ): DeviceWithPartialState | undefined;
 
   /**
    * Discover unpaired devices that are available for pairing.

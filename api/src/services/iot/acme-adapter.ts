@@ -8,7 +8,10 @@ import {
   Device,
   DeviceCapability,
   deviceCapabilitySchema,
+  deviceSchema,
   deviceSourceSchema,
+  DeviceWithPartialState,
+  deviceWithPartialStateSchema,
   DeviceWithState,
   deviceWithStateSchema,
   State,
@@ -43,9 +46,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     }
   }
 
-  private mapCapability(capability: any): DeviceCapability {
+  public mapCapability(capability: any): DeviceCapability | undefined {
     if (!capability?.type) {
-      throw new Error('Invalid capability type');
+      console.error('Invalid capability type');
+      return undefined;
     }
 
     switch ((capability.type as string).toLowerCase()) {
@@ -93,7 +97,92 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         return deviceCapabilitySchema.parse(mc);
       }
       default:
-        throw new Error('Unsupported capability type');
+        console.error('Invalid capability type');
+        return undefined;
+    }
+  }
+
+  private mapCapabilities(
+    capabilities: any[],
+  ): (DeviceCapability | undefined)[] {
+    return capabilities.map((c) => this.mapCapability(c));
+  }
+
+  public mapDevice(device: any): Device | undefined {
+    try {
+      const d: Device = {
+        id: device.id,
+        capabilities: device.capabilities.map((c: any) =>
+          this.mapCapability(c),
+        ),
+        source,
+      };
+      return deviceSchema.parse(d);
+    } catch (_) {
+      console.warn('Failed to map device:');
+      return undefined;
+    }
+  }
+
+  public mapDeviceWithState(device: any): DeviceWithState | undefined {
+    try {
+      const mappedCapabilites = this.mapCapabilities(device.capabilities);
+
+      if (mappedCapabilites.some((c) => c === undefined)) {
+        throw new Error('Failed to map capabilities');
+      }
+
+      const mappedState = this.mapState(
+        device,
+        mappedCapabilites as DeviceCapability[],
+      );
+
+      const mappedDevice: DeviceWithState = {
+        id: device.id,
+        source,
+        capabilities: device.capabilities.map((c: any) =>
+          this.mapCapability(c),
+        ),
+        state: mappedState,
+      };
+
+      // validate and return
+      return deviceWithStateSchema.parse(mappedDevice);
+    } catch (_) {
+      console.error('error mapping device with state');
+      return undefined;
+    }
+  }
+
+  public mapDeviceWithPartialState(
+    device: any,
+  ): DeviceWithPartialState | undefined {
+    try {
+      const mappedCapabilites = this.mapCapabilities(device.capabilities);
+
+      if (mappedCapabilites.some((c) => c === undefined)) {
+        throw new Error('Failed to map capabilities');
+      }
+
+      const mappedState = this.mapState(
+        device,
+        mappedCapabilites as DeviceCapability[],
+      );
+
+      const mappedDevice: DeviceWithPartialState = {
+        id: device.id,
+        source,
+        capabilities: device.capabilities.map((c: any) =>
+          this.mapCapability(c),
+        ),
+        state: mappedState,
+      };
+
+      // validate and return
+      return deviceWithPartialStateSchema.parse(mappedDevice);
+    } catch (_) {
+      console.error('error mapping device with state');
+      return undefined;
     }
   }
 
@@ -121,50 +210,24 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         throw new Error('Failed to discover devices');
       }
 
-      //console.log(
-      //  response.data
-      //    // TEMP
-      //    .filter((device: any) => device.type !== 'BULB_RGB_BRIGHTNESS')
-      //    .map((device: any): Device | undefined => {
-      //      try {
-      //        const mc: Device = {
-      //          id: device.id,
-      //          capabilities: device.capabilities.map((c: any) =>
-      //            this.mapCapability(c),
-      //          ),
-      //          source,
-      //        };
-      //        return mc;
-      //      } catch (_e) {
-      //        console.log(_e);
-      //        return undefined;
-      //      }
-      //    }),
-      //);
-
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return (
-        response.data
-          // TEMP
-          .filter((device: any) => device.type !== 'BULB_RGB_BRIGHTNESS')
-
-          .map((device: any): Device | undefined => {
-            try {
-              const mc: Device = {
-                id: device.id,
-                capabilities: device.capabilities.map((c: any) =>
-                  this.mapCapability(c),
-                ),
-                source,
-              };
-              return mc;
-            } catch (_) {
-              console.warn('Failed to map device:');
-              return undefined;
-            }
-          })
-          .filter((d: Device | undefined) => d !== undefined)
-      );
+      return response.data
+        .map((device: any): Device | undefined => {
+          try {
+            const mc: Device = {
+              id: device.id,
+              capabilities: device.capabilities.map((c: any) =>
+                this.mapCapability(c),
+              ),
+              source,
+            };
+            return mc;
+          } catch (_) {
+            console.warn('Failed to map device:');
+            return undefined;
+          }
+        })
+        .filter((d: Device | undefined) => d !== undefined);
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
