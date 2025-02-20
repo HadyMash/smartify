@@ -9,6 +9,10 @@ import {
   Curtain,
   AC,
   SolarPanel,
+  Thermometer,
+  HumiditySensor,
+  PowerMeter,
+  TempColorBulb,
 } from '../schemas/device';
 import { randomBytes, randomUUID } from 'crypto';
 import { APIKey, apiKeySchema } from '../schemas/api-key';
@@ -107,6 +111,14 @@ export class DBService {
           //  return baseDevice as GarageDoor;
           case deviceTypeSchema.enum.SOLAR_PANEL:
             return baseDevice as SolarPanel;
+          case deviceTypeSchema.enum.THERMOMETER:
+            return baseDevice as Thermometer;
+          case deviceTypeSchema.enum.HUMIDITY_SENSOR:
+            return baseDevice as HumiditySensor;
+          case deviceTypeSchema.enum.POWER_METER:
+            return baseDevice as PowerMeter;
+          case deviceTypeSchema.enum.BULB_TEMP_COLOR:
+            return baseDevice as TempColorBulb;
           default:
             throw new Error('Invalid device type');
         }

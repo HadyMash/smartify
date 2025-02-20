@@ -16,6 +16,11 @@ app.use('/', adminRouter);
 app.use('/api', externalAPIRouter);
 
 async function start() {
+  // Start the device simulator
+  const { DeviceSimulator } = require('./services/device-simulation');
+  const simulator = DeviceSimulator.getInstance();
+  await simulator.startSimulation();
+
   app.listen(port, () => {
     console.log(`Server running on port ${port}`);
   });

@@ -160,6 +160,7 @@ export type LimitedColorBrightnessBulb = z.infer<
   typeof limitedColorBrightnessBulbSchema
 >;
 export type LimitedColorBulb = z.infer<typeof limitedColorBulbSchema>;
+export type TempColorBulb = z.infer<typeof tempColorBulbSchema>;
 export type Curtain = z.infer<typeof curtainSchema>;
 export type AC = z.infer<typeof acSchema>;
 //export type GarageDoor = z.infer<typeof garageDoorSchema>;
@@ -267,6 +268,8 @@ export const isLimitedColorBulb = (
   device: Device,
 ): device is LimitedColorBulb =>
   device.type === deviceTypeSchema.enum.BULB_LIMITED_COLOR;
+export const isTempColorBulb = (device: Device): device is TempColorBulb =>
+  device.type === deviceTypeSchema.enum.BULB_TEMP_COLOR;
 export const isCurtain = (device: Device): device is Curtain =>
   device.type === deviceTypeSchema.enum.CURTAIN;
 export const isAC = (device: Device): device is AC =>
