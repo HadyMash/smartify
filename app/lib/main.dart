@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smartify/screens/household/configure_floors.dart';
 
 import 'services/mfa.dart';
 import 'widgets/mfa_code.dart';
@@ -39,7 +40,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MFATest(),
+      home: const ConfigureFloorsScreen(),
     );
   }
 }
