@@ -31,6 +31,7 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function test() {
   const adapter: BaseIotAdapter = new AcmeIoTAdapter();
 
@@ -84,5 +85,4 @@ async function test() {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-test();
+//test();
