@@ -1,6 +1,7 @@
 // import { Response } from 'express';
-// import { AuthenticatedRequest } from '../../schemas/auth';
+// import { AuthenticatedRequest } from '../../schemas/user';
 // import { MFAToken, mfaTokenSchema } from '../../schemas/mfa';
+// import { TokenService } from '../../services/auth/token';
 // import { DatabaseService } from '../../services/db/db';
 // import { MFAService } from '../../services/auth/mfa';
 
@@ -15,10 +16,10 @@
 //     }
 
 //     const db = new DatabaseService();
-//     const mfa = new MFAService(db);
+//     const mfa = new MFAService();
 
 //     try {
-//       const result = await mfa.initUserMFA(req.user.id);
+//       const result = await mfa.initUserMFA(req.user._id);
 //       console.log('MFA setup initiated');
 
 //       res.status(201).send(result);
@@ -44,11 +45,9 @@
 //     }
 //     let mfaToken: MFAToken;
 //     try {
-//       //const userToken = req.body.token;
-//       mfaToken = mfaTokenSchema.parse(req.body.token);
+//       mfaToken = mfaTokenSchema.parse(req.body);
 //     } catch (_) {
 //       console.log('Invalid token');
-
 //       res.status(400).send({
 //         error: 'Invalid token',
 //         message: 'Token must be a 6 digit number',
@@ -57,15 +56,21 @@
 //     }
 
 //     const db = new DatabaseService();
-//     const mfa = new MFAService(db);
+//     const mfa = new MFAService();
 
 //     try {
-//       const confirmed = await mfa.finishInitMFASetup(req.user.id, mfaToken);
+//       const confirmed = await mfa.finishInitMFASetup(req.user._id, mfaToken);
 //       if (confirmed) {
 //         console.log('MFA setup confirmed');
-
-//         res.status(200).send({
+//         const token = new TokenService();
+//         const deviceId = 'iphone';
+//         const allTokens = await token.generateAllTokens(req.user, deviceId);
+//         const { refreshToken, accessToken, idToken } = allTokens;
+//         res.status(200).json({
 //           message: 'MFA setup confirmed',
+//           refreshToken,
+//           accessToken,
+//           idToken,
 //         });
 //       } else {
 //         console.log('MFA setup not confirmed because code is incorrect');
@@ -98,7 +103,7 @@
 //     }
 //     let mfaToken: MFAToken;
 //     try {
-//       mfaToken = mfaTokenSchema.parse(req.body.token);
+//       mfaToken = mfaTokenSchema.parse(req.body);
 //     } catch (_) {
 //       console.log('Invalid token');
 
@@ -109,9 +114,9 @@
 //       return;
 //     }
 //     const db = new DatabaseService();
-//     const mfa = new MFAService(db);
+//     const mfa = new MFAService();
 //     try {
-//       const confirmed = await mfa.verifyMFA(req.user.id, mfaToken);
+//       const confirmed = await mfa.verifyMFA(req.user._id, mfaToken);
 
 //       // TODO: update this to be integrated with authentication instead of just
 //       // returning true/false
@@ -140,10 +145,18 @@
 //   }
 
 //   public static async testRoute(req: AuthenticatedRequest, res: Response) {
-//     const userId = req.params.id;
+//     if (!req.user) {
+//       console.log('Unauthorized');
+
+//       res
+//         .status(401)
+//         .send({ error: 'Unauthorized', message: 'User must be authenticated' });
+//       return;
+//     }
+//     const userId = req.user._id;
 
 //     const db = new DatabaseService();
-//     const mfa = new MFAService(db);
+//     const mfa = new MFAService();
 
 //     const result = await db.userRepository.getUserMFAformattedKey(
 //       userId.toString(),

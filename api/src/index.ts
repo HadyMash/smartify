@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { DatabaseService } from './services/db/db';
+import { requireAuth } from './middleware/auth';
 
 dotenv.config();
 
@@ -21,7 +22,6 @@ router.get('/health', (_, res) => {
 });
 
 router.use('/auth', authRouter);
-
 app.use('/api', router);
 
 app.listen(port, () => {

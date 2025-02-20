@@ -1,8 +1,24 @@
 import { ObjectId } from 'mongodb';
+import { Request } from 'express';
 import { z } from 'zod';
+
+export const authUserSchema = z.object({
+  _id: z.string(),
+  email: z.string().email(),
+});
+export type AuthUser = z.infer<typeof authUserSchema>;
+export interface AuthUserRequest extends Request {
+  user?: AuthUser;
+}
 
 export const requestUserSchema = z.object({
   // TODO: replace with srp
+  _id: z.preprocess(
+    (val) => (val === undefined ? new ObjectId().toString() : val),
+    z.string().refine((val) => ObjectId.isValid(val), {
+      message: 'Invalid ObjectID',
+    }),
+  ),
   email: z.string().email(),
   gender: z.string().optional(),
   dob: z.coerce.date().optional(),
@@ -12,7 +28,7 @@ export const requestUserSchema = z.object({
 export type RequestUser = z.infer<typeof requestUserSchema>;
 
 export interface AuthenticatedRequest extends Request {
-  user?: RequestUser | undefined;
+  user?: RequestUser;
 }
 
 export const userSchema = requestUserSchema.extend({
