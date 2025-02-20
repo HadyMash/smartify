@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import { MFAService } from './mfa';
 import { TokenService } from './token';
 import { ObjectId } from 'mongodb';
-//TODO: Add comments and documentation
 
 export class AuthService {
   protected readonly db: DatabaseService;
@@ -24,19 +23,19 @@ export class AuthService {
    * @returns A promise that resolves when the user is successfully registered.
    * @throws An error if the user already exists.
    */
-  public async register(
+  public async registerWithEmailandPassword(
     _id: string,
     email: string,
     password: string,
-    dob: Date | undefined,
-    gender: string | undefined,
+    dob?: Date,
+    gender?: string,
   ) {
-    const srp = new SRP();
     const foundUser = await this.db.userRepository.findUserByEmail(email);
     if (foundUser) {
       throw new Error('User already exists');
     }
 
+    const srp = new SRP();
     const { salt, modExp } = await srp.generateKey(password);
     const id = new ObjectId(_id);
 
@@ -51,18 +50,19 @@ export class AuthService {
 
     return;
   }
-  //TODO: Upon receiving the repsonse from the client we check the key and jwt token and then we send back the access and refresh token
+
   public async checkMFASetup(email: string) {
     const deviceId = 'iphone';
     const userId = await this.db.userRepository.getObjectIdByEmail(email);
 
     if (!userId) throw new Error('User not found');
+    const stringID = userId.toString();
     const mfa = new MFAService();
     const token = new TokenService();
     const { formattedKey } =
-      await this.db.userRepository.getUserMFAformattedKey(userId);
+      await this.db.userRepository.getUserMFAformattedKey(stringID);
 
-    const finishSetup = await mfa.finishInitMFASetup(userId, formattedKey);
+    const finishSetup = await mfa.finishInitMFASetup(stringID, formattedKey);
     if (!finishSetup) throw new Error('User did not setup MFA');
     return finishSetup;
   }
@@ -77,47 +77,26 @@ export class AuthService {
    * @throws An error if the a user isnt found in the database
    * @throws An error if the user is not found or if the proofs do not match.
    */
-  public async login(email: string, password: string) {
+  public async login(email: string, verifier: string) {
     const srp = new SRP();
     try {
       const user = await this.db.userRepository.findUserByEmail(email);
       if (!user) {
         throw new Error('User not found');
       }
-      const { salt, password } = user;
-      // console.log('this is is the email ' + email);
-      // console.log(
-      //   user +
-      //     '\n' +
-      //     'This is the password of the user:\n' +
-      //     password +
-      //     '\n' +
-      //     'This is the salt of the user:\n' +
-      //     salt,
-      // );
+      const { salt, verifier } = user;
 
       try {
-        // console.log('start of SRP');
         const { A, privateA } = await srp.generateA();
-        // console.log(
-        //   'This is A:\n' + A + '\n' + 'This is private A:\n' + privateA,
-        // );
+
         const { B, privateB } = await srp.generateB(email);
 
-        // console.log(
-        //   'This is B:\n' + B + '\n ' + ' This is private B:\n' + privateB,
-        // );
         const sP = await srp.scrambleParam(A, B);
-        // console.log('This is scrambling parameter:\n', sP);
         const serverSessionKey = await srp.serverSessionKeyGenerator(
           BigInt('0x' + A),
-          password,
+          verifier,
           sP,
           privateB,
-        );
-        console.log(
-          'This is server session key:\n',
-          serverSessionKey.toString(),
         );
         // const clientSessionKey = await srp.clientSessionKeyGenerator(
         //   email,
@@ -142,12 +121,11 @@ export class AuthService {
         const serverProof = await srp.proofServer(A, B, serverK);
         //console.log('This is server proof:\n', serverProof);
         if (clientProof === serverProof) {
-          console.log('Proofs match');
         }
         if (clientProof !== serverProof) {
           throw new Error('Proofs do not match');
         }
-        return 'User is successfully logged in!';
+        return;
       } catch (_) {
         console.error('Error logging in: Passwords do not match');
         throw new Error('Invalid password. Please try again');
@@ -168,8 +146,8 @@ export class AuthService {
    */
   public async changePassword(
     email: string,
-    oldpassword: string,
-    newPassword: string,
+    oldVerifier: string,
+    newVerifier: string,
   ): Promise<boolean> {
     console.log('start of change password');
     const user = await this.db.userRepository.findUserByEmail(email);
@@ -177,19 +155,19 @@ export class AuthService {
       throw new Error('User not found');
     }
 
-    const { password, salt: oldSalt } = user;
-    if (!password) {
+    const { verifier, salt: oldSalt } = user;
+    if (!verifier) {
       console.log('No password');
     }
-    const sPassword = password.toString();
+    const sPassword = verifier.toString();
     console.log('This is the current password' + sPassword);
     if (!sPassword) {
       throw new Error('Password not found');
     }
     const srp = new SRP();
-    const newPasswordKey = await srp.generateKey(newPassword, oldSalt);
+    const newPasswordKey = await srp.generateKey(newVerifier, oldSalt);
     console.log('This is the new password:' + newPasswordKey.modExp);
-    if (newPasswordKey.modExp === password) {
+    if (newPasswordKey.modExp === verifier) {
       console.log('New password cannot be the same as the old password');
       throw new Error('New password cannot be the same as the old password');
     }
@@ -213,10 +191,14 @@ export class AuthService {
       console.error('Error changing password', e);
       return false;
     }
-    const { salt, modExp } = await srp.generateKey(newPassword);
+    const { salt, modExp } = await srp.generateKey(newVerifier);
+    const id = await this.db.userRepository.getObjectIdByEmail(email);
+    if (!id) {
+      throw new Error('User not found');
+    }
 
     const change = await this.db.userRepository.changePassword(
-      email,
+      id,
       salt,
       modExp,
     );
@@ -232,15 +214,18 @@ export class AuthService {
    * @throws If deletion of the user fails.
    *
    */
-  public async deleteAccount(email: string): Promise<boolean> {
+  public async deleteAccount(_id: string): Promise<boolean> {
     try {
-      const user = await this.db.userRepository.findUserByEmail(email);
-      console.log(user);
-      if (!user) {
+      if (!_id) {
+        throw new Error('Invalid user id');
+      }
+
+      const userId = await this.db.userRepository.getUserById(_id);
+      if (!userId) {
         throw new Error('User not found');
       }
       try {
-        await this.db.userRepository.deleteUser(email);
+        await this.db.userRepository.deleteUser(userId._id);
         return true;
       } catch (_) {
         throw new Error('Failed to delete user');
@@ -262,7 +247,7 @@ export class AuthService {
    * @throws If there is an issue generating the reset code.
    * @throws If a user was not found
    */
-  public async requestResetPassword(email: string): Promise<string> {
+  public async requestResetPassword(email: string) {
     const user = await this.db.userRepository.findUserByEmail(email);
     console.log(user);
     if (!user) {
@@ -276,7 +261,7 @@ export class AuthService {
           throw new Error('Failed to generate reset code');
         }
         const request = this.db.userRepository.requestReset(email, resetCode);
-        // const deleteCode = await this.db.userRepository.deleteCode(resetCode);
+
         return resetCode;
       } catch (e) {
         console.error('Error resetting password', e);
@@ -297,26 +282,31 @@ export class AuthService {
    * @throws Will throw an error if the user is not found or if the reset code is invalid.
    */
   public async resetPassword(
-    email: string,
+    _id: string,
     resetCode: string,
     newPassword: string,
   ) {
     try {
-      const user = await this.db.userRepository.findUserByEmail(email);
+      const user = await this.db.userRepository.getUserById(_id);
       if (!user) {
         throw new Error('User not found');
       }
       const checkCode = await this.db.userRepository.verifyResetCode(
-        email,
+        _id,
         resetCode,
       );
       if (checkCode !== 'Code verified') {
         throw new Error('Invalid code');
       }
+      const id = await this.db.userRepository.getUserById(_id);
+      if (!id) {
+        throw new Error('User not found');
+      }
+      const objId = new ObjectId(_id);
       const srp = new SRP();
       const { salt, modExp } = await srp.generateKey(newPassword);
       const change = await this.db.userRepository.changePassword(
-        email,
+        objId,
         salt,
         modExp,
       );
@@ -335,10 +325,15 @@ class SRP {
   protected readonly db: DatabaseService;
 
   constructor() {
-    this.N = BigInt(
-      '125617018995153554710546479714086468246499594858746646874671447258204721048803',
-    );
-    this.g = BigInt(2);
+    if (!process.env.N) {
+      throw new Error('Environment variable N not set');
+    }
+    if (!process.env.g) {
+      throw new Error('Environment variable g not set');
+    }
+
+    this.N = BigInt(process.env.N);
+    this.g = BigInt(process.env.g);
     this.db = new DatabaseService();
   }
   /**

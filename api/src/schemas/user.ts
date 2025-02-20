@@ -64,7 +64,7 @@ export const changePasswordSchema = z.object({
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 
 export const deleteAccountSchema = z.object({
-  email: z.string().email(),
+  _id: z.string(),
   password: z.string().min(8),
 });
 export type DeleteAccount = z.infer<typeof deleteAccountSchema>;

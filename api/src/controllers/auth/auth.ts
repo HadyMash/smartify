@@ -55,7 +55,7 @@ export class AuthController {
       }
       if (!data) {
         console.log('no user found');
-        res.status(401).json({ message: 'Unathorized' });
+        res.status(400).json({ message: 'No user found' });
         throw new Error('No user found');
       }
       const pass = data.password;
@@ -99,11 +99,8 @@ export class AuthController {
         res.status(400).json({ message: 'Error validating your password' });
         throw new Error('Error validating your password');
       }
-      console.log('creating as');
       const as = new AuthService();
-
-      console.log('calling the auth service');
-      const user = await as.register(
+      const user = await as.registerWithEmailandPassword(
         data._id,
         data.email,
         data.password,
@@ -477,10 +474,9 @@ export class AuthController {
     let data: DeleteAccount;
     try {
       data = deleteAccountSchema.parse(req.body);
-      console.log(data);
       try {
         const as = new AuthService();
-        const user = await as.deleteAccount(data.email);
+        const user = await as.deleteAccount(data._id);
         res.status(200).send('Account deleted successfully!');
       } catch (_) {
         res.status(500).send({

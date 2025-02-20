@@ -8,6 +8,9 @@ import { boolean } from 'zod';
 //TODO: Add comments and documentation
 const COLLECTION_NAME = 'users';
 
+/**
+ * UserRepository class provides methods to interact with the user collection in the database.
+ */
 export class UserRepository {
   private readonly collection: Collection;
   private readonly redis: RedisClientType;
@@ -17,7 +20,6 @@ export class UserRepository {
     this.redis = redis;
   }
 
-
   /**
    * Retrieves a user id from the database by id.
    *
@@ -26,12 +28,28 @@ export class UserRepository {
    * @throws Will throw an error if the provided userId is not a valid ObjectId.
    */
 
-  public async getUserById(userId: string) {
+  // public async getUserById(userId: string) {
+  //   assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
+
+  //   const doc = await this.collection.findOne({ _id: new ObjectId(userId) });
+
+  //   return doc;
+  // }
+  public async getUserById(userId: string): Promise<RequestUser | null> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
     const doc = await this.collection.findOne({ _id: new ObjectId(userId) });
 
-    return doc;
+    if (!doc) {
+      return null;
+    }
+
+    const parseResult = requestUserSchema.safeParse(doc);
+    if (!parseResult.success) {
+      throw new Error('Invalid user data in database');
+    }
+
+    return parseResult.data;
   }
 
   /**
@@ -43,7 +61,10 @@ export class UserRepository {
    */
   public async userExists(userId: string): Promise<boolean> {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-    const user = await this.collection.findOne({ _id: new ObjectId(userId) });
+    const user = await this.collection.findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { _id: 1 } },
+    );
     return !!user;
   }
 
@@ -74,9 +95,7 @@ export class UserRepository {
       dob: dob,
       gender: gender,
     });
-    console.log(newUser);
-    console.log(email);
-    return newUser.insertedId.toString();
+    return;
   }
   /**
    * Updates the user document in the database with the specified userId.
@@ -105,7 +124,7 @@ export class UserRepository {
     const user = await this.collection.findOne({ email: email });
     if (user) {
       console.log(`User found: ${JSON.stringify(user)}`);
-      return { email: user.email, password: user.password, salt: user.salt };
+      return { email: user.email, verifier: user.verifier, salt: user.salt };
     } else {
       console.log('User not found');
       return null;
@@ -118,7 +137,7 @@ export class UserRepository {
    * @returns A Promise that resolves to the ObjectId of the user as a string, or null if the user is not found.
    *          If an error occurs during the database operation, the Promise will resolve to null.
    */
-  public async getObjectIdByEmail(email: string): Promise<string | null> {
+  public async getObjectIdByEmail(email: string) {
     try {
       const user = await this.collection.findOne(
         { email: email }, // Match the email
@@ -126,7 +145,10 @@ export class UserRepository {
       );
 
       // Ensure user exists and return the ObjectId as a string
-      return user?._id ? user._id.toString() : null;
+      if (!user) {
+        return;
+      }
+      return user._id;
     } catch (error) {
       console.error('Error fetching ObjectId by email:', error);
       return null; // Handle any unexpected errors gracefully
@@ -140,13 +162,13 @@ export class UserRepository {
    * @param modExp - The new hashed password .
    * @returns The updated user document if the update was successful, otherwise `undefined`.
    */
-  public async changePassword(email: string, salt: string, modExp: string) {
-    if (email === null) {
+  public async changePassword(_id: ObjectId, salt: string, modExp: string) {
+    if (_id === null) {
       console.log('No user found');
       return undefined;
     }
     const update = await this.collection.updateOne(
-      { email: email, salt: salt, modExp: modExp },
+      { _id: _id, salt: salt, modExp: modExp },
       { $set: { verifier: modExp, salt: salt } },
     );
     if (!update) {
@@ -162,9 +184,9 @@ export class UserRepository {
    * @returns A boolean whether the deletion was successful
    */
 
-  public async deleteUser(email: string) {
-
-    const user = await this.collection.findOneAndDelete({ email: email });
+  public async deleteUser(userId: string) {
+    const id = new ObjectId(userId);
+    const user = await this.collection.findOneAndDelete({ _id: id });
     if (!user) {
       console.log('User not found');
       return;
@@ -219,21 +241,21 @@ export class UserRepository {
    * @param code - The code to be deleted.
    * @returns A promise that resolves to a boolean indicating whether the deletion was successful.
    */
-  public async deleteCode(code: string): Promise<boolean> {
+  public async deleteCode(code: string) {
     const codeInput = await this.collection.updateOne(
       { code: code },
       { $unset: { code: code } },
     );
-    if (codeInput.modifiedCount === 1) {
+    if (codeInput.modifiedCount !== 0) {
       console.log(`Parameter '${code}' deleted successfully`);
-      return true;
+      return codeInput.modifiedCount;
     } else {
       console.log(`Failed to delete parameter '${code}'`);
-      return false;
+      return codeInput.modifiedCount;
     }
   }
   /**
-   * Extracts the password hash from the database.
+   * Extracts the verifier from the database.
    *
    * @param email - The email address of the user.
    * @returns A password hash of the user.
