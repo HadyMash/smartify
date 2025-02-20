@@ -17,6 +17,7 @@ export class UserRepository {
     this.redis = redis;
   }
 
+
   /**
    * Retrieves a user id from the database by id.
    *
@@ -24,6 +25,7 @@ export class UserRepository {
    * @returns A promise that resolves to the user id  if found, or null if not found.
    * @throws Will throw an error if the provided userId is not a valid ObjectId.
    */
+
   public async getUserById(userId: string) {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
@@ -59,7 +61,7 @@ export class UserRepository {
   public async createUser(
     _id: ObjectId,
     email: string,
-    passwordHash: string,
+    verifier: string,
     salt: string,
     dob: Date | undefined,
     gender: string | undefined,
@@ -67,7 +69,7 @@ export class UserRepository {
     const newUser = await this.collection.insertOne({
       _id: _id,
       email: email,
-      password: passwordHash,
+      verifier: verifier,
       salt: salt,
       dob: dob,
       gender: gender,
@@ -100,7 +102,6 @@ export class UserRepository {
    * @returns An object containing the user's email, password, and salt if found, or null if not found.
    */
   public async findUserByEmail(email: string) {
-    console.log(`Searching for user with email: ${email}`);
     const user = await this.collection.findOne({ email: email });
     if (user) {
       console.log(`User found: ${JSON.stringify(user)}`);
@@ -145,22 +146,33 @@ export class UserRepository {
       return undefined;
     }
     const update = await this.collection.updateOne(
-      { email: email },
-      { $set: { password: modExp, salt: salt } },
+      { email: email, salt: salt, modExp: modExp },
+      { $set: { verifier: modExp, salt: salt } },
     );
-    const check = await this.collection.findOne({ email: email });
-
-    return check;
+    if (!update) {
+      return;
+    }
+    if (update.modifiedCount !== 0) return update.modifiedCount;
   }
+
   /**
    * Deletes a user from the collection based on the provided email.
    *
    * @param email - The email of the user to be deleted.
    * @returns A boolean whether the deletion was successful
    */
-  public async deleteUser(email: string): Promise<boolean> {
+
+  public async deleteUser(email: string) {
+
     const user = await this.collection.findOneAndDelete({ email: email });
-    return true;
+    if (!user) {
+      console.log('User not found');
+      return;
+    }
+    if (!user.value) {
+      return;
+    }
+    return user.value;
   }
   /**
    * Requests a password reset for the user with the given email.
