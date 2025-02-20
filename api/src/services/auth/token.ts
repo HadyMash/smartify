@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
 import {
   InvalidUserError,
@@ -84,10 +85,13 @@ export class TokenService {
   }
 
   private async encryptToken(token: string): Promise<string> {
+    const jwtEK = crypto.randomBytes(32);
+    const b64urlKey = jwtEK.toString('base64url');
+    //process.env.JWT_ENCRYPTION_KEY!
     const key = await importJWK(
       {
         kty: 'oct',
-        k: process.env.JWT_ENCRYPTION_KEY!,
+        k: b64urlKey,
       },
       'A256GCM',
     );

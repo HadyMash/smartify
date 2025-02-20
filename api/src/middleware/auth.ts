@@ -1,33 +1,100 @@
-import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest, requestUserSchema } from '../schemas/user';
+import { Request, Response, NextFunction } from 'express';
+import { TokenService } from '../services/auth/token';
+import {
+  AuthenticatedRequest,
+  requestUserSchema,
+  AuthUserRequest,
+} from '../schemas/user';
+import { RequestUser } from '../schemas/user';
 
-// TODO: implement requireAuth middleware
-export const requireAuth = (
-  req: AuthenticatedRequest,
+export const requireAuth = async (
+  req: AuthUserRequest,
   res: Response,
   next: NextFunction,
 ) => {
-  // TODO: check for cookies/auth header
-  const user = req.user;
+  //TODO:make the deviceid to be grebbed from the request
+  const deviceId = 'iphone';
 
-  if (!user) {
-    console.log('no user found');
-
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
-  }
-
-  const parseUserResult = requestUserSchema.safeParse(user);
-
-  if (!parseUserResult.success) {
-    console.log('invalid user found');
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    console.log('no auth header found');
 
     res.status(401).json({ message: 'Unauthorized' });
     return;
   }
+  if (!authHeader?.startsWith('Bearer')) {
+    console.log('no auth header found');
 
-  req.user = parseUserResult.data;
+    res.status(401).json({ message: 'Unauthorized' });
+  }
+  let token = authHeader.split(' ')[1];
+  const tokenService = new TokenService();
+  if (!token) {
+    const accessToken = req.cookies['access_token'];
+    if (accessToken) {
+      token = accessToken;
+    } else {
+      const refreshToken = req.cookies['refresh_token'];
+      if (refreshToken) {
+        try {
+          const { accessToken: newAccessToken } =
+            await tokenService.refreshTokens(refreshToken, deviceId);
+          res.cookie('access_token', newAccessToken);
+        } catch (e) {
+          console.log('Invalid refresh token');
+
+          res.status(401).json({ message: 'Unauthorized' });
+          return;
+        }
+      }
+    }
+  }
+
+  try {
+    const verifiedToken = await tokenService.verifyToken(token, true);
+    console.log(token);
+    console.log(verifiedToken);
+    const { valid, payload } = verifiedToken;
+    if (!valid) {
+      console.log('invalid token');
+
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    if (!payload) {
+      console.log('no payload found');
+
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+  } catch (_) {
+    console.log('Invalid token');
+
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+  // I am not sure if too keep this or if this was temporary
+  // const user = req.user;
+
+  // if (!user) {
+  //   console.log('no user found');
+
+  //   res.status(401).json({ message: 'Unauthorized' });
+  //   return;
+  // }
+
+  // const parseUserResult = requestUserSchema.safeParse(user);
+
+  // if (!parseUserResult.success) {
+  //   console.log('invalid user found');
+
+  //   res.status(401).json({ message: 'Unauthorized' });
+  //   return;
+  // }
+
+  // req.user = parseUserResult.data;
 
   // check cookies for auth tokens
-  return next();
+  next();
+  return;
 };
