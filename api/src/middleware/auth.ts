@@ -7,6 +7,20 @@ import {
 } from '../schemas/user';
 import { RequestUser } from '../schemas/user';
 
+/**
+ * Middleware to require authentication for a route.
+ *
+ * This middleware checks for the presence of an authorization header or cookies containing access or refresh tokens.
+ * If a valid token is found, it verifies the token and proceeds to the next middleware.
+ * If no access token is found, it looks for a refresh token. If one is found it verifies the token and sets it as the new access token.
+ * If no refresh token is found it returns Unathorized
+ *
+ * @param req - The request object, expected to be of type `AuthUserRequest`.
+ * @param res - The response object.
+ * @param next - The next middleware function in the stack.
+ *
+ *
+ */
 export const requireAuth = async (
   req: AuthUserRequest,
   res: Response,
