@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import { bigint } from 'zod';
 import { Server } from 'http';
 
-//TODO: Add comments and documentation
 export class AuthService {
   protected readonly db: DatabaseService;
 
@@ -18,7 +17,6 @@ export class AuthService {
     dob: Date | undefined,
     gender: string | undefined,
   ) {
-    // TODO: Check if the user already exists, if so deny the registration
     const srp = new SRP();
     const foundUser = await this.db.userRepository.findUserByEmail(email);
     if (foundUser) {
@@ -37,7 +35,6 @@ export class AuthService {
     return { email: email, gender: gender };
   }
   public async login(email: string, password: string) {
-    //TODO: Check if the user exists, if so let him login otherwise deny
     const srp = new SRP();
     try {
       const user = await this.db.userRepository.findUserByEmail(email);
@@ -174,8 +171,6 @@ export class AuthService {
     return true;
   }
   public async deleteAccount(email: string): Promise<boolean> {
-    //TODO: Implement MFA to check that the token is valid and isnt expired and the signature is valid
-    //TODO: find the user by their email, and the delete all of their data
     try {
       const user = await this.db.userRepository.findUserByEmail(email);
       console.log(user);

@@ -18,8 +18,6 @@ export class UserRepository {
     this.redis = redis;
   }
 
-  // ! temp method
-  // TODO: replace with actual methods
   public async getUserById(userId: string) {
     assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
 
@@ -36,14 +34,14 @@ export class UserRepository {
 
   public async createUser(
     email: string,
-    passwordHash: string,
+    verifier: string,
     salt: string,
     dob: Date | undefined,
     gender: string | undefined,
   ) {
     const newUser = await this.collection.insertOne({
       email: email,
-      password: passwordHash,
+      verifier: verifier,
       salt: salt,
       dob: dob,
       gender: gender,
@@ -53,7 +51,6 @@ export class UserRepository {
     return;
   }
   public async findUserByEmail(email: string) {
-    console.log(`Searching for user with email: ${email}`);
     const user = await this.collection.findOne({ email: email });
     if (user) {
       console.log(`User found: ${JSON.stringify(user)}`);
@@ -83,16 +80,24 @@ export class UserRepository {
       return undefined;
     }
     const update = await this.collection.updateOne(
-      { email: email },
-      { $set: { password: modExp, salt: salt } },
+      { email: email, salt: salt, modExp: modExp },
+      { $set: { verifier: modExp, salt: salt } },
     );
-    const check = await this.collection.findOne({ email: email });
-
-    return check;
+    if (!update) {
+      return;
+    }
+    if (update.modifiedCount !== 0) return update.modifiedCount;
   }
-  public async deleteUser(email: string): Promise<boolean> {
+  public async deleteUser(email: string) {
     const user = await this.collection.findOneAndDelete({ email: email });
-    return true;
+    if (!user) {
+      console.log('User not found');
+      return;
+    }
+    if (!user.value) {
+      return;
+    }
+    return user.value;
   }
   public async requestReset(email: string, code: string) {
     const user = await this.collection.findOne({ email: email });
