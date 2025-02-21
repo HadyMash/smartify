@@ -18,6 +18,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   static const double velocityMultiplier =
       0.0008; // adjusts velocity to duration
 
+  static const double floorHeightMultiplier = 0.35;
+
   late double selectedHeight;
   late AnimationController _snapController;
   late AnimationController _momentumController;
@@ -99,10 +101,12 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     super.didChangeDependencies();
 
     // set the selected height to 20% of the smallest device axis
-    selectedHeight = MediaQuery.sizeOf(context).shortestSide * 0.4;
+    selectedHeight =
+        MediaQuery.sizeOf(context).shortestSide * floorHeightMultiplier;
 
-    // TODO: dynamically calculate number of floors to show based on height
-    _initialiseFloors(5, MediaQuery.sizeOf(context).height);
+    final height = MediaQuery.sizeOf(context).height;
+    final numOfFloors = height ~/ (selectedHeight * 0.9);
+    _initialiseFloors(numOfFloors, height);
   }
 
   void _initialiseFloors(int visibleFloors, double screenHeight) {
