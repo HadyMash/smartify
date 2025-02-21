@@ -28,9 +28,25 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
 
   final List<_FloorData> _floors = [];
 
-  double sizeMultiplier(double distanceFromCenter, double height) {
+  double _sizeMultiplier(double distanceFromCenter, double height) {
     return lerpDouble(1, minSizeMultiplier,
         max(0, min(1, distanceFromCenter / (height / 2))))!;
+  }
+
+  double _positionMapFunction(double position, double screenHeight) {
+    if (position <= 0 || position >= screenHeight) {
+      return position;
+    }
+
+    const double a = 5;
+    double easeFunc(num x) => ((1 + a) * x) / (x + a);
+
+    final double center = screenHeight / 2;
+    final double distanceFromCenter = (position - center).abs();
+
+    return center +
+        ((position - center).sign *
+            lerpDouble(0, center, easeFunc(distanceFromCenter / center))!);
   }
 
   @override
@@ -297,15 +313,15 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
                   duration: const Duration(milliseconds: 100),
                   curve: Curves.easeOutCubic,
                   key: ValueKey(floor.floor),
-                  top: floor.position - size / 2,
+                  top: _positionMapFunction(floor.position, height) - size / 2,
                   left: MediaQuery.sizeOf(context).shortestSide / 2 - size / 2,
                   child: TweenAnimationBuilder(
                     duration: const Duration(milliseconds: 100),
                     curve: Curves.easeOutCubic,
                     tween: Tween<double>(
-                      begin: sizeMultiplier(
+                      begin: _sizeMultiplier(
                           ((height / 2) - floor.position).abs(), height),
-                      end: sizeMultiplier(
+                      end: _sizeMultiplier(
                           ((height / 2) - floor.position).abs(), height),
                     ),
                     builder: (context, double scale, child) {
