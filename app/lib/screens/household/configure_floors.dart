@@ -14,13 +14,14 @@ class ConfigureFloorsScreen extends StatefulWidget {
 }
 
 class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const double minSizeMultiplier = 0.4;
+  static const double momentumDuration = 1.0; // seconds for momentum to settle
 
   late double selectedHeight;
   late AnimationController _snapController;
-  //late double _startScrollPosition;
-  //int? _selectedFloorIndex;
+  late AnimationController _momentumController;
+  double? _lastVelocity;
 
   final List<_FloorData> _floors = [];
 
@@ -36,12 +37,42 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _momentumController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: (momentumDuration * 1000).toInt()),
+    );
+
+    _momentumController.addListener(_handleMomentumScroll);
   }
 
   @override
   void dispose() {
     _snapController.dispose();
+    _momentumController.dispose();
     super.dispose();
+  }
+
+  void _handleMomentumScroll() {
+    if (_lastVelocity == null) return;
+
+    final double progress = _momentumController.value;
+    // Apply easing to the velocity
+    final double currentVelocity = _lastVelocity! * (1 - progress);
+
+    setState(() {
+      for (var item in _floors) {
+        item.position += currentVelocity * (1 / 60); // Assuming 60fps
+      }
+
+      // Check for new floors needed during momentum scroll
+      if (_floors.first.position > 150) {
+        _addItemToTop();
+      }
+      if (_floors.last.position < MediaQuery.sizeOf(context).height - 200) {
+        _addItemToBottom();
+      }
+      _removeOffscreenWidgets();
+    });
   }
 
   @override
@@ -149,6 +180,7 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
 
   void _handleScroll(DragUpdateDetails details) {
     _snapController.stop();
+    _momentumController.stop();
     setState(() {
       //_scrollPosition += details.primaryDelta!;
 
@@ -214,8 +246,17 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
           _snapController.stop();
         },
         onVerticalDragUpdate: _handleScroll,
-        onVerticalDragEnd: (_) {
-          _snapToCenter();
+        onVerticalDragEnd: (details) {
+          _lastVelocity = details.primaryVelocity;
+          if (_lastVelocity != null && _lastVelocity!.abs() > 100) {
+            // If the velocity is significant, apply momentum
+            _momentumController.forward(from: 0).then((_) {
+              _snapToCenter(); // Snap after momentum settles
+            });
+          } else {
+            // If velocity is low, snap immediately
+            _snapToCenter();
+          }
         },
         child: Container(
           height: double.infinity,
