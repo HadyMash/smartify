@@ -1,6 +1,3 @@
-// TODO: remove once done testing
-// ignore_for_file: avoid_print
-
 import 'dart:math';
 import 'dart:ui';
 
@@ -107,12 +104,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         );
       },
     ));
-
-    for (var i = 0; i < (nearestOdd - 1) ~/ 2; i++) {
-      final int floor = ((nearestOdd - 1) ~/ 2 - i);
-      print((screenHeight / 2) - selectedHeight * floor);
-    }
-
     // add ground floor
     _floors.add(_FloorData(0, screenHeight / 2));
 
@@ -127,10 +118,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         );
       },
     ));
-
-    for (var floor in _floors) {
-      print(floor);
-    }
   }
 
   void _snapToCenter() {
@@ -152,9 +139,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
 
     //_selectedFloorIndex = closestIndex;
 
-    // Store initial positions
-    final initialPositions = Map.fromEntries(
-        _floors.map((floor) => MapEntry(floor, floor.position)));
+    // Store initial positions using floor number as key instead of floor object
+    final initialPositions = {
+      for (var floor in _floors) floor.floor: floor.position
+    };
 
     final targetCenter = screenCenter;
     final startingPosition = _floors[closestIndex].position;
@@ -172,8 +160,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     animation.addListener(() {
       setState(() {
         for (var floor in _floors) {
-          floor.position =
-              initialPositions[floor]! + (totalOffset * animation.value);
+          final initialPosition = initialPositions[floor.floor];
+          if (initialPosition != null) {
+            floor.position = initialPosition + (totalOffset * animation.value);
+          }
         }
       });
     });
@@ -192,7 +182,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
       }
 
       // check if items need to be added to the top
-      print(_floors.first.position);
       if (_floors.first.position > 150) {
         _addItemToTop();
       }
