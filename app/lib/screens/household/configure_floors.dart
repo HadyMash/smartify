@@ -16,7 +16,10 @@ class ConfigureFloorsScreen extends StatefulWidget {
 class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     with TickerProviderStateMixin {
   static const double minSizeMultiplier = 0.4;
-  static const double momentumDuration = 1.0; // seconds for momentum to settle
+  static const double maxMomentumDuration = 1.5; // maximum seconds for momentum
+  static const double minMomentumDuration = 0.3; // minimum seconds for momentum
+  static const double velocityMultiplier =
+      0.0008; // adjusts velocity to duration
 
   late double selectedHeight;
   late AnimationController _snapController;
@@ -39,7 +42,7 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     );
     _momentumController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: (momentumDuration * 1000).toInt()),
+      duration: Duration(milliseconds: (minMomentumDuration * 1000).toInt()),
     );
 
     _momentumController.addListener(_handleMomentumScroll);
@@ -249,7 +252,16 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         onVerticalDragEnd: (details) {
           _lastVelocity = details.primaryVelocity;
           if (_lastVelocity != null && _lastVelocity!.abs() > 100) {
-            // If the velocity is significant, apply momentum
+            // Calculate duration based on velocity
+            final velocityDuration = (_lastVelocity!.abs() * velocityMultiplier)
+                .clamp(minMomentumDuration, maxMomentumDuration);
+
+            // Update momentum controller duration
+            _momentumController.duration = Duration(
+              milliseconds: (velocityDuration * 1000).toInt(),
+            );
+
+            // Apply momentum
             _momentumController.forward(from: 0).then((_) {
               _snapToCenter(); // Snap after momentum settles
             });
