@@ -22,6 +22,9 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   late AnimationController _snapController;
   late AnimationController _momentumController;
   double? _lastVelocity;
+  final Set<int> _selectedFloorIndices = {};
+
+  double numberOfFloors = 2;
 
   final List<_FloorData> _floors = [];
 
@@ -118,6 +121,16 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         );
       },
     ));
+
+    // Set the middle floor (ground floor) as selected initially
+    // Initialize selected floors: middle floor and (numberOfFloors - 1) above it
+    _selectedFloorIndices.clear();
+    final middleIndex = (nearestOdd - 1) ~/ 2; // Index of the ground floor
+    for (int i = 0; i < numberOfFloors; i++) {
+      if (middleIndex - i >= 0) {
+        _selectedFloorIndices.add(middleIndex - i);
+      }
+    }
   }
 
   void _snapToCenter() {
@@ -137,7 +150,14 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
       }
     }
 
-    //_selectedFloorIndex = closestIndex;
+    // Update selected floors based on the closest index
+    _selectedFloorIndices.clear();
+    for (int i = 0; i < numberOfFloors; i++) {
+      final indexToSelect = closestIndex - i;
+      if (indexToSelect >= 0 && indexToSelect < _floors.length) {
+        _selectedFloorIndices.add(indexToSelect);
+      }
+    }
 
     // Store initial positions using floor number as key instead of floor object
     final initialPositions = {
@@ -271,8 +291,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
 
                 final size = selectedHeight;
 
-                //final isSelected = _selectedFloorIndex != null &&
-                //    _floors.indexOf(floor) == _selectedFloorIndex;
+                final isSelected =
+                    _selectedFloorIndices.contains(_floors.indexOf(floor));
                 return AnimatedPositioned(
                   duration: const Duration(milliseconds: 100),
                   curve: Curves.easeOutCubic,
@@ -294,7 +314,11 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
                         child: child!,
                       );
                     },
-                    child: _Floor(size: size, floor: floor.floor),
+                    child: _Floor(
+                      size: size,
+                      floor: floor.floor,
+                      isSelected: isSelected,
+                    ),
                   ),
                 );
               }),
@@ -369,10 +393,12 @@ class _Floor extends StatelessWidget {
   const _Floor({
     required this.size,
     required this.floor,
+    required this.isSelected,
   });
 
   final double size;
   final int floor;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +407,7 @@ class _Floor extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.red,
+        color: isSelected ? Colors.red : Colors.grey,
         borderRadius: BorderRadius.circular(8),
       ),
       child: FittedBox(
