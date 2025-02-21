@@ -13,17 +13,35 @@ class ConfigureFloorsScreen extends StatefulWidget {
   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
 }
 
-class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
+class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
+    with SingleTickerProviderStateMixin {
   static const double minSizeMultiplier = 0.4;
 
   late double selectedHeight;
-  //double _scrollPosition = 0;
+  late AnimationController _snapController;
+  //late double _startScrollPosition;
+  //int? _selectedFloorIndex;
 
   final List<_FloorData> _floors = [];
 
   double sizeMultiplier(double distanceFromCenter, double height) {
     return lerpDouble(1, minSizeMultiplier,
         max(0, min(1, distanceFromCenter / (height / 2))))!;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _snapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _snapController.dispose();
+    super.dispose();
   }
 
   @override
@@ -81,8 +99,56 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
     }
   }
 
+  void _snapToCenter() {
+    if (_floors.isEmpty) return;
+
+    final screenCenter = MediaQuery.sizeOf(context).height / 2;
+
+    // Find the floor closest to center
+    int closestIndex = 0;
+    double smallestDistance = double.infinity;
+
+    for (int i = 0; i < _floors.length; i++) {
+      final distance = (_floors[i].position - screenCenter).abs();
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        closestIndex = i;
+      }
+    }
+
+    //_selectedFloorIndex = closestIndex;
+
+    // Store initial positions
+    final initialPositions = Map.fromEntries(
+        _floors.map((floor) => MapEntry(floor, floor.position)));
+
+    final targetCenter = screenCenter;
+    final startingPosition = _floors[closestIndex].position;
+    final totalOffset = targetCenter - startingPosition;
+
+    // Create and configure animation
+    final Animation<double> animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _snapController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    animation.addListener(() {
+      setState(() {
+        for (var floor in _floors) {
+          floor.position =
+              initialPositions[floor]! + (totalOffset * animation.value);
+        }
+      });
+    });
+
+    _snapController.forward(from: 0);
+  }
+
   void _handleScroll(DragUpdateDetails details) {
-    print(_floors.length);
+    _snapController.stop();
     setState(() {
       //_scrollPosition += details.primaryDelta!;
 
@@ -90,13 +156,13 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
         item.position += details.primaryDelta!;
       }
 
-      // TODO: check if items need to be added to the top
+      // check if items need to be added to the top
       print(_floors.first.position);
       if (_floors.first.position > 150) {
         _addItemToTop();
       }
 
-      // TODO: check if items need to be added to the bottom
+      // check if items need to be added to the bottom
       if (_floors.last.position < MediaQuery.sizeOf(context).height - 200) {
         _addItemToBottom();
       }
@@ -144,23 +210,13 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
         backgroundColor: Colors.transparent,
       ),
       body: GestureDetector(
-        //onVerticalDragStart: (details) {
-        //  // TODO: cancel momentum scrolling when scrolling starts
-        //  print('drag start');
-        //  print(details.localPosition);
-        //},
-        //onVerticalDragUpdate: (details) {
-        //  print('drag update: ${details.primaryDelta}');
-        //  scrollOffset.value += details.primaryDelta!;
-        //},
-        //onVerticalDragEnd: (details) {
-        //  // TODO: continue scrolling with momentum
-        //  print('drag end');
-        //  print(details.primaryVelocity);
-        //},
-
+        onVerticalDragStart: (_) {
+          _snapController.stop();
+        },
         onVerticalDragUpdate: _handleScroll,
-
+        onVerticalDragEnd: (_) {
+          _snapToCenter();
+        },
         child: Container(
           height: double.infinity,
           width: double.infinity,
@@ -173,14 +229,29 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
 
                 final size = selectedHeight;
 
-                return Positioned(
-                  //duration: const Duration(milliseconds: 50),
-                  //key: ValueKey(floor.floor),
+                //final isSelected = _selectedFloorIndex != null &&
+                //    _floors.indexOf(floor) == _selectedFloorIndex;
+                return AnimatedPositioned(
+                  duration: const Duration(milliseconds: 100),
+                  curve: Curves.easeOutCubic,
+                  key: ValueKey(floor.floor),
                   top: floor.position - size / 2,
                   left: MediaQuery.sizeOf(context).shortestSide / 2 - size / 2,
-                  child: Transform.scale(
-                    scale: sizeMultiplier(
-                        ((height / 2) - floor.position).abs(), height),
+                  child: TweenAnimationBuilder(
+                    duration: const Duration(milliseconds: 100),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween<double>(
+                      begin: sizeMultiplier(
+                          ((height / 2) - floor.position).abs(), height),
+                      end: sizeMultiplier(
+                          ((height / 2) - floor.position).abs(), height),
+                    ),
+                    builder: (context, double scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: child!,
+                      );
+                    },
                     child: _Floor(size: size, floor: floor.floor),
                   ),
                 );
@@ -255,7 +326,7 @@ class _FloorData {
 class _Floor extends StatelessWidget {
   const _Floor({
     required this.size,
-    required this.floor, // TODO: make floor a string and have the B/G/L logic here
+    required this.floor,
   });
 
   final double size;
@@ -267,7 +338,10 @@ class _Floor extends StatelessWidget {
       //duration: const Duration(milliseconds: 50),
       width: size,
       height: size,
-      color: Colors.red,
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: FittedBox(
         fit: BoxFit.contain,
         child: Padding(
