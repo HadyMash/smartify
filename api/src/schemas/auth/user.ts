@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
@@ -24,4 +25,17 @@ export class InvalidUserError extends Error {
     this.name = 'InvalidUserError';
     Object.setPrototypeOf(this, InvalidUserError.prototype);
   }
+}
+
+export const requestUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  // ...
+});
+
+type RequestUser = z.infer<typeof requestUserSchema>;
+
+// TODO: replace with actual user object
+export interface AuthenticatedRequest extends Request {
+  user?: RequestUser | undefined;
 }

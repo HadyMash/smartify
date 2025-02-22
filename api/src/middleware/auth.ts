@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest, requestUserSchema } from '../schemas/auth';
+import { AuthenticatedRequest, requestUserSchema } from '../schemas/auth/user';
 
 // TODO: implement requireAuth middleware
 export const requireAuth = (

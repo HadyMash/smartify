@@ -2,7 +2,7 @@ import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Collection, Db, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
-import { TokenService } from '../../token';
+import { TokenService } from '../../auth/token';
 
 /**
  * Document representing a blacklisted access token in the database

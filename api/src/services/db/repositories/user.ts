@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { Collection, Db, ObjectId } from 'mongodb';
-import { User } from '../../../schemas/user';
+import { User } from '../../../schemas/auth/user';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
 

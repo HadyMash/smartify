@@ -1,7 +1,7 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../schemas/auth';
-import { DatabaseService, MFAService } from '../services/mfa';
-import { MFAToken, mfaTokenSchema } from '../schemas/mfa';
+import { DatabaseService, MFAService } from '../services/auth/mfa';
+import { MFAToken, mfaTokenSchema } from '../schemas/auth/mfa';
+import { AuthenticatedRequest } from '../schemas/auth/user';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class MFAController {
