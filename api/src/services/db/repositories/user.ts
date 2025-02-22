@@ -1,6 +1,10 @@
 import assert from 'assert';
 import { Collection, Db, ObjectId } from 'mongodb';
-import { User } from '../../../schemas/auth/user';
+import {
+  CreateUserData as CreateUserData,
+  User,
+  userSchema,
+} from '../../../schemas/auth/user';
 import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
 
@@ -15,6 +19,12 @@ export class UserRepository {
   constructor(db: Db, redis: RedisClientType) {
     this.collection = db.collection<UserDoc>(COLLECTION_NAME);
     this.redis = redis;
+  }
+
+  public async createUser(data: CreateUserData) {
+    const result = await this.collection.insertOne(data);
+
+    return result.insertedId.toString();
   }
 
   //public async getUserById(userId: string) {

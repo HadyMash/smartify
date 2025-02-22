@@ -1,5 +1,7 @@
+import { CreateUserData } from '../../schemas/auth/user';
+
 export class AuthService {
-  //public async register()
+  public async createUser(data: CreateUserData) {}
 }
 
 /**
