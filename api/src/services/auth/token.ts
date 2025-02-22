@@ -1,30 +1,29 @@
-import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
-import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
+import * as jwt from 'jsonwebtoken';
+import { compactDecrypt, CompactEncrypt, importJWK } from 'jose';
+import { DatabaseService } from '../db/db';
 import {
-  InvalidUserError,
-  InvalidUseType,
-  type User,
-  UserSchema,
-} from '../schemas/user';
-import {
-  type AccessTokenPayload,
-  AccessTokenPayloadSchema,
+  AccessTokenPayload,
+  accessTokenPayloadSchema,
   CommonTokenInfo,
-  type IDTokenPayload,
-  IDTokenPayloadSchema,
+  IDTokenPayload,
+  idTokenPayloadSchema,
   InvalidTokenError,
-  type JWTSecret,
+  JWTSecret,
   MFATokenPayload,
   mfaTokenPayloadSchema,
   mfaTokenTypeSchema,
-  type RefreshTokenPayload,
-  RefreshTokenPayloadSchema,
-  TokenTypeSchema,
-} from '../schemas/tokens';
-import { DatabaseService } from './db/db';
-
-//const algorithm = 'RS256';
+  RefreshTokenPayload,
+  refreshTokenPayloadSchema,
+  tokenTypeSchema,
+} from '../../schemas/auth/tokens';
+import {
+  InvalidUserError,
+  InvalidUseType,
+  User,
+  userSchema,
+  UserWithId,
+} from '../../schemas/auth/user';
+import { randomUUID } from 'crypto';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -209,7 +208,7 @@ export class TokenService {
    * @param deviceId - The device ID to generate the tokens for
    * @returns The generated tokens
    */
-  public async generateAllTokens(user: User, deviceId: string) {
+  public async generateAllTokens(user: UserWithId, deviceId: string) {
     const secret: JWTSecret = {
       secret: process.env.JWT_SECRET!, // TODO: generate random one
       secretId: '1', // TODO: rotate keys and store in DB
@@ -238,7 +237,7 @@ export class TokenService {
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
       userId: user._id,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.REFRESH,
+      type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
       generationId,
     };
@@ -247,7 +246,7 @@ export class TokenService {
       userId: user._id,
       email: user.email,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.ACCESS,
+      type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshTokenPayload.jti,
       generationId,
@@ -256,7 +255,7 @@ export class TokenService {
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: user._id,
       email: user.email,
-      type: TokenTypeSchema.enum.ID,
+      type: tokenTypeSchema.enum.ID,
       generationId,
       iat: createdSeconds,
       name: 'John Doe',
@@ -290,9 +289,9 @@ export class TokenService {
       throw new InvalidTokenError('Invalid token');
     }
 
-    const type: any = payload?.type;
+    const type: unknown = payload?.type;
 
-    const validType = TokenTypeSchema.safeParse(type);
+    const validType = tokenTypeSchema.safeParse(type);
 
     if (!validType.success) {
       throw new InvalidTokenError(
@@ -301,8 +300,8 @@ export class TokenService {
     }
 
     switch (validType.data) {
-      case TokenTypeSchema.enum.ACCESS:
-        const accessParseResult = AccessTokenPayloadSchema.safeParse(payload);
+      case tokenTypeSchema.enum.ACCESS: {
+        const accessParseResult = accessTokenPayloadSchema.safeParse(payload);
 
         if (!accessParseResult.success) {
           throw new InvalidTokenError(
@@ -312,8 +311,9 @@ export class TokenService {
 
         const accessTokenPayload: AccessTokenPayload = accessParseResult.data;
         return accessTokenPayload;
-      case TokenTypeSchema.enum.REFRESH:
-        const refreshParseResult = RefreshTokenPayloadSchema.safeParse(payload);
+      }
+      case tokenTypeSchema.enum.REFRESH: {
+        const refreshParseResult = refreshTokenPayloadSchema.safeParse(payload);
 
         if (!refreshParseResult.success) {
           throw new InvalidTokenError(
@@ -324,8 +324,9 @@ export class TokenService {
         const refreshTokenPayload: RefreshTokenPayload =
           refreshParseResult.data;
         return refreshTokenPayload;
-      case TokenTypeSchema.enum.ID:
-        const idParseResult = IDTokenPayloadSchema.safeParse(payload);
+      }
+      case tokenTypeSchema.enum.ID: {
+        const idParseResult = idTokenPayloadSchema.safeParse(payload);
 
         if (!idParseResult.success) {
           throw new InvalidTokenError(
@@ -335,6 +336,7 @@ export class TokenService {
 
         const idTokenPayload: IDTokenPayload = idParseResult.data;
         return idTokenPayload;
+      }
     }
   }
 
@@ -379,8 +381,10 @@ export class TokenService {
           jwt.verify(
             decryptedToken,
             process.env.JWT_SECRET!,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (err: Error | null, decoded: any) => {
               if (err) reject(err);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
               else resolve(decoded);
             },
           );
@@ -399,16 +403,18 @@ export class TokenService {
       }
 
       // For access tokens, also check if the specific token is blacklisted
-      if (payload.type === TokenTypeSchema.enum.ACCESS) {
+      if (payload.type === tokenTypeSchema.enum.ACCESS) {
         const tokenBlacklisted =
-          await this.db.tokenRepository.isAccessTokenBlacklisted(payload.jti);
+          await this.db.accessBlacklistRepository.isAccessTokenBlacklisted(
+            payload.jti,
+          );
         if (tokenBlacklisted) {
           return { valid: false };
         }
       }
 
       return { valid: true, payload };
-    } catch (error) {
+    } catch (_) {
       return { valid: false };
     }
   }
@@ -443,7 +449,7 @@ export class TokenService {
     if (
       !valid ||
       !oldRefreshPayload ||
-      oldRefreshPayload.type !== TokenTypeSchema.enum.REFRESH
+      oldRefreshPayload.type !== tokenTypeSchema.enum.REFRESH
     ) {
       throw new InvalidTokenError();
     }
@@ -459,13 +465,16 @@ export class TokenService {
       throw new InvalidTokenError();
     }
 
+    // TODO: replace with user service call
+    //
     // get user's email
+
     const userDoc = await this.db.userRepository.getUserById(
       oldRefreshPayload.userId,
     );
     let user: User;
     try {
-      user = UserSchema.parse(userDoc);
+      user = userSchema.parse(userDoc);
     } catch (e) {
       console.log('error parsing user:', e);
       throw new InvalidUserError();
@@ -480,7 +489,7 @@ export class TokenService {
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.REFRESH,
+      type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
       generationId: oldRefreshPayload.generationId,
     };
@@ -489,7 +498,7 @@ export class TokenService {
       userId: oldRefreshPayload.userId,
       email: user.email,
       iat: createdSeconds,
-      type: TokenTypeSchema.enum.ACCESS,
+      type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
       refreshJti: refreshTokenPayload.jti,
       generationId: oldRefreshPayload.generationId,
@@ -498,7 +507,7 @@ export class TokenService {
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
       email: user.email,
-      type: TokenTypeSchema.enum.ID,
+      type: tokenTypeSchema.enum.ID,
       generationId: oldRefreshPayload.generationId,
       iat: createdSeconds,
       name: 'John Doe',
@@ -591,7 +600,7 @@ export class TokenService {
     }
 
     // Ensure it's an access token
-    if (payload.type !== TokenTypeSchema.enum.ACCESS) {
+    if (payload.type !== tokenTypeSchema.enum.ACCESS) {
       throw new InvalidTokenError('Token is not an access token');
     }
 
@@ -602,7 +611,10 @@ export class TokenService {
     }
 
     // Blacklist the token
-    await this.db.tokenRepository.blacklistAccessToken(payload.jti, exp);
+    await this.db.accessBlacklistRepository.blacklistAccessToken(
+      payload.jti,
+      exp,
+    );
   }
 
   /**
@@ -672,8 +684,10 @@ export class TokenService {
         jwt.verify(
           decryptedToken,
           process.env.JWT_SECRET!,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (err: Error | null, decoded: any) => {
             if (err) reject(err);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             else resolve(decoded);
           },
         );
@@ -690,9 +704,8 @@ export class TokenService {
     }
 
     // check token generation ID isn't blacklisted
-    const blacklisted = await this.db.tokenRepository.isMFATokenBlacklisted(
-      data.jti,
-    );
+    const blacklisted =
+      await this.db.mfaBlacklistRepository.isMFATokenBlacklisted(data.jti);
     if (blacklisted) {
       throw new InvalidTokenError('MFA token has been blacklisted');
     }
@@ -713,6 +726,6 @@ export class TokenService {
       throw new InvalidTokenError('Token has no expiry time');
     }
 
-    await this.db.tokenRepository.blacklistMFA(token.jti, exp);
+    await this.db.mfaBlacklistRepository.blacklistMFA(token.jti, exp);
   }
 }

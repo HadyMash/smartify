@@ -1,24 +1,22 @@
-import assert from 'assert';
-import { Collection, Db, ObjectId } from 'mongodb';
-import {
-  CreateUserData as CreateUserData,
-  User,
-  userSchema,
-} from '../../../schemas/auth/user';
-import { randomInt } from 'crypto';
 import { RedisClientType } from 'redis';
+import { DatabaseRepository } from '../repo';
+import { Db, MongoClient, ObjectId } from 'mongodb';
+import { CreateUserData, User } from '../../../schemas/auth/user';
 
-const COLLECTION_NAME = 'users';
-
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface UserDoc extends User {}
 
-export class UserRepository {
-  private readonly collection: Collection<UserDoc>;
-  private readonly redis: RedisClientType;
+export class UserRepository extends DatabaseRepository<UserDoc> {
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, 'users', redis);
+  }
 
-  constructor(db: Db, redis: RedisClientType) {
-    this.collection = db.collection<UserDoc>(COLLECTION_NAME);
-    this.redis = redis;
+  // TODO: implement configure collection
+  public async configureCollection(): Promise<void> {
+    // create collection
+    //
+    // configure indices
+    //
   }
 
   public async createUser(data: CreateUserData) {
@@ -27,29 +25,24 @@ export class UserRepository {
     return result.insertedId.toString();
   }
 
-  //public async getUserById(userId: string) {
-  //  // TODO: implement
-  //}
+  public async getUserById(_userId: string) {
+    await Promise.resolve();
+    // TODO: implement
+    const user: UserDoc = {
+      _id: new ObjectId().toString(),
+      email: 'example@domain.com',
+    };
+    return user;
+  }
 
-  ///**
-  // *Checks if a user exists by their id
-  // * @param userId - The user to check
-  // * @returns true if the user exists, false otherwise
-  // */
-  //public async userExists(userId: string): Promise<boolean> {
-  //  assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-  //  const user = await this.collection.findOne({ _id: new ObjectId(userId) });
-  //  return !!user;
-  //}
-
-  ///**
-  // * @returns The user's id
-  // */
-  //public async createUser() {
-  //  const result = await this.collection.insertOne({
-  //    email: `example${randomInt(99999)}@domain.com`,
-  //  });
-  //
-  //  return result.insertedId.toString();
-  //}
+  /**
+   *Checks if a user exists by their id
+   * @param userId - The user to check
+   * @returns true if the user exists, false otherwise
+   */
+  public async userExists(_userId: string): Promise<boolean> {
+    // TODO implement
+    await Promise.resolve();
+    return true;
+  }
 }

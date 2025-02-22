@@ -1,17 +1,17 @@
 import { z } from 'zod';
 
-export const JWTSecretSchema = z.object({
+export const jwtSecretSchema = z.object({
   /** The secret to sign the JWT with */
   secret: z.string(),
   /** The ID of the secret */
   secretId: z.string(),
 });
 
-export type JWTSecret = z.infer<typeof JWTSecretSchema>;
+export type JWTSecret = z.infer<typeof jwtSecretSchema>;
 
-export const TokenTypeSchema = z.enum(['ACCESS', 'REFRESH', 'ID']);
+export const tokenTypeSchema = z.enum(['ACCESS', 'REFRESH', 'ID']);
 
-export type TokenType = z.infer<typeof TokenTypeSchema>;
+export type TokenType = z.infer<typeof tokenTypeSchema>;
 
 export const mfaTokenTypeSchema = z.literal('MFA');
 
@@ -28,47 +28,48 @@ export const commonTokenInfoSchema = z.object({
 
 export type CommonTokenInfo = z.infer<typeof commonTokenInfoSchema>;
 
-export const TokenPayloadSchema = commonTokenInfoSchema.extend({
+export const tokenPayloadSchema = commonTokenInfoSchema.extend({
   /** The token's generation id */
   generationId: z.string(),
   /** The type of the token */
-  type: TokenTypeSchema,
+  type: tokenTypeSchema,
 });
 
-export type TokenPayload = z.infer<typeof TokenPayloadSchema>;
+export type TokenPayload = z.infer<typeof tokenPayloadSchema>;
 
-export const RefreshTokenPayloadSchema = TokenPayloadSchema.extend({
+export const refreshTokenPayloadSchema = tokenPayloadSchema.extend({
   /** The token's unique identifier. */
   jti: z.string().min(1),
   /** The token's generation id */
   generationId: z.string(),
   /** The type of the token */
-  type: z.literal(TokenTypeSchema.enum.REFRESH),
+  type: z.literal(tokenTypeSchema.enum.REFRESH),
 });
 
-export type RefreshTokenPayload = z.infer<typeof RefreshTokenPayloadSchema>;
+export type RefreshTokenPayload = z.infer<typeof refreshTokenPayloadSchema>;
 
-export const AccessTokenPayloadSchema = RefreshTokenPayloadSchema.extend({
+export const accessTokenPayloadSchema = refreshTokenPayloadSchema.extend({
   /** The email of the user the token is for */
   email: z.string(),
   /** The refresh token used to generate this access token's identifier */
   refreshJti: z.string().min(1),
   /** The type of the token */
-  type: z.literal(TokenTypeSchema.enum.ACCESS),
+  type: z.literal(tokenTypeSchema.enum.ACCESS),
   // TODO: include household access and role
 });
 
-export type AccessTokenPayload = z.infer<typeof AccessTokenPayloadSchema>;
+export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
 
-export const IDTokenPayloadSchema = TokenPayloadSchema.extend({
+export const idTokenPayloadSchema = tokenPayloadSchema.extend({
+  /** The user's name */
   name: z.string(),
   /** The user's email */
   email: z.string().email(),
   /** The type of the token */
-  type: z.literal(TokenTypeSchema.enum.ID),
+  type: z.literal(tokenTypeSchema.enum.ID),
 });
 
-export type IDTokenPayload = z.infer<typeof IDTokenPayloadSchema>;
+export type IDTokenPayload = z.infer<typeof idTokenPayloadSchema>;
 
 // mfa token
 export const mfaTokenPayloadSchema = commonTokenInfoSchema.extend({

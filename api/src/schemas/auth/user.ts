@@ -1,5 +1,4 @@
-import { Request } from 'express';
-import { ObjectId } from 'mongodb';
+import { objectIdStringSchema } from '../obj-id';
 import { z } from 'zod';
 
 export const emailSchema = z.string().email();
@@ -15,12 +14,7 @@ export type Sex = z.infer<typeof sexSchema>;
 
 export const userSchema = z.object({
   /** MongoDB ObjectID */
-  _id: z.coerce
-    .string()
-    .refine((val) => ObjectId.isValid(val), {
-      message: 'Invalid ObjectID',
-    })
-    .optional(),
+  _id: objectIdStringSchema.optional(),
   /** The user's email */
   email: z.string().email(),
   /** The user's date of birth */
@@ -31,21 +25,29 @@ export const userSchema = z.object({
 
 export type User = z.infer<typeof userSchema>;
 
-//export enum InvalidUseType {
-//  INVALID_ID = 'Invalid ID',
-//  INVALID_EMAIL = 'Invalid Email',
-//  DOES_NOT_EXIST = 'Does Not Exist',
-//  OTHER = 'Other',
-//}
-//
-//export class InvalidUserError extends Error {
-//  constructor(details?: { type?: InvalidUseType; message?: string }) {
-//    super(`Invalid User${details?.message ? `: ${details.message}` : ''}`);
-//    this.name = 'InvalidUserError';
-//    Object.setPrototypeOf(this, InvalidUserError.prototype);
-//  }
-//}
-//
+/** The user schema but with an id guaranteed not to be undefined */
+export const userWithIdSchema = userSchema.extend({
+  _id: objectIdStringSchema,
+});
+
+/** The user schema but with an id guaranteed not to be undefined */
+export type UserWithId = z.infer<typeof userWithIdSchema>;
+
+export enum InvalidUseType {
+  INVALID_ID = 'Invalid ID',
+  INVALID_EMAIL = 'Invalid Email',
+  DOES_NOT_EXIST = 'Does Not Exist',
+  OTHER = 'Other',
+}
+
+export class InvalidUserError extends Error {
+  constructor(details?: { type?: InvalidUseType; message?: string }) {
+    super(`Invalid User${details?.message ? `: ${details.message}` : ''}`);
+    this.name = 'InvalidUserError';
+    Object.setPrototypeOf(this, InvalidUserError.prototype);
+  }
+}
+
 //export const requestUserSchema = z.object({
 //  id: z.string(),
 //  email: z.string().email(),

@@ -1,17 +1,26 @@
 import { Db, MongoClient } from 'mongodb';
-import { TokenRepository } from './repositories/token';
+import {
+  AccessBlacklistRepository,
+  MFABlacklistRepository,
+  TokenRepository,
+} from './repositories/token';
 import { UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
+import { HouseholdRepository } from './repositories/household';
 
 const DB_NAME: string = 'smartify';
 
 export class DatabaseService {
-  private static db: Db;
-  private static redis: RedisClientType;
+  protected static client: MongoClient;
+  protected static db: Db;
+  protected static redis: RedisClientType;
 
   // Repositories
   private _userRepository: UserRepository;
   private _tokenRepository: TokenRepository;
+  private _accessBlacklistRepository: AccessBlacklistRepository;
+  private _mfaBlacklistRepository: MFABlacklistRepository;
+  private _householdRepository: HouseholdRepository;
 
   constructor() {
     if (!DatabaseService.db) {
@@ -26,6 +35,7 @@ export class DatabaseService {
         .catch((err) => {
           console.error('Error connecting to MongoDB', err);
         });
+      DatabaseService.client = client;
       DatabaseService.db = client.db(DB_NAME);
     }
     if (!DatabaseService.redis) {
@@ -47,15 +57,40 @@ export class DatabaseService {
           console.log('Reconnecting to Redis');
         });
 
-      DatabaseService.redis.connect();
+      DatabaseService.redis
+        .connect()
+        .then(() => console.log('db connected'))
+        .catch((err) => {
+          console.error('db error', err);
+          throw err;
+        });
     }
 
     // Initialize repositories
     this._userRepository = new UserRepository(
+      DatabaseService.client,
       DatabaseService.db,
       DatabaseService.redis,
     );
+
     this._tokenRepository = new TokenRepository(
+      DatabaseService.client,
+      DatabaseService.db,
+      DatabaseService.redis,
+    );
+    this._accessBlacklistRepository = new AccessBlacklistRepository(
+      DatabaseService.client,
+      DatabaseService.db,
+      DatabaseService.redis,
+    );
+    this._mfaBlacklistRepository = new MFABlacklistRepository(
+      DatabaseService.client,
+      DatabaseService.db,
+      DatabaseService.redis,
+    );
+
+    this._householdRepository = new HouseholdRepository(
+      DatabaseService.client,
       DatabaseService.db,
       DatabaseService.redis,
     );
@@ -67,5 +102,15 @@ export class DatabaseService {
 
   get tokenRepository(): TokenRepository {
     return this._tokenRepository;
+  }
+  get accessBlacklistRepository(): AccessBlacklistRepository {
+    return this._accessBlacklistRepository;
+  }
+  get mfaBlacklistRepository(): MFABlacklistRepository {
+    return this._mfaBlacklistRepository;
+  }
+
+  get householdRepository(): HouseholdRepository {
+    return this._householdRepository;
   }
 }

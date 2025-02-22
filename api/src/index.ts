@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
+import { householdRouter } from './routes/household';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ router.get('/health', (_, res) => {
 });
 
 router.use('/auth', authRouter);
+router.use('/households', householdRouter);
 
 app.use('/api', router);
 

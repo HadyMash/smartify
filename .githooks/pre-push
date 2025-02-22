@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # An example hook script to verify what is about to be pushed.  Called by "git
 # push" after it has checked the remote status, but before anything has been
@@ -15,58 +15,124 @@
 # the standard input in the form:
 #
 #   <local ref> <local oid> <remote ref> <remote oid>
-#
-# This sample shows how to prevent push of commits where the log message starts
-# with "WIP" (work in progress).
 
-#!/bin/bash
+# Pre-push hook script to verify code quality and run tests before pushing.
+
 remote="$1"
 url="$2"
-
-# Initialize a flag for failure
 exit_code=0
 
-echo "Running tests before pushing...\n"
+echo -e "\nChecking for any errors...\n"
 
-# Change to api directory
-cd api || {
-    echo "❌ Failed to enter api directory\n"
-    exit 1
-}
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+  echo -e "\n❌ npm is not installed. Please install it and try again.\n"
+  exit 1
+fi
 
-# run api tests
-echo "Running API tests...\n"
-npm run test
-api_test_results=$?
+# Check if the format:check script exists in package.json
+if [ -f "./api/package.json" ]; then
+  if ! grep -q '"format:check"' ./api/package.json; then
+    echo -e "\n⚠️  No 'format:check' script found in ./api/package.json. Skipping Prettier check.\n"
+  else
+    echo -e "\nRunning Prettier format check in ./api...\n"
+    (cd ./api && npm run format:check)
+    prettier_exit_code=$?
 
-# change back to original dir
-cd ..
-
-# cd to app directory
-cd app || {
-    echo "\n❌ Failed to enter app directory\n"
-    exit 1
-}
-
-# run flutter tests
-echo "\nRunning Flutter tests...\n"
-flutter test
-app_test_results=$?
-
-# change back to original dir
-cd ..
-
-echo ""
-
-# Check both test results
-if [ $api_test_results -ne 0 ]; then
-    echo "❌ API Tests failed. Push aborted.\n"
-    exit_code=1
-elif [ $app_test_results -ne 0 ]; then
-    echo "❌ Flutter Tests failed. Push aborted.\n"
-    exit_code=1
+    if [ $prettier_exit_code -ne 0 ]; then
+      echo -e "\n❌ Prettier found files that need formatting. Aborting push.\n"
+      echo -e "\nPlease format the files using 'npm run format' and commit them again.\n"
+      exit_code=1
+    fi
+  fi
 else
-    echo "✅ All tests passed!\n"
+  echo -e "\n⚠️  No package.json found in ./api. Skipping Prettier check.\n"
+fi
+
+# Exit early if any check fails
+if [ $exit_code -ne 0 ]; then
+  exit $exit_code
+fi
+
+# Check if the lint script exists in package.json
+if [ -f "./api/package.json" ]; then
+  if ! grep -q '"lint"' ./api/package.json; then
+    echo -e "\n⚠️  No 'lint' script found in ./api/package.json. Skipping ESLint.\n"
+  else
+    echo -e "\nRunning eslint in ./api...\n"
+    (cd ./api && npm run lint)
+    eslint_exit_code=$?
+
+    if [ $eslint_exit_code -ne 0 ]; then
+      echo -e "\n❌ ESLint found errors in the API server. Please fix them and try again.\n"
+      exit_code=1
+    fi
+  fi
+else
+  echo -e "\n⚠️  No package.json found in ./api. Skipping ESLint.\n"
+fi
+
+# Exit early if any check fails
+if [ $exit_code -ne 0 ]; then
+  exit $exit_code
+fi
+
+# Check Flutter app
+if [ -d "./app" ]; then
+  if [ ! -f "./app/pubspec.yaml" ]; then
+    echo -e "\n⚠️  No 'pubspec.yaml' found in ./app. Skipping Flutter checks.\n"
+  else
+    echo -e "\nRunning Flutter analyze...\n"
+    flutter analyze ./app --no-fatal-infos
+    dart_analyze_exit_code=$?
+
+    if [ $dart_analyze_exit_code -ne 0 ]; then
+      echo -e "\n❌ Flutter analyze found errors. Please fix them and try again.\n"
+      exit_code=1
+    fi
+
+    echo -e "\nRunning Dart format check...\n"
+    dart format -o none ./app --set-exit-if-changed
+    if [ $? -ne 0 ]; then
+      echo -e "\n❌ Flutter app has unformatted files. Please format the files and try again.\n"
+      exit_code=1
+    fi
+  fi
+else
+  echo -e "\n⚠️  No 'app' directory found. Skipping Flutter checks.\n"
+fi
+
+# Exit early if any check fails
+if [ $exit_code -ne 0 ]; then
+  exit $exit_code
+fi
+
+# Run API tests
+if [ -f "./api/package.json" ]; then
+  echo -e "\nRunning API tests...\n"
+  (cd ./api && npm run test)
+  api_test_results=$?
+
+  if [ $api_test_results -ne 0 ]; then
+    echo -e "\n❌ API tests failed. Push aborted.\n"
+    exit_code=1
+  fi
+else
+  echo -e "\n⚠️  No package.json found in ./api. Skipping API tests.\n"
+fi
+
+# Run Flutter tests
+if [ -d "./app" ] && [ -f "./app/pubspec.yaml" ]; then
+  echo -e "\nRunning Flutter tests...\n"
+  (cd ./app && flutter test)
+  app_test_results=$?
+
+  if [ $app_test_results -ne 0 ]; then
+    echo -e "\n❌ Flutter tests failed. Push aborted.\n"
+    exit_code=1
+  fi
+else
+  echo -e "\n⚠️  No valid Flutter project found in ./app. Skipping Flutter tests.\n"
 fi
 
 # Exit with the appropriate code (0 or 1)

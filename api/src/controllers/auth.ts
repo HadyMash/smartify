@@ -1,20 +1,19 @@
 import { Request, Response } from 'express';
-import { createUserSchema } from '../schemas/auth/user';
-import { DatabaseService } from '../services/db/db';
+import { CreateUserData, createUserSchema } from '../schemas/auth/user';
 
 export class AuthController {
+  // eslint-disable-next-line @typescript-eslint/require-await
   public static async register(req: Request, res: Response) {
     try {
       // validate body
-      const data = req.body;
+      let data: CreateUserData;
       try {
-        createUserSchema.parse(data);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        data = createUserSchema.parse(req.body);
       } catch (_) {
         res.status(400).send('Invalid Request');
         return;
       }
-
-      const db = new DatabaseService();
 
       // create user
       //const result
