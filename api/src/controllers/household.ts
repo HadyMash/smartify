@@ -106,7 +106,7 @@ export class HouseholdController {
       const updatedHousehold = await hs.addMember(
         householdId,
         memberId,
-        req.user._id,
+        req.user._id.toString(),
       );
 
       res.status(200).send(updatedHousehold);
@@ -132,7 +132,7 @@ export class HouseholdController {
       const updatedHousehold = await hs.respondToInvite(
         inviteId,
         response,
-        req.user._id,
+        req.user._id.toString(),
       );
 
       res.status(200).send(updatedHousehold);
@@ -159,7 +159,7 @@ export class HouseholdController {
       const updatedHousehold = await hs.removeMember(
         householdId,
         memberId,
-        req.user._id,
+        req.user._id.toString(),
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -180,7 +180,7 @@ export class HouseholdController {
       const { householdId } = req.params;
 
       const hs = new HouseholdService();
-      await hs.deleteHousehold(householdId, req.user._id);
+      await hs.deleteHousehold(householdId, req.user._id.toString());
       res.status(200).send({ message: 'Household deleted' });
     } catch (e) {
       console.error(e);
@@ -207,7 +207,7 @@ export class HouseholdController {
       const updatedHousehold = await hs.addRoom(
         householdId,
         roomRequestData,
-        req.user._id,
+        req.user._id.toString(),
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -262,7 +262,7 @@ export class HouseholdController {
         householdId,
         memberId,
         newRole,
-        req.user._id,
+        req.user._id.toString(),
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -288,7 +288,7 @@ export class HouseholdController {
         householdId,
         roomId,
         action,
-        req.user._id,
+        req.user._id.toString(),
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -312,7 +312,7 @@ export class HouseholdController {
       const updatedHousehold = await hs.removeRoom(
         householdId,
         roomId,
-        req.user._id,
+        req.user._id.toString(),
       );
 
       res.status(200).send(updatedHousehold);

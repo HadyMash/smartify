@@ -1,9 +1,9 @@
-import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Db, MongoClient, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
 import { TokenService } from '../../auth/token';
+import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 
 /**
  * Document representing a blacklisted access token in the database
@@ -111,7 +111,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
   ): Promise<string | undefined>;
 
@@ -123,7 +123,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert: false,
   ): Promise<string | undefined>;
@@ -135,7 +135,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID
    * */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert: true,
   ): Promise<string>;
@@ -147,16 +147,14 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert?: boolean,
   ): Promise<string | undefined> {
-    assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-
     // always get the latest token generation id
     const doc = await this.collection.findOne(
       {
-        userId: new ObjectId(userId),
+        userId: objectIdSchema.parse(userId),
         deviceId,
         blacklisted: false,
         $or: [{ expiry: { $exists: false } }, { expiry: undefined }],
@@ -181,17 +179,15 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns the new token generation ID
    */
   public async changeUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
   ): Promise<string> {
-    assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-
     const expiry = this.tokenExpiry();
 
     // update the latest document
     await this.collection.updateMany(
       {
-        userId: new ObjectId(userId),
+        userId: objectIdSchema.parse(userId),
         $or: [{ expiry: { $exists: false } }, { expiry: undefined }],
       },
       { $set: { expiry } },
@@ -201,7 +197,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     const genId = this.generateTokenGenerationId();
 
     const doc: TokenGenIdDoc = {
-      userId: new ObjectId(userId),
+      userId: objectIdSchema.parse(userId),
       tokenGenerationId: genId,
       deviceId,
       created: new Date(),
@@ -265,13 +261,15 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * used including access tokens.
    * @param userId - The ID of the user whose tokens should be blacklisted
    */
-  public async blacklistTokenGenerationIds(userId: string): Promise<void> {
+  public async blacklistTokenGenerationIds(
+    userId: ObjectIdOrString,
+  ): Promise<void> {
     const expiry = this.tokenExpiry();
 
     // begin blacklisting all tokens in the db but don't wait
     const dbPromise = this.collection
       .updateMany(
-        { userId: new ObjectId(userId), blacklisted: false },
+        { userId: objectIdSchema.parse(userId), blacklisted: false },
         [
           {
             $set: {
@@ -301,7 +299,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     // get all of them as well to blacklist in redis
     const docs = await this.collection
       .find(
-        { userId: new ObjectId(userId) },
+        { userId: objectIdSchema.parse(userId) },
         { projection: { tokenGenerationId: 1, expiry: 1 } },
       )
       .toArray();

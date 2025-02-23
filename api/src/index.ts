@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { householdRouter } from './routes/household';
+import { parseAuth } from './middleware/auth';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ const port = process.env.PORT ?? 3000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(logMiddleware);
+app.use(parseAuth);
 
 const router = express.Router();
 

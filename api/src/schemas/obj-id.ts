@@ -9,9 +9,12 @@ export const objectIdStringSchema = z.coerce
 
 export type ObjectIdString = z.infer<typeof objectIdStringSchema>;
 
-export const objectIdSchema = objectIdStringSchema.transform(
-  (val) => new ObjectId(val),
-);
+//export const objectIdSchema = objectIdStringSchema.transform(
+//  (val) => new ObjectId(val),
+//);
+export const objectIdSchema = z
+  .union([objectIdStringSchema, z.instanceof(ObjectId)])
+  .transform((val) => (val instanceof ObjectId ? val : new ObjectId(val)));
 
 export const objectIdOrStringSchema = z.union([
   objectIdSchema,

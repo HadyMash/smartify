@@ -4,6 +4,7 @@ import { DatabaseService } from '../db/db';
 import {
   AccessTokenPayload,
   accessTokenPayloadSchema,
+  accessTokenUserSchema,
   CommonTokenInfo,
   IDTokenPayload,
   idTokenPayloadSchema,
@@ -18,12 +19,12 @@ import {
 } from '../../schemas/auth/tokens';
 import {
   InvalidUserError,
-  InvalidUseType,
-  User,
+  InvalidUserType,
+  User as UserWithId,
   userSchema,
-  UserWithId,
 } from '../../schemas/auth/user';
 import { randomUUID } from 'crypto';
+import { ObjectIdOrString } from '../../schemas/obj-id';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -208,34 +209,39 @@ export class TokenService {
    * @param deviceId - The device ID to generate the tokens for
    * @returns The generated tokens
    */
-  public async generateAllTokens(user: UserWithId, deviceId: string) {
+  public async generateAllTokens(userId: ObjectIdOrString, deviceId: string) {
     const secret: JWTSecret = {
       secret: process.env.JWT_SECRET!, // TODO: generate random one
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
     // check user exists
-    const userExists = await this.db.userRepository.userExists(user._id);
+    const userExists = await this.db.userRepository.userExists(userId);
 
     if (!userExists) {
-      throw new InvalidUserError({ type: InvalidUseType.DOES_NOT_EXIST });
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
 
     //  user._id,
     //  true
 
     const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
-      user._id.toString(),
+      userId,
       deviceId,
       true,
     );
+
+    // get the user
+    const userInfo = await this.db.userRepository.getUserById(userId);
+    // TODO: get resources user can access
+    const user = accessTokenUserSchema.parse(userInfo);
 
     const created = new Date();
     // convert created to a number of seconds
     const createdSeconds = Math.floor(created.getTime() / 1000);
 
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
-      userId: user._id,
+      userId: userId.toString(),
       iat: createdSeconds,
       type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
@@ -243,8 +249,8 @@ export class TokenService {
     };
 
     const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
-      userId: user._id,
-      email: user.email,
+      userId: userId.toString(),
+      user,
       iat: createdSeconds,
       type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
@@ -253,8 +259,8 @@ export class TokenService {
     };
 
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
-      userId: user._id,
-      email: user.email,
+      userId: userId.toString(),
+      user,
       type: tokenTypeSchema.enum.ID,
       generationId,
       iat: createdSeconds,
@@ -472,7 +478,7 @@ export class TokenService {
     const userDoc = await this.db.userRepository.getUserById(
       oldRefreshPayload.userId,
     );
-    let user: User;
+    let user: UserWithId;
     try {
       user = userSchema.parse(userDoc);
     } catch (e) {
@@ -481,6 +487,8 @@ export class TokenService {
     }
 
     // TODO: get user household access and roles
+
+    const accessUser = accessTokenUserSchema.parse(user);
 
     const created = new Date();
     // convert created to a number of seconds
@@ -496,7 +504,7 @@ export class TokenService {
 
     const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
-      email: user.email,
+      user: accessUser,
       iat: createdSeconds,
       type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
@@ -506,7 +514,7 @@ export class TokenService {
 
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
-      email: user.email,
+      user: accessUser,
       type: tokenTypeSchema.enum.ID,
       generationId: oldRefreshPayload.generationId,
       iat: createdSeconds,
@@ -661,10 +669,7 @@ export class TokenService {
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
-    const token = await this.generateMFAToken(mfaTokenPayload, secret);
-
-    // encrypt
-    return await this.encryptToken(token);
+    return await this.generateMFAToken(mfaTokenPayload, secret);
   }
 
   /**
@@ -693,6 +698,7 @@ export class TokenService {
         );
       },
     );
+
     const { success, data } = mfaTokenPayloadSchema.safeParse(result);
 
     if (!success) {

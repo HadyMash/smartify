@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { userWithIdSchema } from './user';
 
 export const jwtSecretSchema = z.object({
   /** The secret to sign the JWT with */
@@ -48,9 +49,14 @@ export const refreshTokenPayloadSchema = tokenPayloadSchema.extend({
 
 export type RefreshTokenPayload = z.infer<typeof refreshTokenPayloadSchema>;
 
+export const accessTokenUserSchema = userWithIdSchema.extend({});
+export type AccessTokenUser = z.infer<typeof accessTokenUserSchema>;
+
 export const accessTokenPayloadSchema = refreshTokenPayloadSchema.extend({
-  /** The email of the user the token is for */
-  email: z.string(),
+  ///** The email of the user the token is for */
+  //email: z.string(),
+  /** The user */
+  user: accessTokenUserSchema,
   /** The refresh token used to generate this access token's identifier */
   refreshJti: z.string().min(1),
   /** The type of the token */
@@ -63,8 +69,8 @@ export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
 export const idTokenPayloadSchema = tokenPayloadSchema.extend({
   /** The user's name */
   name: z.string(),
-  /** The user's email */
-  email: z.string().email(),
+  /** The user */
+  user: accessTokenUserSchema,
   /** The type of the token */
   type: z.literal(tokenTypeSchema.enum.ID),
 });
