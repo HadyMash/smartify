@@ -1,9 +1,18 @@
 import {
-  IncorrectMFACodeError,
+  MFAError,
   MFAFormattedKey,
   MFACode,
+  MFA,
+  MFAErrorType,
+  IncorrectPasswordError,
 } from '../../schemas/auth/auth';
-import { CreateUserData, Email, UserWithId } from '../../schemas/auth/user';
+import {
+  CreateUserData,
+  Email,
+  LoginData,
+  UserWithId,
+  userWithIdSchema,
+} from '../../schemas/auth/user';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { DatabaseService } from '../db/db';
 import { MFAService } from './mfa';
@@ -62,24 +71,43 @@ export class AuthService {
   public async confirmUserMFA(userId: string, code: MFACode) {
     const userMFA = await this.db.userRepository.getUserMFA(userId);
     if (userMFA.confirmed) {
-      throw new Error('User already confirmed MFA');
+      throw new MFAError(MFAErrorType.MFA_ALREADY_CONFIRMED);
     }
     const ms = new MFAService();
-    if (ms.verifyToken(userMFA.formattedKey, code)) {
+    if (ms.verifyCode(userMFA.formattedKey, code)) {
       // correct, mark mfa as confirmed
       await this.db.userRepository.confirmUserMFA(userId);
     } else {
-      throw new IncorrectMFACodeError();
+      throw new MFAError(MFAErrorType.INCORRECT_CODE);
     }
   }
 
   public async getUserById(userId: ObjectIdOrString): Promise<UserWithId> {
     return await this.db.userRepository.getUserById(userId);
   }
-}
 
-/**
- * Secure Remote Password (SRP) service. Handles SRP verifications.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-class SRP {}
+  public async login(data: LoginData): Promise<{ user: UserWithId; mfa: MFA }> {
+    const email = data.email;
+    const user = await this.db.userRepository.getUserDocByEmail(email);
+    const mfa: MFA = {
+      confirmed: user.mfaConfirmed,
+      formattedKey: user.mfaFormattedKey,
+    };
+
+    if (user.password !== data.password) {
+      throw new IncorrectPasswordError();
+    }
+
+    return { user: userWithIdSchema.parse(user), mfa };
+  }
+
+  public async verifyMFA(userId: ObjectIdOrString, code: MFACode) {
+    const mfa = await this.db.userRepository.getUserMFA(userId);
+    if (!mfa.confirmed) {
+      throw new MFAError(MFAErrorType.MFA_NOT_CONFIRMED);
+    }
+    const ms = new MFAService();
+    const result = ms.verifyCode(mfa.formattedKey, code);
+    return result;
+  }
+}

@@ -26,9 +26,26 @@ export const mfaSchema = z.object({
 });
 export type MFA = z.infer<typeof mfaSchema>;
 
-export class IncorrectMFACodeError extends Error {
+export enum MFAErrorType {
+  INCORRECT_CODE = 'INCORRECT_CODE',
+  MFA_ALREADY_CONFIRMED = 'MFA_ALREADY_CONFIRMED',
+  MFA_NOT_CONFIRMED = 'MFA_NOT_CONFIRMED',
+}
+
+export class MFAError extends Error {
+  public readonly type: MFAErrorType;
+  constructor(type: MFAErrorType) {
+    super(`MFA ERROR: ${type}`);
+    this.name = 'MFAError';
+    Object.setPrototypeOf(this, MFAError.prototype);
+    this.type = type;
+  }
+}
+
+export class IncorrectPasswordError extends Error {
   constructor() {
-    super(`Incorrect MFA code`);
-    this.name = 'IncorrectMFACode';
+    super('Incorrect Password');
+    this.name = 'IncorrectPasswordError';
+    Object.setPrototypeOf(this, IncorrectPasswordError.prototype);
   }
 }

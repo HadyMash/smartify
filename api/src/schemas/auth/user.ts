@@ -50,10 +50,14 @@ export enum InvalidUserType {
 
 /** Error for invalid users */
 export class InvalidUserError extends Error {
+  public readonly type: InvalidUserType = InvalidUserType.OTHER;
   constructor(details?: { type?: InvalidUserType; message?: string }) {
     super(`Invalid User${details?.message ? `: ${details.message}` : ''}`);
     this.name = 'InvalidUserError';
     Object.setPrototypeOf(this, InvalidUserError.prototype);
+    if (details?.type) {
+      this.type = details.type;
+    }
   }
 }
 
@@ -66,3 +70,9 @@ export const createUserSchema = z.object({
   sex: sexSchema.optional(),
 });
 export type CreateUserData = z.infer<typeof createUserSchema>;
+
+export const loginDataSchema = z.object({
+  email: emailSchema,
+  password: z.string(),
+});
+export type LoginData = z.infer<typeof loginDataSchema>;

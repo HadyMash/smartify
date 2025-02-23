@@ -38,14 +38,11 @@ export class MFAService {
   /**
    * Verifies the user's MFA token is correct
    * @param formattedKey - The user's formatted key
-   * @param userToken - The token the user entered
-   * @returns True if the token is correct, false otherwise
+   * @param code - The code the user entered
+   * @returns True if the code is correct, false otherwise
    */
-  public verifyToken(
-    formattedKey: MFAFormattedKey,
-    userToken: MFACode,
-  ): boolean {
-    const result = authenticator.verifyToken(formattedKey, userToken);
+  public verifyCode(formattedKey: MFAFormattedKey, code: MFACode): boolean {
+    const result = authenticator.verifyToken(formattedKey, code);
     return result != null;
   }
 

@@ -16,7 +16,7 @@ import { MFA, MFAFormattedKey } from '../../../schemas/auth/auth';
 export interface UserDoc extends User {
   mfaFormattedKey: string;
   mfaConfirmed: boolean;
-  password: string; // TEMP: TODO: remove once implemented srp
+  password: string;
 }
 
 export class UserRepository extends DatabaseRepository<UserDoc> {
@@ -58,6 +58,22 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   public async getUserById(userId: ObjectIdOrString): Promise<UserWithId> {
     const user = await this.collection.findOne({
       _id: objectIdSchema.parse(userId),
+    });
+    if (!user) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return userWithIdSchema.parse(user);
+  }
+
+  /**
+   * Get's a user by their email
+   * @param email - The email of the user to get
+   * @returns The user with the given id
+   * @throws Error if the user does not exist
+   */
+  public async getUserByEmail(email: Email): Promise<UserWithId> {
+    const user = await this.collection.findOne({
+      email: email,
     });
     if (!user) {
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
@@ -136,11 +152,45 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   /**
    * Set the user's MFA to be confirmed
    * @param userId - The id of the user
+   * @returns true if the operation was successful
    */
-  public async confirmUserMFA(userId: ObjectIdOrString): Promise<void> {
-    await this.collection.updateOne(
+  public async confirmUserMFA(userId: ObjectIdOrString): Promise<boolean> {
+    const result = await this.collection.updateOne(
       { _id: objectIdSchema.parse(userId) },
       { $set: { mfaConfirmed: true } },
     );
+    return result.acknowledged && result.matchedCount === 1;
+  }
+
+  // TEMP: TODO: remove this method
+  public async getUserPassword(email: Email): Promise<string> {
+    const result = await this.collection.findOne(
+      { email: email },
+      { projection: { password: 1 } },
+    );
+    if (!result) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return result.password;
+  }
+
+  public async getUserDoc(userId: ObjectIdOrString): Promise<UserDoc> {
+    const result = await this.collection.findOne({
+      _id: objectIdSchema.parse(userId),
+    });
+    if (!result) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return result;
+  }
+
+  public async getUserDocByEmail(email: string): Promise<UserDoc> {
+    const result = await this.collection.findOne({
+      email: email,
+    });
+    if (!result) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return result;
   }
 }
