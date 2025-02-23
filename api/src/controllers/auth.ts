@@ -84,6 +84,14 @@ export class AuthController {
 
   public static async register(req: AuthenticatedRequest, res: Response) {
     try {
+      // check if they are already logged in
+      if (req.user) {
+        console.log(req.user);
+
+        res.status(400).send({ error: 'Already logged in' });
+        return;
+      }
+
       const deviceId = req.deviceId!;
 
       // TODO: password SRP stuff
@@ -219,6 +227,12 @@ export class AuthController {
 
   public static async login(req: AuthenticatedRequest, res: Response) {
     try {
+      // check if they are already logged in
+      if (req.user) {
+        res.status(400).send({ error: 'Already logged in' });
+        return;
+      }
+
       // TODO: password SRP stuff
 
       // validate data
