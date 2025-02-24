@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/screens/household/add_household.dart';
 
 class MFASetupCompleteScreen extends StatelessWidget {
   const MFASetupCompleteScreen({super.key});
@@ -47,8 +48,12 @@ class MFASetupCompleteScreen extends StatelessWidget {
               // Finish Button (aligned with other pages)
               ElevatedButton(
                 onPressed: () {
-                  // Navigate to the home screen or any other screen
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  // Navigate to the Add Household screen after signing up
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AddHouseholdScreen()),
+                  );
                 },
                 child: const Text(
                   'Finish',

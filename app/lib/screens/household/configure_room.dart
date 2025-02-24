@@ -348,7 +348,7 @@
 //   Offset? _previousOffset;
 //   double? _previousScale;
 //   final _roomTypes = ['Living Room', 'Bedroom', 'Kitchen', 'Bathroom', 'Study'];
-  
+
 //   @override
 //   void initState() {
 //     super.initState();
@@ -376,7 +376,7 @@
 //   void _showAddRoomDialog(BuildContext context, Room parentRoom, String direction) {
 //     final nameController = TextEditingController();
 //     String selectedType = _roomTypes[0];
-    
+
 //     showDialog(
 //       context: context,
 //       builder: (context) => AlertDialog(
@@ -776,7 +776,7 @@
 //   Offset? _previousOffset;
 //   double? _previousScale;
 //   final _roomTypes = ['Living Room', 'Bedroom', 'Kitchen', 'Bathroom', 'Study'];
-  
+
 //   @override
 //   void initState() {
 //     super.initState();
@@ -804,7 +804,7 @@
 //   void _showAddRoomDialog(BuildContext context, Room parentRoom, String direction) {
 //     final nameController = TextEditingController();
 //     String selectedType = _roomTypes[0];
-    
+
 //     showDialog(
 //       context: context,
 //       builder: (context) => AlertDialog(
@@ -868,7 +868,6 @@
 //   _adjustViewport(newRoom.position); // Move viewport if needed
 // }
 
-
 //   Offset _calculateNewRoomPosition(Room parentRoom, String direction) {
 //     switch (direction) {
 //       case 'top':
@@ -900,11 +899,11 @@
 //     // Implement the logic to adjust the viewport based on the new room position
 //   setState(() {
 //     // Move the viewport if the new room is out of the visible area
-//     if (newPosition.dx < _position.dx || 
-//         newPosition.dy < _position.dy || 
-//         newPosition.dx > _position.dx + 500 || 
+//     if (newPosition.dx < _position.dx ||
+//         newPosition.dy < _position.dy ||
+//         newPosition.dx > _position.dx + 500 ||
 //         newPosition.dy > _position.dy + 500) {
-      
+
 //       _position = Offset(
 //         newPosition.dx - 200, // Adjust so the room is visible in the center
 //         newPosition.dy - 150
@@ -967,7 +966,7 @@
 //     child: Stack(
 //       children: [
 //         Container(
-//           width: 2000, 
+//           width: 2000,
 //           height: 2000,
 //           color: Colors.white,
 //         ),
@@ -1260,7 +1259,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
               width: boxWidth,
               height: boxHeight,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 0.5), // Outlined box
+                border:
+                    Border.all(color: Colors.black, width: 0.5), // Outlined box
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.transparent, // No fill color
               ),
@@ -1298,21 +1298,31 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
               ),
             ),
           ),
-          if (!connections["top"]!) _buildAddButton(const Alignment(0.0, -1.1), dx, dy - boxHeight - spacing, "top"),
-          if (!connections["bottom"]!) _buildAddButton(const Alignment(0.0, 1.1), dx, dy + boxHeight + spacing, "bottom"),
-          if (!connections["left"]!) _buildAddButton(const Alignment(-1.1, 0.0), dx - boxWidth - spacing, dy, "left"),
-          if (!connections["right"]!) _buildAddButton(const Alignment(1.1, 0.0), dx + boxWidth + spacing, dy, "right"),
+          if (!connections["top"]!)
+            _buildAddButton(const Alignment(0.0, -1.1), dx,
+                dy - boxHeight - spacing, "top"),
+          if (!connections["bottom"]!)
+            _buildAddButton(const Alignment(0.0, 1.1), dx,
+                dy + boxHeight + spacing, "bottom"),
+          if (!connections["left"]!)
+            _buildAddButton(const Alignment(-1.1, 0.0), dx - boxWidth - spacing,
+                dy, "left"),
+          if (!connections["right"]!)
+            _buildAddButton(const Alignment(1.1, 0.0), dx + boxWidth + spacing,
+                dy, "right"),
         ],
       ),
     );
   }
 
-  Widget _buildAddButton(Alignment alignment, double newDx, double newDy, String connectingSide) {
+  Widget _buildAddButton(
+      Alignment alignment, double newDx, double newDy, String connectingSide) {
     return Align(
       alignment: alignment,
       child: InkWell(
         onTap: () => _addBox(newDx, newDy, connectingSide),
-        borderRadius: BorderRadius.circular(8), // Optional: Rounded corners for the touch target
+        borderRadius: BorderRadius.circular(
+            8), // Optional: Rounded corners for the touch target
         child: Container(
           width: 30, // Larger touch area
           height: 30, // Larger touch area
@@ -1320,7 +1330,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
             color: Colors.grey[400], // Background color
             borderRadius: BorderRadius.circular(8), // Rounded corners
           ),
-          child: const Icon(Icons.add, color: Colors.black, size: 24), // Black plus icon
+          child: const Icon(Icons.add,
+              color: Colors.black, size: 24), // Black plus icon
         ),
       ),
     );
@@ -1332,4 +1343,3 @@ void main() {
     home: ConfigureRoomScreen(),
   ));
 }
-

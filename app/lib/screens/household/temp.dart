@@ -386,4 +386,3 @@ class _TimePickerState extends State<TimePicker> {
     );
   }
 }
-

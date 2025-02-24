@@ -66,7 +66,6 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                
                 Center(
                   child: Container(
                     width: 100,
@@ -83,7 +82,6 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -97,11 +95,11 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 InkWell(
                   onTap: () => _selectDate(context),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       border: Border.all(color: theme.colorScheme.secondary),
                       borderRadius: BorderRadius.circular(12),
@@ -114,7 +112,7 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                               ? 'Date Of Birth'
                               : DateFormat('MMMM d, y').format(_selectedDate!),
                           style: textTheme.bodyLarge?.copyWith(
-                            color: _selectedDate == null 
+                            color: _selectedDate == null
                                 ? theme.colorScheme.onSurface.withOpacity(0.6)
                                 : theme.colorScheme.onSurface,
                           ),
@@ -128,7 +126,6 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -143,7 +140,6 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

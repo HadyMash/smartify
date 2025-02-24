@@ -92,7 +92,8 @@ class _DeleteHouseholdScreenState extends State<DeleteHouseholdScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const DeleteHouseholdConfirmScreen(),
+                                  builder: (context) =>
+                                      const DeleteHouseholdConfirmScreen(),
                                 ),
                               );
                             }

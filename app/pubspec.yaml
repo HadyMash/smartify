@@ -42,6 +42,10 @@ dependencies:
   flutter_svg: ^2.0.9
   intl: ^0.18.1
   gesture_x_detector: ^1.1.1
+  fl_chart: ^0.70.2
+  # flutter_xlider: ^3.5.0
+  flutter_picker: ^2.1.0 
+  
 
 dev_dependencies:
   flutter_test:

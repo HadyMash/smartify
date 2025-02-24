@@ -46,13 +46,12 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-
                 Text(
                   'Enter Room Details',
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 24),
-
                 TextFormField(
                   controller: _roomNameController,
                   decoration: const InputDecoration(
@@ -66,7 +65,6 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _floorController,
                   decoration: const InputDecoration(
@@ -81,7 +79,6 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
                     labelText: 'Type',
@@ -93,7 +90,8 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                     );
                   }).toList(),
                   onChanged: (String? newValue) {
-                    if (newValue != null && !_selectedDevices.contains(newValue)) {
+                    if (newValue != null &&
+                        !_selectedDevices.contains(newValue)) {
                       setState(() {
                         _selectedDevices.add(newValue);
                       });
@@ -101,7 +99,6 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 8),
-
                 Wrap(
                   spacing: 8,
                   children: _selectedDevices.map((device) {
@@ -116,7 +113,6 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 32),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

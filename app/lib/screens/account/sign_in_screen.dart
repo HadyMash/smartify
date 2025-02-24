@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/screens/account/CreateAccountScreen.dart';
 import 'package:smartify/screens/account/forgotPassword.dart';
-// import 'package:smartify/screens/household/view_household.dart';
+import 'package:smartify/dashboard_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -118,12 +118,12 @@ class SignInScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   // Navigate to the next screen
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => ViewHouseholdScreen(),
-                  //   ),
-                  // );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DashboardScreen(),
+                    ),
+                  );
                 },
                 child: const Text("Sign in", style: TextStyle(fontSize: 16)),
               ),

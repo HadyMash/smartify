@@ -32,7 +32,8 @@ class RoomsScreen extends StatelessWidget {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ConfigureRoomScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const ConfigureRoomScreen()),
                       );
                     },
                     child: Text(
@@ -46,7 +47,6 @@ class RoomsScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 32),
-
               Expanded(
                 child: ListView(
                   children: [
@@ -89,7 +89,8 @@ class RoomsScreen extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ConfigureRoomScreen()),
+            MaterialPageRoute(
+                builder: (context) => const ConfigureRoomScreen()),
           );
         },
       ),

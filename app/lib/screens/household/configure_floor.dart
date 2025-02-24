@@ -105,7 +105,7 @@
 //                                             width: 60,
 //                                             height: 60,
 //                                             decoration: BoxDecoration(
-//                                               color: isSelected 
+//                                               color: isSelected
 //                                                   ? theme.colorScheme.secondary
 //                                                   : theme.colorScheme.surface,
 //                                               borderRadius: BorderRadius.circular(12),
@@ -233,12 +233,16 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
 
       if (_selectedFloorIndex <= gIndex) {
         // If at or above G, add more L floors at the top
-        int newLNumber = (_floors.first.startsWith('L')) ? int.tryParse(_floors.first.substring(1)) ?? 2 : 0;
+        int newLNumber = (_floors.first.startsWith('L'))
+            ? int.tryParse(_floors.first.substring(1)) ?? 2
+            : 0;
         _floors.insert(0, 'L${newLNumber + 1}');
         _selectedFloorIndex++;
       } else {
         // If below G (Basements), add more B floors at the bottom
-        int newBNumber = (_floors.last.startsWith('B')) ? int.tryParse(_floors.last.substring(1)) ?? 2 : 0;
+        int newBNumber = (_floors.last.startsWith('B'))
+            ? int.tryParse(_floors.last.substring(1)) ?? 2
+            : 0;
         _floors.add('B${newBNumber + 1}');
       }
     });
@@ -252,13 +256,15 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
         // If at or above G, remove the first L floor
         if (_floors.first.startsWith('L')) {
           _floors.removeAt(0);
-          _selectedFloorIndex = (_selectedFloorIndex > 0) ? _selectedFloorIndex - 1 : 0;
+          _selectedFloorIndex =
+              (_selectedFloorIndex > 0) ? _selectedFloorIndex - 1 : 0;
         }
       } else {
         // If below G (Basements), remove the last B floor
         if (_floors.last.startsWith('B')) {
           _floors.removeLast();
-          _selectedFloorIndex = (_selectedFloorIndex > gIndex) ? _selectedFloorIndex - 1 : gIndex;
+          _selectedFloorIndex =
+              (_selectedFloorIndex > gIndex) ? _selectedFloorIndex - 1 : gIndex;
         }
       }
     });
@@ -288,7 +294,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
                     Expanded(
                       child: CupertinoPicker(
                         itemExtent: 50.0,
-                        scrollController: FixedExtentScrollController(initialItem: _selectedFloorIndex),
+                        scrollController: FixedExtentScrollController(
+                            initialItem: _selectedFloorIndex),
                         onSelectedItemChanged: (int index) {
                           setState(() {
                             _selectedFloorIndex = index;
@@ -312,8 +319,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
                           onPressed: _incrementFloors,
                           icon: const Icon(Icons.add),
                           style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(theme.colorScheme.surface),
-                            padding: WidgetStateProperty.all(const EdgeInsets.all(12)),
+                            backgroundColor: WidgetStateProperty.all(
+                                theme.colorScheme.surface),
+                            padding: WidgetStateProperty.all(
+                                const EdgeInsets.all(12)),
                           ),
                         ),
                         Text(
@@ -324,8 +333,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
                           onPressed: _decrementFloors,
                           icon: const Icon(Icons.remove),
                           style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(theme.colorScheme.surface),
-                            padding: WidgetStateProperty.all(const EdgeInsets.all(12)),
+                            backgroundColor: WidgetStateProperty.all(
+                                theme.colorScheme.surface),
+                            padding: WidgetStateProperty.all(
+                                const EdgeInsets.all(12)),
                           ),
                         ),
                       ],
@@ -359,12 +370,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
     );
   }
 }
-
-
-
-
-
-
 
 // class ConfigureFloorsScreen extends StatefulWidget {
 //   const ConfigureFloorsScreen({super.key});

@@ -13,7 +13,13 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   final _roomNameController = TextEditingController();
   final _floorController = TextEditingController();
   String? _selectedType;
-  final List<String> _roomTypes = ['Bedroom', 'Living Room', 'Kitchen', 'Bathroom', 'Study'];
+  final List<String> _roomTypes = [
+    'Bedroom',
+    'Living Room',
+    'Kitchen',
+    'Bathroom',
+    'Study'
+  ];
 
   @override
   void dispose() {
@@ -47,13 +53,12 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-
                 Text(
                   'Change Room Details',
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 24),
-
                 TextFormField(
                   controller: _roomNameController,
                   decoration: const InputDecoration(
@@ -67,7 +72,6 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _floorController,
                   decoration: const InputDecoration(
@@ -82,7 +86,6 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 DropdownButtonFormField<String>(
                   value: _selectedType,
                   decoration: const InputDecoration(
@@ -101,7 +104,6 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

@@ -39,7 +39,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
               ListTile(
                 title: Text(
                   'Permissions',
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
@@ -51,7 +52,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
               ListTile(
                 title: Text(
                   'Role',
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 trailing: DropdownButton<String>(
                   value: _selectedRole,

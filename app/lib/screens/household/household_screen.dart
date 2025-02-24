@@ -20,7 +20,7 @@ class HouseholdScreen extends StatefulWidget {
 class _HouseholdScreenState extends State<HouseholdScreen> {
   String _selectedHousehold = 'Wayne Manor';
   final List<String> _households = ['Wayne Manor', 'Batcave', 'Penthouse'];
-  
+
   final List<Member> _members = [
     Member('Batman', false),
     Member('Alfred', false),
@@ -33,7 +33,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
       _members.add(Member(name, true));
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -68,7 +68,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                           });
                         }
                       },
-                      items: _households.map<DropdownMenuItem<String>>((String value) {
+                      items: _households
+                          .map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Text(value),
@@ -142,7 +143,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const RoomsScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => const RoomsScreen()),
                         );
                       },
                       child: Text(
