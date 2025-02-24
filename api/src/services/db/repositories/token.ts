@@ -83,7 +83,7 @@ const MFA_BLACKLIST_COLLECTION_NAME = 'mfa_token_blacklist';
  * that way no revoked access tokens get unrevoked) */
 export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
   protected static readonly GENERATION_IDS_BLACKLIST_REDIS_KEY =
-    'token-blacklist' as const;
+    'token-blacklist';
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, TOKENS_COLLECTION_NAME, redis);
@@ -365,7 +365,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
 
 export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAccessTokenDoc> {
   protected static readonly ACCESS_BLACKLIST_REDIS_KEY =
-    'access-token-blacklist' as const;
+    'access-token-blacklist';
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, ACCESS_BLACKLIST_COLLECTION_NAME, redis);

@@ -45,6 +45,7 @@ export enum InvalidUserType {
   INVALID_ID = 'Invalid ID',
   INVALID_EMAIL = 'Invalid Email',
   DOES_NOT_EXIST = 'Does Not Exist',
+  ALREADY_EXISTS = 'Already Exists',
   OTHER = 'Other',
 }
 
@@ -63,16 +64,44 @@ export class InvalidUserError extends Error {
 
 /* Request schemas */
 
-export const createUserSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
+const bigIntTransformed = z
+  .union([z.string(), z.bigint()])
+  .refine(
+    (val) => {
+      if (typeof val === 'string') {
+        try {
+          BigInt(val);
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
+      return true;
+    },
+    { message: 'Value must be a string or a BigInt' },
+  )
+  .transform((val) => (typeof val === 'string' ? BigInt(val) : val));
+
+//export const initUserDataSchema = z.object({
+//  email: emailSchema,
+//});
+
+export const registerDataSchema = z.object({
+  email: emailSchema,
   dob: dobSchema.optional(),
   sex: sexSchema.optional(),
+  salt: z.string(),
+  verifier: bigIntTransformed,
 });
-export type CreateUserData = z.infer<typeof createUserSchema>;
+
+export type RegisterData = z.infer<typeof registerDataSchema>;
 
 export const loginDataSchema = z.object({
+  /** The user's email */
   email: emailSchema,
-  password: z.string(),
+  /** The client's public key */
+  A: bigIntTransformed,
+  /** The client's proof */
+  Mc: bigIntTransformed,
 });
 export type LoginData = z.infer<typeof loginDataSchema>;

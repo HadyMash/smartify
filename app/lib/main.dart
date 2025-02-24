@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smartify/services/auth.dart';
 
 import 'models/mfa.dart';
 import 'models/user.dart';
@@ -20,6 +21,25 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    const password = 'password';
+    final salt = SRP.generateSalt();
+    debugPrint('salt: $salt\n');
+    final verifier = SRP.generateVerifier(salt, password);
+    debugPrint('verifier: $verifier\n');
+    final keys = SRP.generateKeys();
+    debugPrint('keys: a: ${keys.a}, A: ${keys.A}\n');
+    final B = SRP.generateKeys().A;
+    debugPrint('B: $B\n');
+    final proof = SRP.calculateProof(
+      email: 'example@domain.com',
+      password: password,
+      a: keys.a,
+      A: keys.A,
+      B: B,
+      salt: salt,
+    );
+    debugPrint('proof: $proof\n');
+
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(

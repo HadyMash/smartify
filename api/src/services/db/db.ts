@@ -4,7 +4,7 @@ import {
   MFABlacklistRepository,
   TokenRepository,
 } from './repositories/token';
-import { UserRepository } from './repositories/user';
+import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
 
@@ -17,6 +17,7 @@ export class DatabaseService {
 
   // Repositories
   private _userRepository: UserRepository;
+  private _srpRepository: SRPSessionRepository;
   private _tokenRepository: TokenRepository;
   private _accessBlacklistRepository: AccessBlacklistRepository;
   private _mfaBlacklistRepository: MFABlacklistRepository;
@@ -72,6 +73,11 @@ export class DatabaseService {
       DatabaseService.db,
       DatabaseService.redis,
     );
+    this._srpRepository = new SRPSessionRepository(
+      DatabaseService.client,
+      DatabaseService.db,
+      DatabaseService.redis,
+    );
 
     this._tokenRepository = new TokenRepository(
       DatabaseService.client,
@@ -98,6 +104,9 @@ export class DatabaseService {
 
   get userRepository(): UserRepository {
     return this._userRepository;
+  }
+  get srpSessionRepository(): SRPSessionRepository {
+    return this._srpRepository;
   }
 
   get tokenRepository(): TokenRepository {

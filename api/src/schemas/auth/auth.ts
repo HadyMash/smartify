@@ -26,6 +26,37 @@ export const mfaSchema = z.object({
 });
 export type MFA = z.infer<typeof mfaSchema>;
 
+const bigIntTransormed = z
+  .union([z.string(), z.bigint()])
+  .transform((val) => (typeof val === 'string' ? BigInt(val) : val));
+
+export const srpSessionSchema = z.object({
+  /** the session id */
+  sessionId: z.string(),
+  /** The user's salt */
+  salt: z.string(),
+  /** The user's verifier */
+  verifier: z.string(),
+  // TODO: add bigint validation in schema
+  /* Server private key */
+  b: bigIntTransormed,
+  /* Server public key */
+  B: bigIntTransormed,
+  /* Client public key */
+  A: bigIntTransormed.optional(),
+});
+
+export type SRPSession = z.infer<typeof srpSessionSchema>;
+
+export const srpSessionJSONSchema = srpSessionSchema.extend({
+  b: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
+  B: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
+  A: bigIntTransormed.transform((val) => `0x${val.toString(16)}`).optional(),
+});
+export type SRPJSONSessoin = z.infer<typeof srpSessionJSONSchema>;
+
+/* Error types */
+
 export enum MFAErrorType {
   INCORRECT_CODE = 'INCORRECT_CODE',
   MFA_ALREADY_CONFIRMED = 'MFA_ALREADY_CONFIRMED',

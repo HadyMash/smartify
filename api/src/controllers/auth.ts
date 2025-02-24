@@ -1,8 +1,11 @@
 import { Response } from 'express';
 import {
-  CreateUserData,
-  createUserSchema,
-  LoginData,
+  Email,
+  emailSchema,
+  InvalidUserError,
+  InvalidUserType,
+  loginDataSchema,
+  registerDataSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
@@ -12,10 +15,10 @@ import {
   MFACode,
   mfaCodeSchema,
   MFAErrorType,
-  IncorrectPasswordError,
 } from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
 import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
+import { validateSchema } from '../util';
 
 const MFA_TOKEN_COOKIE_NAME = 'mfa-token';
 const ACCESS_TOKEN_COOKIE_NAME = 'access-token';
@@ -92,46 +95,73 @@ export class AuthController {
         return;
       }
 
-      const deviceId = req.deviceId!;
-
-      // TODO: password SRP stuff
-
-      // validate body
-      let data: CreateUserData;
-      try {
-        data = createUserSchema.parse(req.body);
-      } catch (_) {
-        res.status(400).send('Invalid body');
+      const data = validateSchema(res, registerDataSchema, req.body);
+      if (!data) {
         return;
       }
-
-      console.log(data);
-
       const as = new AuthService();
+      const { userId, formattedKey } = await as.initUserSRP(data);
 
-      if (await as.userExistsEmail(data.email)) {
-        this.deleteAllCookies(res);
+      res.status(201).send({ userId, formattedKey });
+      return;
+    } catch (e) {
+      if (
+        e instanceof InvalidUserError &&
+        e.type === InvalidUserType.ALREADY_EXISTS
+      ) {
+        // don't tell the client the user doesn't already exist
         res.status(400).send({ error: 'Invalid request' });
         return;
       }
 
-      // create user
-      const { user, mfaFormattedKey } = await as.registerUser(data);
-      const ms = new MFAService();
-      const mfaQRUri = ms.generateMFAUri(mfaFormattedKey, user.email);
-
-      // generate mfa token
-      const mfaToken = await new TokenService().createMFAToken(
-        user._id.toString(),
-        deviceId,
-      );
-
-      AuthController.writeMFACookie(res, mfaToken);
-
-      res.status(201).send({ user, mfaFormattedKey, mfaQRUri });
-    } catch (e) {
       console.error(e);
       res.status(500).send('Internal Server Error');
+      return;
+    }
+  }
+
+  public static async initiateAuthSession(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
+    try {
+      // check if they are already logged in
+      if (req.user) {
+        console.log(req.user);
+
+        res.status(400).send({ error: 'Already logged in' });
+        return;
+      }
+
+      const email: Email | undefined = validateSchema(
+        res,
+        emailSchema,
+        req.query.email,
+      );
+
+      if (!email) {
+        return;
+      }
+
+      const as = new AuthService();
+
+      try {
+        const { salt, B } = await as.initAuthSession(email);
+
+        res.status(200).send({ salt, B });
+      } catch (e) {
+        if (e instanceof InvalidUserError) {
+          // don't tell the client the user doesn't exist
+          res.status(400).send({ error: 'Invalid request' });
+          return;
+        } else {
+          throw e;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+
+      res.status(500).send({ error: 'Internal server error' });
       return;
     }
   }
@@ -233,48 +263,44 @@ export class AuthController {
         return;
       }
 
-      // TODO: password SRP stuff
+      const data = validateSchema(res, loginDataSchema, req.body);
 
-      // validate data
-      let data: LoginData;
-      try {
-        data = createUserSchema.parse(req.body);
-      } catch (_) {
-        res.status(400).send({ error: 'Invalid body' });
+      if (!data) {
         return;
       }
 
       const as = new AuthService();
-      try {
-        const { user, mfa } = await as.login(data);
 
-        // generate mfa token to send back to user
-        const ts = new TokenService();
-        const mfaToken = await ts.createMFAToken(
-          user._id.toString(),
-          req.deviceId!,
-        );
+      // get auth session
+      const session = await as.getAuthSession(data.email);
 
-        this.writeMFACookie(res, mfaToken);
-
-        if (mfa.confirmed) {
-          res.status(204).send();
-        } else {
-          const ms = new MFAService();
-          const mfaQRUri = ms.generateMFAUri(mfa.formattedKey, user.email);
-          res.status(200).send({
-            formattedKey: mfa.formattedKey,
-            mfaQRUri,
-          });
-        }
+      // check it exists
+      if (!session) {
+        res.status(404).send({ error: 'Auth session does not exist' });
         return;
-      } catch (e) {
-        if (e instanceof IncorrectPasswordError) {
-          res.status(400).send({ error: 'Incorrect email or password' });
-          return;
-        } else {
-          throw e;
-        }
+      }
+
+      const { user, mfa, Ms } = await as.login({
+        ...data,
+        ...session,
+        verifier: BigInt(session.verifier),
+      });
+
+      // generate mfa token to send back to user
+      const ts = new TokenService();
+      const mfaToken = await ts.createMFAToken(
+        user._id.toString(),
+        req.deviceId!,
+      );
+
+      this.writeMFACookie(res, mfaToken);
+
+      if (mfa.confirmed) {
+        res.status(200).send({ Ms });
+      } else {
+        const ms = new MFAService();
+        const mfaQRUri = ms.generateMFAUri(mfa.formattedKey, user.email);
+        res.status(200).send({ Ms, formattedKey: mfa.formattedKey, mfaQRUri });
       }
     } catch (e) {
       console.error(e);

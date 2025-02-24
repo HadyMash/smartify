@@ -5,6 +5,7 @@ import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { householdRouter } from './routes/household';
 import { parseAuth } from './middleware/auth';
+import { bigIntToHexMiddleware } from './middleware/bigint';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(logMiddleware);
 app.use(parseAuth);
+app.use(bigIntToHexMiddleware);
 
 const router = express.Router();
 
