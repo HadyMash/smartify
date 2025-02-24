@@ -112,7 +112,7 @@
 // }
 
 import 'package:flutter/material.dart';
-import 'screens/account/sign_in_screen.dart';
+import 'package:smartify/screens/household/configure_room.dart';
 
 void main() {
   runApp(const MyApp());
@@ -227,7 +227,8 @@ class MyApp extends StatelessWidget {
           headerHelpStyle: TextStyle(color: Colors.white),
         ),
       ),
-      home: const SignInScreen(),
+      // home: const ConfigureRoomScreen(floors: ['L1','G','B1'],),
+      home: const ConfigureRoomScreen(),
     );
   }
 }
