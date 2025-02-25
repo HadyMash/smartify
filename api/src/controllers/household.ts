@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../schemas/auth/user';
 import {
@@ -5,11 +7,13 @@ import {
   HouseholdRequestData,
   RoomRequestData,
   roomRequestDataSchema,
-  householdRequestDataSchema,
+  householdCreateRequestDataSchema,
   householdSchema,
   HouseholdMember,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
+import { TokenService } from '../services/token';
+import { objectIdOrStringSchema } from '../schemas/obj-id';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {
@@ -17,59 +21,43 @@ export class HouseholdController {
     req: AuthenticatedRequest,
     res: Response,
   ) {
+    // validate data
+    let householdRequestData: HouseholdRequestData;
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
-      // validate data
-      let householdRequestData: HouseholdRequestData;
-      try {
-        householdRequestData = householdRequestDataSchema.parse(
-          (req.body as { data?: unknown }).data,
-        );
-      } catch (_) {
-        res.status(400).send({ error: 'Invalid data' });
-        return;
-      }
-
-      const householdData: Omit<Household, '_id'> = {
-        ...householdRequestData,
-        owner: req.user?._id,
-        members: [],
-      };
-
-      try {
-        // validate
-        householdSchema.parse(householdData);
-      } catch (_) {
-        res.status(400).send({ error: 'Invalid data' });
-        return;
-      }
-
-      // create household
-      const hs = new HouseholdService();
-      const household = await hs.createHousehold(householdData);
-      res.status(201).send(household);
-    } catch (e) {
-      console.error(e);
-      res.status(500).send('An error');
+      householdRequestData = householdCreateRequestDataSchema.parse(
+        (req.body as { data?: unknown }).data,
+      );
+    } catch (_) {
+      res.status(400).send({ error: 'Invalid data' });
       return;
     }
+
+    const householdData: Omit<Household, '_id'> = {
+      ...householdRequestData,
+      owner: req.user?._id ?? '',
+      members: [],
+    };
+
+    try {
+      // validate
+      householdSchema.parse(householdData);
+    } catch (_) {
+      res.status(400).send({ error: 'Invalid data' });
+      return;
+    }
+    // create household
+    const hs = new HouseholdService();
+    const household = await hs.createHousehold(householdData);
+    res.status(201).send(household);
   }
 
   public static async getHousehold(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
-
       // validate id
       const id = req.params.id;
 
       try {
-        householdSchema.shape._id.parse(id);
+        objectIdOrStringSchema.parse(id);
       } catch (_) {
         res.status(400).send({ error: 'Invalid id' });
         return;
@@ -92,38 +80,40 @@ export class HouseholdController {
       return;
     }
   }
+
   public static async inviteMember(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
-      const { householdId, memberId } = req.body as {
-        householdId: string;
-        memberId: string;
-      };
+      const { householdId, memberId, role, permissions } = req.body;
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.addMember(
+      const updatedHousehold = await hs.inviteMember(
         householdId,
         memberId,
-        req.user._id,
+        role,
+        permissions,
       );
-
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).send('An error occurred while sending the invite');
     }
   }
+
+  public static async getUserInvites(req: AuthenticatedRequest, res: Response) {
+    try {
+      const hs = new HouseholdService();
+      const invites = await hs.getUserInvites(req.user?._id ?? '');
+      res.status(200).send(invites);
+    } catch (e) {
+      console.error(e);
+      res.status(500).send('An error occurred while fetching invites');
+    }
+  }
+
   public static async respondToInvite(
     req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
       const { inviteId, response } = req.body as {
         inviteId: string;
         response: boolean;
@@ -132,13 +122,12 @@ export class HouseholdController {
       const updatedHousehold = await hs.respondToInvite(
         inviteId,
         response,
-        req.user._id,
+        req.user?._id ?? '',
       );
-
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).send('An error occurred while responding to the invite');
     }
   }
 
@@ -146,25 +135,17 @@ export class HouseholdController {
 
   public static async removeMember(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
-      const { householdId, memberId } = req.body as {
-        householdId: string;
-        memberId: string;
-      };
-
+      const { userId, householdId } = req.params;
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.removeMember(
-        householdId,
-        memberId,
-        req.user._id,
-      );
-      res.status(200).send(updatedHousehold);
-    } catch (e) {
-      console.error(e);
-      res.status(500).send('An error occurred');
+      await hs.removeMember(householdId, userId);
+
+      const blacklist = new TokenService();
+      await blacklist.revokeAllTokensImmediately(userId);
+
+      res.status(200).json({ message: 'User removed from household.' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'failed to remove member' });
     }
   }
 
@@ -173,27 +154,30 @@ export class HouseholdController {
     res: Response,
   ) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
+      const { householdId } = req.params;
+      const hs = new HouseholdService();
+      const users = await hs.getHousehold(householdId);
+
+      if (!users) {
+        res.status(404).send({ error: 'empty' });
         return;
       }
-      const { householdId } = req.params;
 
-      const hs = new HouseholdService();
-      await hs.deleteHousehold(householdId, req.user._id);
-      res.status(200).send({ message: 'Household deleted' });
-    } catch (e) {
-      console.error(e);
-      res.status(500).send('An error occurred');
+      for (const user of users.members) {
+        const blacklist = new TokenService();
+        await blacklist.revokeAllTokensImmediately(user.id!.toString() ?? '');
+      }
+
+      await hs.deleteHousehold(householdId);
+      res.status(200).json({ message: 'Household deleted.' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'failed to delete household' });
     }
   }
 
   public static async addRoom(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
       let roomRequestData: RoomRequestData;
       try {
         roomRequestData = roomRequestDataSchema.parse(req.body);
@@ -204,11 +188,7 @@ export class HouseholdController {
 
       const { householdId } = req.params;
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.addRoom(
-        householdId,
-        roomRequestData,
-        req.user._id,
-      );
+      const updatedHousehold = await hs.addRoom(householdId, roomRequestData);
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
@@ -221,10 +201,6 @@ export class HouseholdController {
     res: Response,
   ) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
       const { householdId } = req.params;
 
       const hs = new HouseholdService();
@@ -247,10 +223,6 @@ export class HouseholdController {
     res: Response,
   ) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
       const { householdId, memberId, newRole } = req.body as {
         householdId: string;
         memberId: string;
@@ -262,7 +234,7 @@ export class HouseholdController {
         householdId,
         memberId,
         newRole,
-        req.user._id,
+        req.user?._id ?? '',
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -273,10 +245,6 @@ export class HouseholdController {
 
   public static async manageRooms(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
       const { householdId, roomId, action } = req.body as {
         householdId: string;
         roomId: string;
@@ -288,7 +256,6 @@ export class HouseholdController {
         householdId,
         roomId,
         action,
-        req.user._id,
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -298,22 +265,13 @@ export class HouseholdController {
   }
   public static async removeRoom(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
-
       const { householdId, roomId } = req.body as {
         householdId: string;
         roomId: string;
       };
 
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.removeRoom(
-        householdId,
-        roomId,
-        req.user._id,
-      );
+      const updatedHousehold = await hs.removeRoom(householdId, roomId);
 
       res.status(200).send(updatedHousehold);
     } catch (e) {

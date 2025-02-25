@@ -36,21 +36,23 @@ export type MemberRole = z.infer<typeof memberRoleSchema>;
 /**
  * A household dweller's permissions
  */
-export const memberPermissionsSchema = z.object({
-  // TODO : add per device permissions
+export const memberPermissionsSchema = z
+  .object({
+    // TODO : add per device permissions
 
-  /** Whether the user permissions to view and control appliances */
-  appliances: z.boolean(),
-  /**
-   * Whether the user has permissions to view other member's health devices.
-   * It's important to note that users can always view their own health devices
-   */
-  health: z.boolean(),
-  /** Whether the user has permissions to view and control security devices */
-  security: z.boolean(),
-  /** Whether the user has permissions to view and control energy devices */
-  energy: z.boolean(),
-});
+    /** Whether the user permissions to view and control appliances */
+    appliances: z.boolean(),
+    /**
+     * Whether the user has permissions to view other member's health devices.
+     * It's important to note that users can always view their own health devices
+     */
+    health: z.boolean(),
+    /** Whether the user has permissions to view and control security devices */
+    security: z.boolean(),
+    /** Whether the user has permissions to view and control energy devices */
+    energy: z.boolean(),
+  })
+  .strict();
 
 /** A household dweller's permissions */
 export type MemberPermissions = z.infer<typeof memberPermissionsSchema>;
@@ -110,7 +112,7 @@ export type HouseholdRoom = z.infer<typeof householdRoomSchema>;
 
 export type HouseholdMember = z.infer<typeof memberSchema>;
 
-export const householdRequestDataSchema = z.object({
+export const householdCreateRequestDataSchema = z.object({
   /** Household name */
   name: z.string(),
   /** Household long and lat coordinates */
@@ -129,19 +131,44 @@ export const householdRequestDataSchema = z.object({
   //rooms: z.array(householdRoomSchema),
 });
 
-export type HouseholdRequestData = z.infer<typeof householdRequestDataSchema>;
+export const inviteSchema = z
+  .object({
+    _id: objectIdOrStringSchema.optional(),
+    userId: objectIdOrStringSchema,
+    role: memberRoleSchema,
+    permissions: memberPermissionsSchema.optional(),
+  })
+  .refine(
+    ({ role, permissions }) => {
+      if (role === 'dweller' && !permissions) {
+        return false;
+      }
+      return true;
+    },
+    {
+      path: ['permissions'],
+      message: 'Permissions are required for dweller role',
+    },
+  );
 
-export const householdSchema = householdRequestDataSchema.extend({
+export type Invite = z.infer<typeof inviteSchema>;
+
+export type HouseholdRequestData = z.infer<
+  typeof householdCreateRequestDataSchema
+>;
+
+export const householdSchema = householdCreateRequestDataSchema.extend({
   _id: objectIdOrStringSchema.optional(),
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
+  invites: z.array(inviteSchema).optional(),
   //devices:
 });
 
 export type Household = z.infer<typeof householdSchema>;
 
 export const roomRequestDataSchema = z.object({
-  type: z.enum(['living', 'kitchen', 'bathroom', 'bedroom', 'other']),
+  type: householdRoomTypeSchema,
   name: z.string(),
   floor: z.number(),
 });
