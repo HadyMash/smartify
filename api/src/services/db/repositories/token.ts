@@ -371,6 +371,32 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
     super(client, db, ACCESS_BLACKLIST_COLLECTION_NAME, redis);
   }
 
+  /**
+   * Load all non-expired blacklisted access tokens from MongoDB into Redis cache
+   * This should be called on application startup to ensure Redis has all blacklisted tokens
+   */
+  public async loadBlacklistToCache(): Promise<void> {
+    const now = new Date();
+    const docs = await this.collection
+      .find({
+        expiry: { $gt: now },
+      })
+      .toArray();
+
+    console.log(
+      `Loading ${docs.length} access tokens to Redis blacklist cache`,
+    );
+
+    const promises = docs.map((doc) => {
+      return this.cacheAccessBlacklist(
+        doc.jti,
+        Math.floor(doc.expiry.getTime() / 1000),
+      );
+    });
+
+    await Promise.all(promises);
+  }
+
   public async configureCollection(): Promise<void> {
     // create collection
     //
@@ -445,32 +471,12 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
    */
   public async isAccessTokenBlacklisted(jti: string): Promise<boolean> {
     try {
-      // Check Redis cache first
-      const existsInCache = await this.isAccessTokenBlacklistedCache(jti);
-      if (existsInCache) {
-        return true;
-      }
+      // Only check Redis cache
+      return await this.isAccessTokenBlacklistedCache(jti);
     } catch (e) {
       console.error('Error checking redis cache for access token blacklist', e);
-    }
-
-    // Not found in Redis, check MongoDB
-    const doc = await this.collection.findOne({ jti });
-
-    if (doc === null) {
       return false;
     }
-
-    // Found in DB, add to Redis cache to avoid future cache misses
-    // Don't await as this is non-blocking
-    this.cacheAccessBlacklist(
-      jti,
-      Math.floor(doc.expiry.getTime() / 1000),
-    ).catch((e) =>
-      console.warn('Error caching access token blacklist status', e),
-    );
-
-    return true;
   }
 
   /**
@@ -490,6 +496,33 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, MFA_BLACKLIST_COLLECTION_NAME, redis);
+  }
+
+  /**
+   * Load all non-expired blacklisted MFA tokens from MongoDB into Redis cache
+   * This should be called on application startup to ensure Redis has all blacklisted tokens
+   */
+  public async loadBlacklistToCache(): Promise<void> {
+    const now = new Date();
+    const docs = await this.collection
+      .find({
+        expiry: { $gt: now },
+      })
+      .toArray();
+
+    console.log(`Loading ${docs.length} MFA tokens to Redis blacklist cache`);
+
+    const promises = docs.map((doc) => {
+      const ttlSeconds = Math.ceil((doc.expiry.getTime() - Date.now()) / 1000);
+      if (ttlSeconds <= 0) return Promise.resolve();
+
+      const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${doc.jti}`;
+      return this.redis.set(key, '1', {
+        EX: ttlSeconds,
+      });
+    });
+
+    await Promise.all(promises);
   }
 
   public async configureCollection(): Promise<void> {
@@ -551,37 +584,12 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
    */
   public async isMFATokenBlacklisted(jti: string): Promise<boolean> {
     try {
-      // Check Redis cache first
       const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${jti}`;
       const existsInCache = await this.redis.get(key);
-      if (existsInCache !== null) {
-        return true;
-      }
+      return existsInCache !== null;
     } catch (e) {
       console.error('Error checking redis cache for MFA token blacklist', e);
-    }
-
-    // Not found in Redis, check MongoDB
-    const doc = await this.collection.findOne({ jti });
-
-    if (doc === null) {
       return false;
     }
-
-    // Found in DB, add to Redis cache to avoid future cache misses
-    // Don't await as this is non-blocking
-    const ttlSeconds = Math.ceil((doc.expiry.getTime() - Date.now()) / 1000);
-    if (ttlSeconds > 0) {
-      const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${jti}`;
-      this.redis
-        .set(key, '1', {
-          EX: ttlSeconds,
-        })
-        .catch((e) =>
-          console.warn('Error caching MFA token blacklist status', e),
-        );
-    }
-
-    return true;
   }
 }

@@ -64,7 +64,6 @@ class SRP {
     return (a: a, A: A);
   }
 
-  // TODO: implement k
   static BigInt calculateProof({
     required String email,
     required String password,
@@ -73,21 +72,48 @@ class SRP {
     required BigInt a,
     required BigInt A,
   }) {
-    // calculate x = H(salt | H(password))
+    final N = BigInt.parse('0x$SRP_N_HEX');
+    final g = BigInt.from(SRP_GENERATOR);
+
+    // Calculate k = H(N | g) - keep this part
+    final k = BigInt.parse(
+        '0x${_hashString(N.toRadixString(16) + g.toRadixString(16)).toString()}');
+    print('k: ${k.toRadixString(16)}');
+
+    // Calculate x = H(salt | H(password)) - keep this part
     final hashPassword = _hashString(password).toString();
     final x = BigInt.parse('0x${_hashString('$salt$hashPassword').toString()}');
 
-    // calculate u = H(A | B)
+    // Calculate u = H(A | B) - keep this part
     final u = BigInt.parse(
         '0x${_hashString(A.toRadixString(16) + B.toRadixString(16)).toString()}');
 
-    // calculate shared secret S = (B - k * g^x) ^ (a + u * x) mod N
-    final g = BigInt.from(SRP_GENERATOR);
-    final N = BigInt.parse('0x$SRP_N_HEX');
-    // modPow is used due to avoid a large number
-    final S = (B - g.modPow(x, N)).modPow(a + u * x, N);
+    print('Client-side values:');
+    print('A: ${A.toRadixString(16)}');
+    print('B: ${B.toRadixString(16)}');
+    print('u: ${u.toRadixString(16)}');
+    print('x: ${x.toRadixString(16)}');
+    print('a: ${a.toRadixString(16)}');
 
-    // calculate shared session key K = H(S)
+    // Calculate v = g^x mod N
+    final v = g.modPow(x, N);
+
+    // MODIFY THIS SECTION: Match the server S calculation exactly
+    // Calculate S = (B - k * g^x)^(a + u*x) % N
+    final g_x = g.modPow(x, N);
+    final k_g_x = (k * g_x) % N;
+
+    // Ensure positive modulo if B < k*g^x
+    final B_minus_kgx = ((B - k_g_x) % N + N) % N;
+
+    // Calculate a + u*x
+    final a_plus_ux = (a + u * x) % (N - BigInt.one);
+
+    // Finally calculate S
+    final S = B_minus_kgx.modPow(a_plus_ux, N);
+    print('S: ${S.toRadixString(16)}');
+
+    // Calculate shared session key K = H(S)
     final K = _hashBigInt(S).toString();
 
     // calculate client proof Mc = H(H(N) xor H(g) | H(email) | salt | A | B | K)
@@ -95,16 +121,23 @@ class SRP {
     final Hg = _hashBigInt(g).bytes;
     final He = _hashString(email).toString();
 
-    final Mc = _hashString(
-      hex.encode(_xorLists(HN, Hg)) +
-          He +
-          salt +
-          A.toRadixString(16) +
-          B.toRadixString(16) +
-          K,
-    );
+    // Ensure consistent hex encoding between client and server
+    final xorResult = _xorLists(HN, Hg);
+    final xorHex = hex.encode(xorResult);
+    final AHex = A.toRadixString(16);
+    final BHex = B.toRadixString(16);
 
-    return BigInt.parse('0x$Mc');
+    // Ensure hex values have even length for consistent encoding
+    final AHexPadded = AHex.padLeft((AHex.length + 1) & ~1, '0');
+    final BHexPadded = BHex.padLeft((BHex.length + 1) & ~1, '0');
+
+    final combined = '$xorHex$He$salt$AHexPadded$BHexPadded$K';
+    print('Client combined string: $combined');
+
+    // Convert to BigInt first, then to hex string to match server format
+    final Mc = _hashString(combined);
+    final McHex = Mc.toString();
+    return BigInt.parse('0x$McHex');
   }
 
   /// Verify the server proof [Ms] by calculating it ourselves using the client

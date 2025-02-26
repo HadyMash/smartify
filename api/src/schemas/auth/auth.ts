@@ -7,7 +7,7 @@ export interface AuthenticatedRequest extends Request {
   deviceId?: string | undefined;
 }
 
-const mfaFormattedKeySchema = z.string();
+export const mfaFormattedKeySchema = z.string();
 export type MFAFormattedKey = z.infer<typeof mfaFormattedKeySchema>;
 
 /** The MFA Code */
@@ -52,8 +52,9 @@ export const srpSessionJSONSchema = srpSessionSchema.extend({
   b: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
   B: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
   A: bigIntTransormed.transform((val) => `0x${val.toString(16)}`).optional(),
+  createdAt: z.coerce.date(),
 });
-export type SRPJSONSessoin = z.infer<typeof srpSessionJSONSchema>;
+export type SRPJSONSession = z.infer<typeof srpSessionJSONSchema>;
 
 /* Error types */
 

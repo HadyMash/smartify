@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { userWithIdSchema } from './user';
+import { mfaFormattedKeySchema } from './auth';
 
 export const jwtSecretSchema = z.object({
   /** The secret to sign the JWT with */
@@ -85,6 +86,8 @@ export const mfaTokenPayloadSchema = commonTokenInfoSchema.extend({
   jti: z.string().min(1),
   /** The device ID of the device the token is for */
   deviceId: z.string().min(1),
+  /** MFA formatted key */
+  formattedKey: mfaFormattedKeySchema.optional(),
 });
 
 export type MFATokenPayload = z.infer<typeof mfaTokenPayloadSchema>;

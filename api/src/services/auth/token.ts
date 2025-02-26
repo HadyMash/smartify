@@ -25,6 +25,7 @@ import {
 } from '../../schemas/auth/user';
 import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
+import { MFAFormattedKey } from '../../schemas/auth/auth';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -647,11 +648,13 @@ export class TokenService {
    * Creates a new MFA token for a user
    * @param userId - The user's ID to create the token for
    * @param deviceId - The device ID to create the token for
+   * @param formattedKey - The user's mfa formatted key
    * @returns The generated MFA token
    */
   public async createMFAToken(
     userId: string,
     deviceId: string,
+    formattedKey?: MFAFormattedKey,
   ): Promise<string> {
     const created = new Date();
     const createdSeconds = Math.floor(created.getTime() / 1000);
@@ -662,6 +665,7 @@ export class TokenService {
       deviceId,
       iat: createdSeconds,
       jti: randomUUID(),
+      formattedKey,
     };
 
     const secret: JWTSecret = {

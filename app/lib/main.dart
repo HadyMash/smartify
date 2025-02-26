@@ -22,16 +22,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const password = 'password';
-    final salt = SRP.generateSalt();
-    debugPrint('salt: $salt\n');
-    final verifier = SRP.generateVerifier(salt, password);
-    debugPrint('verifier: $verifier\n');
+    //final salt = SRP.generateSalt();
+    const salt = 'e6eb7979923ebb117785a56ab84f94ff';
+    //debugPrint('salt: $salt\n');
+    //final verifier = SRP.generateVerifier(salt, password);
+    //debugPrint('verifier: $verifier\n');
     final keys = SRP.generateKeys();
     debugPrint('keys: a: ${keys.a}, A: ${keys.A}\n');
-    final B = SRP.generateKeys().A;
+    //final B = SRP.generateKeys().A;
+    final B = BigInt.parse(
+        "0x45d1c104c0f75bb2366a8bc2088a66853c7b1d5646b20595ef412e26269181d78e488ac619b8129cac9ec99bb992f6acb1bc4b2d97879067b48977482f405f7e6101e6b1da7d86adb62a43eb38a07a07b4ea139060f3f61605bc023316a89c1b56b1977f0ef996cedf2612244d5303e6b4b068ee2013635a70af4eae7b5e1f8aaf3301d6d2fb4b235cda3133ae6ddaececcde90fdc1e19e1f289167fcbc9a926bcd08f3dab1505754d58305c62089cec6199f998d3a1ec06800293fb2c5c5b954844ba903aa77a7ae33b272c1c68e54fa25d8830fe02d0b0de74210435a4bab833b1db0ed7aa798ef38181adee3aca5c53aec0d73642dc0763075a5e74e40491");
     debugPrint('B: $B\n');
     final proof = SRP.calculateProof(
-      email: 'example@domain.com',
+      email: 'hady@gmail.com',
       password: password,
       a: keys.a,
       A: keys.A,
@@ -39,6 +42,9 @@ class MyApp extends StatelessWidget {
       salt: salt,
     );
     debugPrint('proof: $proof\n');
+    debugPrint('');
+    debugPrint(
+        'hex\n\nA: 0x${keys.A.toRadixString(16)}\nproof (Mc): 0x${proof.toRadixString(16)}');
 
     return MaterialApp(
       title: 'Flutter Demo',

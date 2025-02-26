@@ -14,7 +14,7 @@ import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import {
   MFA,
   MFAFormattedKey,
-  SRPJSONSessoin,
+  SRPJSONSession,
   SRPSession,
   srpSessionJSONSchema,
   srpSessionSchema,
@@ -240,7 +240,7 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   }
 }
 
-interface SRPSessionDoc extends SRPJSONSessoin {
+interface SRPSessionDoc extends SRPJSONSession {
   _id?: ObjectId;
 }
 
@@ -253,14 +253,69 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
     super(client, db, SRP_SESSION_COLLECTION_NAME, redis);
   }
 
+  /**
+   * Load all valid SRP sessions from MongoDB into Redis cache.
+   * This should be called on application startup to ensure Redis has all active sessions.
+   * Sessions older than SRP_SESSION_EXPIRY_SECONDS are considered expired and won't be loaded.
+   */
+  public async loadSessionsToCache(): Promise<void> {
+    const cutoffTime = new Date(Date.now() - SRP_SESSION_EXPIRY_SECONDS * 1000);
+
+    // Find all sessions that were created within the expiry window
+    const docs = await this.collection
+      .find({
+        createdAt: { $gt: cutoffTime },
+      })
+      .toArray();
+
+    console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
+
+    const promises = docs.map(async (doc) => {
+      if (!doc.sessionId) return;
+
+      // Calculate remaining TTL
+      const createdAt =
+        doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
+      const elapsedSeconds = Math.floor(
+        (Date.now() - createdAt.getTime()) / 1000,
+      );
+      const remainingTTL = SRP_SESSION_EXPIRY_SECONDS - elapsedSeconds;
+
+      // Only cache if there's remaining time
+      if (remainingTTL <= 0) return;
+
+      try {
+        await this.redis.set(
+          `${SRP_SESSION_KEY_PREFIX}:${doc.sessionId}`,
+          JSON.stringify(srpSessionJSONSchema.parse(doc)),
+          {
+            EX: remainingTTL,
+          },
+        );
+      } catch (e) {
+        console.error(`Failed to cache SRP session ${doc.sessionId}:`, e);
+      }
+    });
+
+    await Promise.all(promises);
+  }
+
   // TODO: implement configure collection
   public async configureCollection(): Promise<void> {
-    await this.collection.createIndex({ sessionId: 1 }, { unique: true });
+    await Promise.all([
+      // Create unique index on sessionId
+      this.collection.createIndex({ sessionId: 1 }, { unique: true }),
+      // Create index on createdAt for expire queries
+      this.collection.createIndex({ createdAt: 1 }),
+    ]);
   }
 
   public async storeSRPAuthSession(sessionId: string, session: SRPSession) {
     // convert bigints to strings
-    const sessionJSON = srpSessionJSONSchema.parse(session);
+    const sessionJSON = srpSessionJSONSchema.parse({
+      ...session,
+      createdAt: new Date(),
+    });
 
     // store session in redis
     const redisPromise = this.redis.set(

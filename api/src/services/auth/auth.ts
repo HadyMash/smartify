@@ -69,13 +69,12 @@ export class AuthService {
     salt: string;
     B: bigint;
   }> {
-    console.log('generating server keys');
-
-    const { b, B } = SRP.generateServerKeys();
-
     const { salt, verifier } =
       await this.db.userRepository.getUserSRPCredentials(email);
     console.log('got salt and verifier');
+
+    console.log('generating server keys');
+    const { b, B } = SRP.generateServerKeys(BigInt(verifier));
 
     // store session
     const session = srpSessionSchema.parse({
@@ -218,20 +217,22 @@ export class AuthService {
 
 /** A class to handle the SRP protocol's cryptographic operations */
 class SRP {
-  public static generateServerKeys(): { b: bigint; B: bigint } {
-    // TODO: add k * v
+  public static generateServerKeys(verifier: bigint): { b: bigint; B: bigint } {
     const N = BigInt('0x' + SRP_N_HEX);
-    console.log('got N');
-
     const g = BigInt(SRP_GENERATOR);
-    console.log('got g');
+
+    // Calculate k = H(N | g)
+    const k = BigInt(
+      `0x${this.hash(N.toString(16) + g.toString(16)).digest('hex')}`,
+    );
 
     const b = BigInt(`0x${crypto.randomBytes(32).toString('hex')}`);
-    console.log('got b');
 
-    //const B = g ** b % N;
-    const B = bigIntModPow(g, b, N);
-    console.log('got B');
+    // Calculate B = k*v + g^b % N
+
+    const kv = (k * verifier) % N;
+    const gb = bigIntModPow(g, b, N);
+    const B = (kv + gb) % N;
 
     return { b, B };
   }
@@ -258,16 +259,36 @@ class SRP {
     B: bigint;
     Mc: bigint;
   }): string {
+    const N = BigInt(`0x${SRP_N_HEX}`);
+    const g = BigInt(SRP_GENERATOR);
+
+    // Calculate k = H(N | g)
+    const k = BigInt(
+      `0x${this.hash(N.toString(16) + g.toString(16)).digest('hex')}`,
+    );
+    console.log('k:', k.toString(16));
+
     // calculate u = H(A | B)
     const u = BigInt(
       `0x${this.hash(data.A.toString(16) + data.B.toString(16)).digest('hex')}`,
     );
 
-    // calculate shared secret S = (A * v^u) ^ b % N
-    const g = BigInt(SRP_GENERATOR);
-    const N = BigInt(`0x${SRP_N_HEX}`);
-    const S = (data.A * data.verifier ** u) ** data.b % N;
-    //const S = bigIntModPow(A * bigIntModPow(verifier, u, N), b, N);
+    console.log('Server-side values:');
+    console.log('A:', data.A.toString(16));
+    console.log('B:', data.B.toString(16));
+    console.log('u:', u.toString(16));
+    console.log('verifier:', data.verifier.toString(16));
+    console.log('b:', data.b.toString(16));
+
+    // Calculate S = (A * v^u)^b % N
+    const v_u = bigIntModPow(data.verifier, u, N);
+    console.log('v_u:', v_u.toString(16));
+
+    const A_vu = (data.A * v_u) % N;
+    console.log('A_vu:', A_vu.toString(16));
+
+    const S = bigIntModPow(A_vu, data.b, N);
+    console.log('S:', S.toString(16));
 
     // calculate session key K = H(S)
     const K = this.hash(S).digest('hex');
@@ -277,16 +298,25 @@ class SRP {
     const Hg = createHash('sha256').update(g.toString(16)).digest();
     const He = this.hash(data.email).digest('hex');
 
-    const expectedMc = this.hash(
-      this.xorBuffers(HN, Hg).toString('hex') +
-        He +
-        data.salt +
-        data.A.toString(16) +
-        data.B.toString(16) +
-        K,
-    ).digest('hex');
+    const xorHex = this.xorBuffers(HN, Hg).toString('hex');
+    const AHex = data.A.toString(16);
+    const BHex = data.B.toString(16);
 
-    if (BigInt(expectedMc) !== data.Mc) {
+    // Ensure hex values have even length for consistent encoding
+    const AHexPadded = AHex.padStart((AHex.length + 1) & ~1, '0');
+    const BHexPadded = BHex.padStart((BHex.length + 1) & ~1, '0');
+
+    const combined = `${xorHex}${He}${data.salt}${AHexPadded}${BHexPadded}${K}`;
+    console.log('Server combined string:', combined);
+
+    const expectedMc = this.hash(combined).digest('hex');
+
+    const serverMcBigInt = BigInt(`0x${expectedMc}`);
+    if (serverMcBigInt !== data.Mc) {
+      console.log('server Mc:', expectedMc);
+      console.log('client Mc:', data.Mc.toString(16));
+      console.log('server Mc (BigInt):', serverMcBigInt.toString(16));
+
       throw new IncorrectPasswordError();
     }
 

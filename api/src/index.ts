@@ -6,6 +6,8 @@ import { authRouter } from './routes/auth';
 import { householdRouter } from './routes/household';
 import { parseAuth } from './middleware/auth';
 import { bigIntToHexMiddleware } from './middleware/bigint';
+// eslint-disable-next-line no-restricted-imports
+import { DatabaseService } from './services/db/db';
 
 dotenv.config();
 
@@ -29,6 +31,20 @@ router.use('/households', householdRouter);
 
 app.use('/api', router);
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+async function start() {
+  const db = new DatabaseService();
+  await Promise.all([
+    db.accessBlacklistRepository.loadBlacklistToCache(),
+    db.mfaBlacklistRepository.loadBlacklistToCache(),
+    db.srpSessionRepository.loadSessionsToCache(),
+  ]);
+
+  console.log('Blacklists loaded');
+
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+start();

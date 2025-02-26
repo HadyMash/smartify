@@ -15,6 +15,7 @@ import {
   MFACode,
   mfaCodeSchema,
   MFAErrorType,
+  IncorrectPasswordError,
 } from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
 import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
@@ -224,6 +225,7 @@ export class AuthController {
         const newMfaToken = await ts.createMFAToken(
           mfaPayload.userId,
           mfaPayload.deviceId,
+          mfaPayload.formattedKey,
         );
         this.writeMFACookie(res, newMfaToken);
         if (e instanceof MFAError) {
@@ -280,27 +282,42 @@ export class AuthController {
         return;
       }
 
-      const { user, mfa, Ms } = await as.login({
-        ...data,
-        ...session,
-        verifier: BigInt(session.verifier),
-      });
+      try {
+        const { user, mfa, Ms } = await as.login({
+          ...data,
+          ...session,
+          verifier: BigInt(session.verifier),
+        });
 
-      // generate mfa token to send back to user
-      const ts = new TokenService();
-      const mfaToken = await ts.createMFAToken(
-        user._id.toString(),
-        req.deviceId!,
-      );
+        // generate mfa token to send back to user
+        const ts = new TokenService();
+        const mfaToken = await ts.createMFAToken(
+          user._id.toString(),
+          req.deviceId!,
+          mfa.confirmed ? undefined : mfa.formattedKey,
+        );
 
-      this.writeMFACookie(res, mfaToken);
+        this.writeMFACookie(res, mfaToken);
 
-      if (mfa.confirmed) {
-        res.status(200).send({ Ms });
-      } else {
-        const ms = new MFAService();
-        const mfaQRUri = ms.generateMFAUri(mfa.formattedKey, user.email);
-        res.status(200).send({ Ms, formattedKey: mfa.formattedKey, mfaQRUri });
+        if (mfa.confirmed) {
+          res.status(200).send({ Ms });
+        } else {
+          const ms = new MFAService();
+          const mfaQRUri = ms.generateMFAUri(mfa.formattedKey, user.email);
+          res
+            .status(200)
+            .send({ Ms, formattedKey: mfa.formattedKey, mfaQRUri });
+        }
+      } catch (e) {
+        if (
+          e instanceof InvalidUserError ||
+          e instanceof IncorrectPasswordError
+        ) {
+          res.status(400).send({ error: 'Incorrect email or password' });
+          return;
+        } else {
+          throw e;
+        }
       }
     } catch (e) {
       console.error(e);
@@ -358,6 +375,7 @@ export class AuthController {
           const newMfaToken = await ts.createMFAToken(
             mfaPayload.userId,
             mfaPayload.deviceId,
+            mfaPayload.formattedKey,
           );
           this.writeMFACookie(res, newMfaToken);
           res.status(400).send({ error: 'Incorrect MFA Code' });
@@ -377,6 +395,7 @@ export class AuthController {
           const newMfaToken = await ts.createMFAToken(
             mfaPayload.userId,
             mfaPayload.deviceId,
+            mfaPayload.formattedKey,
           );
           this.writeMFACookie(res, newMfaToken);
           switch (e.type) {
