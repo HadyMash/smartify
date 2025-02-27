@@ -376,7 +376,7 @@ class SRP {
     return hashToBigInt(concatString);
   }
 
-  respondToAuthChallenge(
+  static Map<String, BigInt> respondToAuthChallenge(
       String email, String password, String salt, BigInt a, BigInt B) {
     // Step 1: derive public key
     final A = derivePublicKey(a);

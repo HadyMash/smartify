@@ -1,7 +1,10 @@
+// ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smartify/services/auth.dart';
 
 import 'models/mfa.dart';
 import 'models/user.dart';
@@ -20,27 +23,28 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    //const email = 'hady@gmail.com';
-    //const password = 'password';
+    const email = 'hady@gmail.com';
+    const password = 'password';
     ////final salt = SRP.generateSalt();
-    //const salt = 'e6eb7979923ebb117785a56ab84f94ff';
-    //////debugPrint('salt: $salt\n');
-    //////final verifier = SRP.generateVerifier(salt, password);
-    //////debugPrint('verifier: $verifier\n');
-    ////final a = SRP.generatePrivateKey();
-    ////final A = SRP.calculateA(a);
-    ////final B = BigInt.parse(
-    ////    "0x45d1c104c0f75bb2366a8bc2088a66853c7b1d5646b20595ef412e26269181d78e488ac619b8129cac9ec99bb992f6acb1bc4b2d97879067b48977482f405f7e6101e6b1da7d86adb62a43eb38a07a07b4ea139060f3f61605bc023316a89c1b56b1977f0ef996cedf2612244d5303e6b4b068ee2013635a70af4eae7b5e1f8aaf3301d6d2fb4b235cda3133ae6ddaececcde90fdc1e19e1f289167fcbc9a926bcd08f3dab1505754d58305c62089cec6199f998d3a1ec06800293fb2c5c5b954844ba903aa77a7ae33b272c1c68e54fa25d8830fe02d0b0de74210435a4bab833b1db0ed7aa798ef38181adee3aca5c53aec0d73642dc0763075a5e74e40491");
-    ////
-    ////final K = SRP.calculateSessionKey(email, password, salt, a, B);
-    ////
-    ////final proof = SRP.calculateClientProof(email, salt, A, B, K);
-    ////
-    ////debugPrint('\n');
-    ////debugPrint('A: 0x${A.toRadixString(16)}\n');
-    ////debugPrint('B: 0x${B.toRadixString(16)}\n');
-    ////debugPrint('K: 0x${K.toRadixString(16)}\n');
-    ////debugPrint('proof: 0x${proof.toRadixString(16)}\n');
+    const salt = 'e6eb7979923ebb117785a56ab84f94ff';
+    final verifier = SRP.deriveVerifier(email, password, salt);
+
+    const BString =
+        '0x586d9483b54b8c09f987ee5e1c49e6053c8b5289aedf25176ff84280bd5faa8d6a357f1757165d8292926268fde0d4e0774db44d4a2e1babf96197df397a655377bd870f5dbede11cb00b16bb33350c58b6d10300cb4ffc8d83f7a3637616bbcf1f0d66a04b16674be9b6a7df64c8337fc4c07a6315934292d5e453db68dfe751b1c902fb5190aff696af17023a1b7159cc04c8ae5d28bdfd5b9a682e4762b15c28ac795416dc33254393a41584b34d8c8717cc2398621630375dc1e43e34c0a1c63f23efc57a07a363df4663693a0e2eae5c047f8fb2d1cdfe61fef47ccfc72ab96013272bc2a8aff184e94a77e95b393eccb37aa89dfdc24d3412a9a473643';
+    final B = BigInt.parse(BString);
+
+    const aString =
+        '0xf1397a8f372866bf49ddf9a661e27e9612f88866ed7be78e741b90abcbb6ee77';
+    final a = BigInt.parse(aString);
+
+    final result = SRP.respondToAuthChallenge(email, password, salt, a, B);
+
+    final A = result['A']!;
+    final M = result['M']!;
+    //final K = result['K']!;
+
+    print('A: ${A.toRadixString(16)}');
+    print('M: ${M.toRadixString(16)}');
 
     return MaterialApp(
       title: 'Flutter Demo',
