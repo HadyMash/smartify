@@ -8,6 +8,8 @@ import { parseAuth } from './middleware/auth';
 import { bigIntToHexMiddleware } from './middleware/bigint';
 // eslint-disable-next-line no-restricted-imports
 import { DatabaseService } from './services/db/db';
+import { SRP } from './services/auth/auth';
+import { modPow } from './services/auth/srp-utils';
 
 dotenv.config();
 
@@ -46,5 +48,44 @@ async function start() {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-start();
+//start();
+
+function testSRP() {
+  const email = 'hady@gmail.com';
+  const password = 'password';
+  const salt = 'e6eb7979923ebb117785a56ab84f94ff';
+  let verifier: bigint;
+
+  {
+    const x = SRP.calculateX(email, password, salt);
+    //g.modPow(x, N)
+    verifier = modPow(SRP.g, x, SRP.N);
+  }
+
+  // server keys
+  //const { b, B } = SRP.generateServerKeys(verifier);
+  const bString =
+    '39083a31e24251fae9fa74a3f2f9ea9cc3827eb18179c2563333cd3cfc0cae1e';
+  const BString =
+    '586d9483b54b8c09f987ee5e1c49e6053c8b5289aedf25176ff84280bd5faa8d6a357f1757165d8292926268fde0d4e0774db44d4a2e1babf96197df397a655377bd870f5dbede11cb00b16bb33350c58b6d10300cb4ffc8d83f7a3637616bbcf1f0d66a04b16674be9b6a7df64c8337fc4c07a6315934292d5e453db68dfe751b1c902fb5190aff696af17023a1b7159cc04c8ae5d28bdfd5b9a682e4762b15c28ac795416dc33254393a41584b34d8c8717cc2398621630375dc1e43e34c0a1c63f23efc57a07a363df4663693a0e2eae5c047f8fb2d1cdfe61fef47ccfc72ab96013272bc2a8aff184e94a77e95b393eccb37aa89dfdc24d3412a9a473643';
+  const b = BigInt('0x' + bString);
+  const B = BigInt('0x' + BString);
+
+  console.log('b:', b.toString(16));
+  console.log('B:', B.toString(16));
+
+  // client keys
+  //const a = SRP.generateRandomBigInt(32);
+  const aString =
+    'f1397a8f372866bf49ddf9a661e27e9612f88866ed7be78e741b90abcbb6ee77';
+  const a = BigInt('0x' + aString);
+  console.log('a:', a.toString(16));
+
+  // simulate client calculating proof
+  const { A, M } = SRP.simulateDartClientProof(email, password, salt, a, B);
+
+  // verify proof on server
+  SRP.verifyClientProof({ email, salt, verifier, A, b, B, Mc: M });
+}
+
+testSRP();

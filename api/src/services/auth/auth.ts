@@ -18,10 +18,10 @@ import {
   userWithIdSchema,
 } from '../../schemas/auth/user';
 import { ObjectIdOrString } from '../../schemas/obj-id';
-import { bigIntModPow } from '../../util';
 import { DatabaseService } from '../db/db';
 import { MFAService } from './mfa';
 import crypto, { createHash, Hash } from 'crypto';
+import { modPow } from './srp-utils';
 
 export class AuthService {
   protected readonly db: DatabaseService;
@@ -213,44 +213,31 @@ export class AuthService {
   }
 }
 
-// TODO: implement the safeguards (checking for == 0, etc)
+export class SRP {
+  /**
+   * Generate server's private and public keys for SRP authentication
+   * @param verifier - The user's verifier value
+   * @returns The server's private key (b) and public key (B)
+   */
+  static generateServerKeys(verifier: bigint): { b: bigint; B: bigint } {
+    // Generate random 32-byte private key
+    const b = this.generateRandomBigInt(32);
 
-/** A class to handle the SRP protocol's cryptographic operations */
-class SRP {
-  public static generateServerKeys(verifier: bigint): { b: bigint; B: bigint } {
-    const N = BigInt('0x' + SRP_N_HEX);
-    const g = BigInt(SRP_GENERATOR);
-
-    // Calculate k = H(N | g)
-    const k = BigInt(
-      `0x${this.hash(N.toString(16) + g.toString(16)).digest('hex')}`,
-    );
-
-    const b = BigInt(`0x${crypto.randomBytes(32).toString('hex')}`);
-
-    // Calculate B = k*v + g^b % N
-
-    const kv = (k * verifier) % N;
-    const gb = bigIntModPow(g, b, N);
-    const B = (kv + gb) % N;
+    // Calculate B = (k*v + g^b) % N
+    const kv = (this.k * verifier) % this.N;
+    const gb = modPow(this.g, b, this.N);
+    const B = (kv + gb) % this.N;
 
     return { b, B };
   }
 
-  // TODO: implement k
   /**
-   * Verify the client SRP proof
-   * @param email - The user's email
-   * @param salt - The user's salt
-   * @param verifier - The user's verifier
-   * @param A - The client's public key
-   * @param b - The server's private key
-   * @param B - The server's public key
-   * @param Mc - The client's proof
-   * @returns The server's proof for the client to verify
-   * @throws an InvalidPasswordError if the client proof is incorrect
+   * Verify the client's proof and generate server proof
+   * @param data - The SRP authentication data
+   * @returns The server's proof value
+   * @throws IncorrectPasswordError if the client's proof is incorrect
    */
-  public static verifyClientProof(data: {
+  static verifyClientProof(data: {
     email: string;
     salt: string;
     verifier: bigint;
@@ -258,193 +245,231 @@ class SRP {
     b: bigint;
     B: bigint;
     Mc: bigint;
-  }): string {
-    const N = BigInt(`0x${SRP_N_HEX}`);
-    const g = BigInt(SRP_GENERATOR);
+  }): bigint {
+    const { email, salt, verifier, A, b, B, Mc } = data;
 
-    // Calculate k = H(N | g)
-    const k = BigInt(
-      `0x${this.hash(N.toString(16) + g.toString(16)).digest('hex')}`,
-    );
-    console.log('k:', k.toString(16));
-
-    // calculate u = H(A | B)
-    const u = BigInt(
-      `0x${this.hash(data.A.toString(16) + data.B.toString(16)).digest('hex')}`,
-    );
-
-    console.log('Server-side values:');
-    console.log('A:', data.A.toString(16));
-    console.log('B:', data.B.toString(16));
-    console.log('u:', u.toString(16));
-    console.log('verifier:', data.verifier.toString(16));
-    console.log('b:', data.b.toString(16));
-
-    // Calculate S = (A * v^u)^b % N
-    const v_u = bigIntModPow(data.verifier, u, N);
-    console.log('v_u:', v_u.toString(16));
-
-    const A_vu = (data.A * v_u) % N;
-    console.log('A_vu:', A_vu.toString(16));
-
-    const S = bigIntModPow(A_vu, data.b, N);
-    console.log('S:', S.toString(16));
-
-    // calculate session key K = H(S)
-    const K = this.hash(S).digest('hex');
-
-    // calculate server proof Ms = H(H(N) xor H(g) | H(email) | salt | A | B | K)
-    const HN = createHash('sha256').update(N.toString(16)).digest();
-    const Hg = createHash('sha256').update(g.toString(16)).digest();
-    const He = this.hash(data.email).digest('hex');
-
-    const xorHex = this.xorBuffers(HN, Hg).toString('hex');
-    const AHex = data.A.toString(16);
-    const BHex = data.B.toString(16);
-
-    // Ensure hex values have even length for consistent encoding
-    const AHexPadded = AHex.padStart((AHex.length + 1) & ~1, '0');
-    const BHexPadded = BHex.padStart((BHex.length + 1) & ~1, '0');
-
-    const combined = `${xorHex}${He}${data.salt}${AHexPadded}${BHexPadded}${K}`;
-    console.log('Server combined string:', combined);
-
-    const expectedMc = this.hash(combined).digest('hex');
-
-    const serverMcBigInt = BigInt(`0x${expectedMc}`);
-    if (serverMcBigInt !== data.Mc) {
-      console.log('server Mc:', expectedMc);
-      console.log('client Mc:', data.Mc.toString(16));
-      console.log('server Mc (BigInt):', serverMcBigInt.toString(16));
+    // Security check: A should not be 0 mod N
+    if (A % this.N === BigInt(0)) {
+      console.log('A % N === 0, throwing');
 
       throw new IncorrectPasswordError();
     }
 
-    // generate server proof Ms = H(A | Mc | K)
-    const Ms = this.hash(data.A.toString(16) + data.Mc.toString(16) + K).digest(
-      'hex',
-    );
+    // Calculate u = H(A | B)
+    const u = this.calculateU(A, B);
+
+    // Security check: u should not be 0
+    if (u === BigInt(0)) {
+      console.log('u === 0, throwing');
+
+      throw new IncorrectPasswordError();
+    }
+
+    // Calculate S = (A * (verifier^u)) ^ b % N
+    const vu = modPow(verifier, u, this.N);
+    const Avu = (A * vu) % this.N;
+    const S = modPow(Avu, b, this.N);
+
+    // Calculate K = H(S)
+    const K = this.hash(S.toString(16));
+
+    // Calculate expected client proof
+    const expectedMc = this.calculateClientProof(email, salt, A, B, K);
+
+    console.log('expectedMc:', expectedMc.toString(16));
+    console.log('Mc:', Mc.toString(16));
+
+    // Verify client proof
+    if (expectedMc !== Mc) {
+      console.log('expectedMc !== Mc, throwing');
+
+      throw new IncorrectPasswordError();
+    }
+
+    // Generate server proof
+    const Ms = this.calculateServerProof(A, Mc, K);
     return Ms;
   }
 
-  protected static hash(val: bigint | string): Hash {
-    if (typeof val === 'bigint') {
-      return createHash('sha256').update(val.toString(16));
-    } else {
-      return createHash('sha256').update(val);
-    }
-  }
-
-  protected static xorBuffers(a: Buffer, b: Buffer): Buffer {
-    const result = Buffer.alloc(Math.max(a.length, b.length));
-    for (let i = 0; i < result.length; i++) {
-      result[i] = a[i] ^ b[i];
-    }
-    return result;
-  }
-}
-
-// TEMP: class to simulate client side till srp implemented on the client side
-// TODO: remove this
-class ClientSRP {
-  public static generateSalt(): string {
-    return crypto.randomBytes(16).toString('hex');
-  }
-
-  public static generateVerifier(salt: string, password: string): string {
-    // Calculate x = H(salt | H(P))
-
-    // First, calculate H(P)
-    const innerHash = crypto.createHash('sha256');
-    innerHash.update(password);
-    const innerHashResult = innerHash.digest();
-
-    // Then calculate H(salt | H(P))
-    const outerHash = crypto.createHash('sha256');
-    outerHash.update(Buffer.from(salt, 'hex'));
-    outerHash.update(innerHashResult);
-    const x = BigInt('0x' + outerHash.digest('hex'));
-
-    // Calculate v = g^x mod N
-    const N = BigInt('0x' + SRP_N_HEX);
-    const g = BigInt(SRP_GENERATOR);
-    const v = g ** x % N;
-
-    // Return the verifier as a hex string
-    return v.toString(16);
-  }
-
-  public static generateClientKeys(): { a: bigint; A: bigint } {
-    const N = BigInt('0x' + SRP_N_HEX);
-    const g = BigInt(SRP_GENERATOR);
-    const a = BigInt(crypto.randomBytes(32).toString('hex'));
-    const A = g ** a % N;
-    return { a, A };
-  }
-
-  // TODO: implement k
-  public static calculateProof(
+  /**
+   * Simulate the Dart client proof calculation to compare results in Node.
+   */
+  static simulateDartClientProof(
     email: string,
     password: string,
     salt: string,
-    B: bigint,
     a: bigint,
+    B: bigint,
+  ): { A: bigint; K: bigint; M: bigint } {
+    // Log inputs for debugging
+    console.log('Simulating Dart client proof with:', {
+      email,
+      password,
+      salt,
+      a: a.toString(16),
+      B: B.toString(16),
+    });
+
+    // Step 1: A = g^a % N (with A != 0 mod N check)
+    const A = modPow(this.g, a, this.N);
+    if (A % this.N === BigInt(0)) {
+      throw new Error('Invalid A');
+    }
+    console.log('A:', A.toString(16));
+
+    // Step 2: u = H(A | B)
+    const u = this.calculateU(A, B);
+    if (u === BigInt(0)) {
+      throw new Error('Invalid u');
+    }
+    console.log('u:', u.toString(16));
+
+    // Step 3: x = H(salt | H(email:password))
+    const x = this.calculateX(email, password, salt);
+    console.log('x:', x.toString(16));
+
+    // Step 4: S = (B - k*g^x)^(a + u*x) % N
+    const gx = modPow(this.g, x, this.N);
+    console.log('gx:', gx.toString(16));
+
+    const kgx = (this.k * gx) % this.N;
+    console.log('kgx:', kgx.toString(16));
+
+    let base = (B - kgx) % this.N;
+    if (base < BigInt(0)) base += this.N;
+    console.log('base:', base.toString(16));
+
+    const exponent = (a + u * x) % (this.N - BigInt(1));
+    console.log('exponent:', exponent.toString(16));
+
+    const S = modPow(base, exponent, this.N);
+    console.log('S:', S.toString(16));
+
+    // Step 5: K = H(S)
+    const K = this.hash(S.toString(16));
+    console.log('K:', K.toString(16));
+
+    // Step 6: M = H(H(N)^H(g) | H(email) | salt | A | B | K)
+    const M = this.calculateClientProof(email, salt, A, B, K);
+    console.log('M:', M.toString(16));
+
+    return { A, K, M };
+  }
+
+  /**
+   * Calculate the hash parameter u = H(A | B)
+   */
+  private static calculateU(A: bigint, B: bigint): bigint {
+    const concatenated = A.toString(16) + B.toString(16);
+    return BigInt('0x' + this.hashString(concatenated));
+  }
+
+  /**
+   * Calculate the client proof M = H(H(N) XOR H(g) | H(email) | salt | A | B | K)
+   */
+  private static calculateClientProof(
+    email: string,
+    salt: string,
     A: bigint,
-  ) {
-    // calculate x = H(salt | H(password))
-    const hashPassword = this.hash(password);
-    const x = BigInt(this.hash(salt + hashPassword));
+    B: bigint,
+    K: bigint,
+  ): bigint {
+    // Hash N and g
+    const HN = this.hash(this.N.toString(16));
+    const Hg = this.hash(this.g.toString(16));
 
-    // calculate u = H(A | B)
-    const u = BigInt(this.hash(A.toString(16) + B.toString(16)));
+    // XOR operation (convert to Buffer for easier XOR)
+    const hnBuffer = Buffer.from(HN.toString(16).padStart(64, '0'), 'hex');
+    const hgBuffer = Buffer.from(Hg.toString(16).padStart(64, '0'), 'hex');
+    const xorBuffer = Buffer.alloc(hnBuffer.length);
 
-    // calculate shared secret S = (B - k * g^x) ^ (a + u * x) % N
-    const g = BigInt(SRP_GENERATOR);
-    const N = BigInt('0x' + SRP_N_HEX);
-    const S = (B - g ** x) ** (a + u * x) % N;
-
-    // calculate session key K = H(S)
-    const K = this.hash(S);
-
-    // calculate client proof Mc = H(H(N) xor H(g) | H(email) | salt | A | B | K)
-    const HN = createHash('sha256').update(N.toString(16)).digest();
-    const Hg = createHash('sha256').update(g.toString(16)).digest();
-    const He = this.hash(email);
-
-    const Mc = this.hash(
-      this.xorBuffers(HN, Hg).toString('hex') +
-        He +
-        salt +
-        A.toString(16) +
-        B.toString(16) +
-        K,
-    );
-
-    return {
-      A,
-      Mc: BigInt(Mc),
-    };
-  }
-
-  protected static hash(val: bigint | string): string {
-    if (typeof val === 'bigint') {
-      return createHash('sha256').update(val.toString(16)).digest('hex');
-    } else {
-      return createHash('sha256').update(val).digest('hex');
+    for (let i = 0; i < hnBuffer.length; i++) {
+      xorBuffer[i] = hnBuffer[i] ^ (i < hgBuffer.length ? hgBuffer[i] : 0);
     }
+
+    const Hemail = this.hashString(email);
+
+    const concatString =
+      xorBuffer.toString('hex') +
+      Hemail +
+      salt +
+      A.toString(16) +
+      B.toString(16) +
+      K.toString(16);
+
+    return BigInt('0x' + this.hashString(concatString));
   }
 
-  protected static xorBuffers(a: Buffer, b: Buffer): Buffer {
-    const result = Buffer.alloc(Math.max(a.length, b.length));
-    for (let i = 0; i < result.length; i++) {
-      result[i] = a[i] ^ b[i];
-    }
-    return result;
+  /**
+   * Calculate the server proof M2 = H(A | M | K)
+   */
+  private static calculateServerProof(A: bigint, M: bigint, K: bigint): bigint {
+    const concatenated = A.toString(16) + M.toString(16) + K.toString(16);
+    return BigInt('0x' + this.hashString(concatenated));
   }
+
+  /**
+   * Generate a random BigInt of specified byte length
+   */
+  public static generateRandomBigInt(byteLength: number): bigint {
+    const bytes = crypto.randomBytes(byteLength);
+    return BigInt('0x' + bytes.toString('hex'));
+  }
+
+  /**
+   * Hash a string using SHA-256
+   */
+  private static hashString(input: string): string {
+    return crypto.createHash('sha256').update(input).digest('hex');
+  }
+
+  /**
+   * Hash a BigInt
+   */
+  private static hash(input: string): bigint {
+    return BigInt('0x' + this.hashString(input));
+  }
+
+  /**
+   * Calculate the parameter x = H(salt | H(email | ':' | password))
+   * This is used to derive the private key from the password
+   */
+  //private static calculateX(
+  public static calculateX(
+    email: string,
+    password: string,
+    salt: string,
+  ): bigint {
+    if (!email || !password || !salt) {
+      throw new Error('Email, password, and salt must not be empty');
+    }
+
+    // First hash: H(email | ':' | password)
+    const identity = this.hashString(`${email}:${password}`);
+
+    // Convert salt from hex string to Buffer
+    const saltBuffer = Buffer.from(salt, 'hex');
+
+    // Concatenate salt bytes with identity hash bytes
+    const saltedIdentity = Buffer.concat([
+      saltBuffer,
+      Buffer.from(identity, 'hex'),
+    ]);
+
+    // Final hash: H(salt | H(email | ':' | password))
+    const result = this.hashString(saltedIdentity.toString('hex'));
+    return BigInt('0x' + result);
+  }
+
+  // Constants
+  private static readonly SRP_N_HEX =
+    `AC6BDB41 324A9A9B F166DE5E 1389582F AF72B665 1987EE07 FC319294 3DB56050 A37329CB B4A099ED 8193E075 7767A13D D52312AB 4B03310D CD7F48A9 DA04FD50 E8083969 EDB767B0 CF609517 9A163AB3 661A05FB D5FAAAE8 2918A996 2F0B93B8 55F97993 EC975EEA A80D740A DBF4FF74 7359D041 D5C33EA7 1D281E44 6B14773B CA97B43A 23FB8016 76BD207A 436C6481 F1D2B907 8717461A 5B9D32E6 88F87748 544523B5 24B0D57D 5EA77A27 75D2ECFA 032CFBDB F52FB378 61602790 04E57AE6 AF874E73 03CE5329 9CCC041C 7BC308D8 2A5698F3 A8D0C382 71AE35F8 E9DBFBB6 94B5C803 D89F7AE4 35DE236D 525F5475 9B65E372 FCD68EF2 0FA7111F 9E4AFF73`
+      .trim()
+      .replace(/[\s\r\n]+/g, '');
+  private static readonly SRP_GENERATOR = 2;
+  private static readonly SRP_K = 3;
+
+  public static readonly N = BigInt('0x' + this.SRP_N_HEX);
+  public static readonly g = BigInt(this.SRP_GENERATOR);
+  public static readonly k = BigInt(this.SRP_K);
 }
-
-const SRP_N_HEX =
-  `AC6BDB41 324A9A9B F166DE5E 1389582F AF72B665 1987EE07 FC319294 3DB56050 A37329CB B4A099ED 8193E075 7767A13D D52312AB 4B03310D CD7F48A9 DA04FD50 E8083969 EDB767B0 CF609517 9A163AB3 661A05FB D5FAAAE8 2918A996 2F0B93B8 55F97993 EC975EEA A80D740A DBF4FF74 7359D041 D5C33EA7 1D281E44 6B14773B CA97B43A 23FB8016 76BD207A 436C6481 F1D2B907 8717461A 5B9D32E6 88F87748 544523B5 24B0D57D 5EA77A27 75D2ECFA 032CFBDB F52FB378 61602790 04E57AE6 AF874E73 03CE5329 9CCC041C 7BC308D8 2A5698F3 A8D0C382 71AE35F8 E9DBFBB6 94B5C803 D89F7AE4 35DE236D 525F5475 9B65E372 FCD68EF2 0FA7111F 9E4AFF73`
-    .trim()
-    .replace(/[\s\r\n]+/g, '');
-const SRP_GENERATOR = 2;
