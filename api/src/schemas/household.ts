@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
-import { ObjectId } from 'mongodb';
 
 /**
  * Coordinates using longitude and latitude
@@ -98,9 +97,7 @@ export const householdRoomTypeSchema = z.enum([
 
 /** Household room schema */
 export const householdRoomSchema = z.object({
-  _id: z.instanceof(ObjectId).refine((id) => ObjectId.isValid(id), {
-    message: 'Input not instance of ObjectId',
-  }),
+  _id: objectIdOrStringSchema,
   /** Room name */
   name: z.string(),
   /** Room type */

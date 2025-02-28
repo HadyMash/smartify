@@ -38,7 +38,14 @@ export class HouseholdController {
       ...householdRequestData,
       owner: req.user!._id,
       members: [],
-      rooms: [],
+      rooms: [
+        {
+          name: 'default',
+          type: 'other',
+          _id: new ObjectId(),
+          floor: 1,
+        },
+      ],
     };
 
     try {

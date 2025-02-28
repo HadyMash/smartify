@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import {
   coordinatesSchema,
   householdSchema,
@@ -130,6 +131,14 @@ describe('Household Schema Validation', () => {
             },
           },
         ],
+        rooms: [
+          {
+            _id: '507f1f77bcf86cd799439050',
+            name: 'Living Room',
+            type: 'living',
+            floor: 1,
+          },
+        ],
       }),
     ).not.toThrow();
   });
@@ -162,6 +171,7 @@ describe('Room Schema Validation', () => {
   test('should validate a correct room', () => {
     expect(() =>
       householdRoomSchema.parse({
+        _id: new ObjectId(),
         name: 'Master Bedroom',
         type: 'bedroom',
         floor: 2,
