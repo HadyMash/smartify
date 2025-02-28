@@ -10,10 +10,12 @@ import {
   householdCreateRequestDataSchema,
   householdSchema,
   HouseholdMember,
+  inviteMemberSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/token';
-import { objectIdOrStringSchema } from '../schemas/obj-id';
+import { ObjectIdOrString, objectIdOrStringSchema } from '../schemas/obj-id';
+import { ObjectId } from 'mongodb';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {
@@ -34,8 +36,9 @@ export class HouseholdController {
 
     const householdData: Omit<Household, '_id'> = {
       ...householdRequestData,
-      owner: req.user?._id ?? '',
+      owner: req.user!._id,
       members: [],
+      rooms: [],
     };
 
     try {
@@ -47,6 +50,18 @@ export class HouseholdController {
     }
     // create household
     const hs = new HouseholdService();
+    const createdHousehold = await hs.createHousehold(householdData);
+
+    // validate and sanitize response
+    let sanitizedHousehold;
+    try {
+      sanitizedHousehold = householdSchema.parse(createdHousehold);
+    } catch (_) {
+      res.status(500).send({ error: 'Failed to create household' });
+      return;
+    }
+
+    res.status(201).send(sanitizedHousehold);
     const household = await hs.createHousehold(householdData);
     res.status(201).send(household);
   }
@@ -83,6 +98,14 @@ export class HouseholdController {
 
   public static async inviteMember(req: AuthenticatedRequest, res: Response) {
     try {
+      let inviteRequestData;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        inviteRequestData = inviteMemberSchema.parse(req.body);
+      } catch (_) {
+        res.status(400).send({ error: 'Invalid data' });
+        return;
+      }
       const { householdId, memberId, role, permissions } = req.body;
       const hs = new HouseholdService();
       const updatedHousehold = await hs.inviteMember(
@@ -105,7 +128,7 @@ export class HouseholdController {
       res.status(200).send(invites);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred while fetching invites');
+      res.status(500).json('An error occurred while fetching invites');
     }
   }
 
@@ -122,12 +145,12 @@ export class HouseholdController {
       const updatedHousehold = await hs.respondToInvite(
         inviteId,
         response,
-        req.user?._id ?? '',
+        req.user!._id,
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred while responding to the invite');
+      res.status(500).json('An error occurred while responding to the invite');
     }
   }
 
@@ -135,7 +158,14 @@ export class HouseholdController {
 
   public static async removeMember(req: AuthenticatedRequest, res: Response) {
     try {
-      const { userId, householdId } = req.params;
+      const { userId, householdId } = req.body;
+      try {
+        objectIdOrStringSchema.parse(userId);
+        objectIdOrStringSchema.parse(householdId);
+      } catch (_) {
+        res.status(400).json({ error: 'Invalid data' });
+        return;
+      }
       const hs = new HouseholdService();
       await hs.removeMember(householdId, userId);
 
@@ -188,11 +218,12 @@ export class HouseholdController {
 
       const { householdId } = req.params;
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.addRoom(householdId, roomRequestData);
+      const roomData = { ...roomRequestData, _id: new ObjectId() };
+      const updatedHousehold = await hs.addRoom(householdId, roomData);
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).json('An error occurred');
     }
   }
 
@@ -214,7 +245,7 @@ export class HouseholdController {
       res.status(200).send(household);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).json('An error occurred');
     }
   }
 
@@ -239,28 +270,29 @@ export class HouseholdController {
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).json('An error occurred');
     }
   }
 
   public static async manageRooms(req: AuthenticatedRequest, res: Response) {
     try {
-      const { householdId, roomId, action } = req.body as {
+      const { householdId, room, action } = req.body as {
         householdId: string;
-        roomId: string;
+        room: {
+          _id: ObjectIdOrString;
+          type: string;
+          name: string;
+          floor: number;
+        };
         action: 'add' | 'remove';
       };
 
       const hs = new HouseholdService();
-      const updatedHousehold = await hs.manageRooms(
-        householdId,
-        roomId,
-        action,
-      );
+      const updatedHousehold = await hs.manageRooms(householdId, room, action);
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).json('An error occurred');
     }
   }
   public static async removeRoom(req: AuthenticatedRequest, res: Response) {
@@ -276,7 +308,7 @@ export class HouseholdController {
       res.status(200).send(updatedHousehold);
     } catch (e) {
       console.error(e);
-      res.status(500).send('An error occurred');
+      res.status(500).json('An error occurred');
     }
   }
 }

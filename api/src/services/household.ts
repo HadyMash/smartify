@@ -4,6 +4,7 @@ import {
   HouseholdRoom,
   Invite,
 } from '../schemas/household';
+import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {
@@ -118,10 +119,10 @@ export class HouseholdService {
    */
   public async manageRooms(
     householdId: string,
-    roomId: string,
+    room: { _id: ObjectIdOrString; type: string; name: string; floor: number },
     action: 'add' | 'remove',
   ): Promise<Household | null> {
-    return this.db.householdRepository.manageRooms(householdId, roomId, action);
+    return this.db.householdRepository.manageRooms(householdId, room, action);
   }
   //TODO: public async userPermissions(){}
 

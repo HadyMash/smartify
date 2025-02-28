@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
+import { ObjectId } from 'mongodb';
 
 /**
  * Coordinates using longitude and latitude
@@ -97,6 +98,7 @@ export const householdRoomTypeSchema = z.enum([
 
 /** Household room schema */
 export const householdRoomSchema = z.object({
+  _id: z.instanceof(ObjectId),
   /** Room name */
   name: z.string(),
   /** Room type */
@@ -162,7 +164,8 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
   invites: z.array(inviteSchema).optional(),
-  //devices:
+  rooms: z.array(householdRoomSchema),
+  //roomAdjacencyList: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 export type Household = z.infer<typeof householdSchema>;
@@ -173,3 +176,11 @@ export const roomRequestDataSchema = z.object({
   floor: z.number(),
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
+
+export const inviteMemberSchema = z.object({
+  householdId: z.string(),
+  memberId: z.string(),
+  role: z.string(),
+  permissions: z.array(z.string()),
+});
+export type InviteMember = z.infer<typeof inviteMemberSchema>;

@@ -9,6 +9,7 @@ import {
   HouseholdRoom,
   Invite,
 } from '../../../schemas/household';
+import { ObjectIdOrString } from '../../../schemas/obj-id';
 
 type HouseholdDoc = Household;
 
@@ -69,8 +70,8 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
 
   public async removeMember(
-    householdId: ObjectId | string,
-    memberId: ObjectId | string,
+    householdId: ObjectIdOrString,
+    memberId: ObjectIdOrString,
   ): Promise<HouseholdDoc | null> {
     return this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
@@ -112,10 +113,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @returns The updated household document.
    */
   public async changeUserRole(
-    householdId: ObjectId | string,
-    memberId: ObjectId | string,
+    householdId: ObjectIdOrString,
+    memberId: ObjectIdOrString,
     newRole: HouseholdMember,
-    ownerId: ObjectId | string,
+    ownerId: ObjectIdOrString,
     permissions?: {
       appliances: boolean;
       health: boolean;
@@ -156,14 +157,28 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @returns The updated household document.
    */
   public async manageRooms(
-    householdId: ObjectId | string,
-    roomId: ObjectId | string,
+    householdId: ObjectIdOrString,
+    room: { _id: ObjectIdOrString; type: string; name: string; floor: number },
     action: 'add' | 'remove',
   ): Promise<HouseholdDoc | null> {
     const update =
       action === 'add'
-        ? { $push: { rooms: { _id: new ObjectId(roomId) } } }
-        : { $pull: { rooms: { _id: new ObjectId(roomId) } } };
+        ? {
+            $push: {
+              rooms: {
+                _id: new ObjectId(room._id),
+                type: room.type as
+                  | 'living'
+                  | 'kitchen'
+                  | 'bathroom'
+                  | 'bedroom'
+                  | 'other',
+                name: room.name,
+                floor: room.floor,
+              },
+            },
+          }
+        : { $pull: { rooms: { _id: new ObjectId(room._id) } } };
 
     return this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
@@ -211,11 +226,14 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     },
   ): Promise<Household | null> {
     return this.collection.findOneAndUpdate(
-      { _id: new ObjectId(householdId) },
+      {
+        _id: new ObjectId(householdId),
+        'members.id': { $ne: new ObjectId(userId) },
+        'invites.userId': { $ne: new ObjectId(userId) },
+      },
       {
         $addToSet: {
           invites: {
-            _id: new ObjectId(),
             userId: new ObjectId(userId),
             role,
             permissions,
@@ -230,15 +248,29 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @param userId - The ID of the user to fetch invites for.
    * @returns A list of all invites for the user.
    */
-  public async getUserInvites(userId: string): Promise<Invite[]> {
+  public async getUserInvites(userId: ObjectIdOrString): Promise<Invite[]> {
+    const parsedUserId = new ObjectId(userId);
     const households = await this.collection
       .find(
-        { 'invites.userId': new ObjectId(userId) },
-        { projection: { invites: 1 } },
+        { 'invites.userId': parsedUserId },
+        { projection: { invites: 1, _id: 1 } },
       )
       .toArray();
 
-    return households.flatMap((h) => h.invites ?? []);
+    const userInvites = households.flatMap(
+      (h) =>
+        h.invites?.filter(
+          (invite) => invite.userId.toString() === parsedUserId.toString(),
+        ) ?? [],
+    );
+
+    return userInvites.map((invite) => ({
+      householdId: invite._id,
+      inviteId: invite._id,
+      userId: invite.userId,
+      role: invite.role,
+      permissions: invite.permissions,
+    }));
   }
 
   /**
