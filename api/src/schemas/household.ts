@@ -98,7 +98,9 @@ export const householdRoomTypeSchema = z.enum([
 
 /** Household room schema */
 export const householdRoomSchema = z.object({
-  _id: z.instanceof(ObjectId),
+  _id: z.instanceof(ObjectId).refine((id) => ObjectId.isValid(id), {
+    message: 'Input not instance of ObjectId',
+  }),
   /** Room name */
   name: z.string(),
   /** Room type */
@@ -164,7 +166,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
   invites: z.array(inviteSchema).optional(),
-  rooms: z.array(householdRoomSchema),
+  rooms: z.array(householdRoomSchema).nonempty(),
   //roomAdjacencyList: z.record(z.string(), z.array(z.string())).optional(),
 });
 
