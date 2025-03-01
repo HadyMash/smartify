@@ -1,11 +1,36 @@
-// ignore_for_file: non_constant_identifier_names, unused_element
+// ignore_for_file: non_constant_identifier_names, unused_element, avoid_print
 
 import 'dart:convert'; // for the utf8.encode method
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
+import 'package:http/http.dart' as http;
 
-class AuthService {}
+// TODO: get authority from environment variables
+class AuthService {
+  //Future<void> register() {}
+
+  Future signIn(String email, String password) async {
+    try {
+      // initiate auth session
+      final queryParams = {
+        'email': email,
+      };
+      //final uri = Uri.http('localhost:3000', '/api/auth/init', queryParams);
+      final uri = Uri.parse('http://localhost:3000/api/auth/init?email=$email');
+      print(uri.toString());
+      final response = await http.get(uri, headers: {
+        'x-device-id': '1234',
+      });
+      print('init auht response status: ${response.statusCode}');
+      final authSessionBody = jsonDecode(response.body) as Map<String, String>;
+
+      print('body: $authSessionBody');
+    } catch (e) {
+      print('Error signing in: $e');
+    }
+  }
+}
 
 /// Client SRP methods
 class SRP {
@@ -121,16 +146,22 @@ class SRP {
     return hashToBigInt(concatString);
   }
 
-  static Map<String, BigInt> respondToAuthChallenge(
+  static ({BigInt A, BigInt M, BigInt K}) respondToAuthChallenge(
       String email, String password, String salt, BigInt a, BigInt B) {
     // Step 1: derive public key
     final A = derivePublicKey(a);
 
+    print('A: 0x${A.toRadixString(16)}');
+
     // Step 2: calculate u = H(A | B)
     final u = calcluateU(A, B);
 
+    print('u: 0x${u.toRadixString(16)}');
+
     // Step 3: calculate x = H(salt | H(email | ':' | password))
     final x = calculateX(email, password, salt);
+
+    print('x: 0x${x.toRadixString(16)}');
 
     // Step 4: calculate S = (B - k * g^x)^(a + u * x) % N
     final gx = g.modPow(x, N);
@@ -141,21 +172,27 @@ class SRP {
 
     final exponent = (a + (u * x)) % (N - BigInt.one);
 
+    print('base: 0x${base.toRadixString(16)}');
+    print('exponent: 0x${exponent.toRadixString(16)}');
+
     final S = base.modPow(exponent, N);
+    print('S: 0x${S.toRadixString(16)}');
 
     // Step 5: calculate K = H(S)
     final K = hashToBigInt(S.toRadixString(16));
+    print('K: 0x${K.toRadixString(16)}');
 
     // Step 6: calculate client proof M = H(H(N) XOR H(g) | H(email) | salt | A | B | K)
     final M = calculateClientProof(email, salt, A, B, K);
+    print('M: 0x${M.toRadixString(16)}');
 
     // TEMP
     // TODO: update with proper typing
 
-    return {
-      'A': A,
-      'M': M,
-      'K': K,
-    };
+    return (
+      A: A,
+      M: M,
+      K: K,
+    );
   }
 }

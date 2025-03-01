@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
 import { Db, MongoClient, ObjectId } from 'mongodb';
@@ -62,7 +63,8 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   ): Promise<ObjectIdOrString> {
     const result = await this.collection.insertOne({
       ...data,
-      verifier: `0x${data.verifier.toString()}`,
+      // convert the verifier to a hex string
+      verifier: `0x${data.verifier.toString(16)}`,
       mfaFormattedKey,
       mfaConfirmed: false,
     });
@@ -259,125 +261,133 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
    * Sessions older than SRP_SESSION_EXPIRY_SECONDS are considered expired and won't be loaded.
    */
   public async loadSessionsToCache(): Promise<void> {
-    const cutoffTime = new Date(Date.now() - SRP_SESSION_EXPIRY_SECONDS * 1000);
-
-    // Find all sessions that were created within the expiry window
-    const docs = await this.collection
-      .find({
-        createdAt: { $gt: cutoffTime },
-      })
-      .toArray();
-
-    console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
-
-    const promises = docs.map(async (doc) => {
-      if (!doc.sessionId) return;
-
-      // Calculate remaining TTL
-      const createdAt =
-        doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
-      const elapsedSeconds = Math.floor(
-        (Date.now() - createdAt.getTime()) / 1000,
-      );
-      const remainingTTL = SRP_SESSION_EXPIRY_SECONDS - elapsedSeconds;
-
-      // Only cache if there's remaining time
-      if (remainingTTL <= 0) return;
-
-      try {
-        await this.redis.set(
-          `${SRP_SESSION_KEY_PREFIX}:${doc.sessionId}`,
-          JSON.stringify(srpSessionJSONSchema.parse(doc)),
-          {
-            EX: remainingTTL,
-          },
-        );
-      } catch (e) {
-        console.error(`Failed to cache SRP session ${doc.sessionId}:`, e);
-      }
-    });
-
-    await Promise.all(promises);
+    // TODO: uncomment
+    //const cutoffTime = new Date(Date.now() - SRP_SESSION_EXPIRY_SECONDS * 1000);
+    //
+    //// Find all sessions that were created within the expiry window
+    //const docs = await this.collection
+    //  .find({
+    //    createdAt: { $gt: cutoffTime },
+    //  })
+    //  .toArray();
+    //
+    //console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
+    //
+    //const promises = docs.map(async (doc) => {
+    //  if (!doc.sessionId) return;
+    //
+    //  // Calculate remaining TTL
+    //  const createdAt =
+    //    doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
+    //  const elapsedSeconds = Math.floor(
+    //    (Date.now() - createdAt.getTime()) / 1000,
+    //  );
+    //  const remainingTTL = SRP_SESSION_EXPIRY_SECONDS - elapsedSeconds;
+    //
+    //  // Only cache if there's remaining time
+    //  if (remainingTTL <= 0) return;
+    //
+    //  try {
+    //    await this.redis.set(
+    //      `${SRP_SESSION_KEY_PREFIX}:${doc.sessionId}`,
+    //      JSON.stringify(srpSessionJSONSchema.parse(doc)),
+    //      {
+    //        EX: remainingTTL,
+    //      },
+    //    );
+    //  } catch (e) {
+    //    console.error(`Failed to cache SRP session ${doc.sessionId}:`, e);
+    //  }
+    //});
+    //
+    //await Promise.all(promises);
   }
 
   // TODO: implement configure collection
   public async configureCollection(): Promise<void> {
-    await Promise.all([
-      // Create unique index on sessionId
-      this.collection.createIndex({ sessionId: 1 }, { unique: true }),
-      // Create index on createdAt for expire queries
-      this.collection.createIndex({ createdAt: 1 }),
-    ]);
+    //await Promise.all([
+    //  // Create unique index on sessionId
+    //  this.collection.createIndex({ sessionId: 1 }, { unique: true }),
+    //  // Create index on createdAt for expire queries
+    //  this.collection.createIndex({ createdAt: 1 }),
+    //]);
   }
 
-  public async storeSRPAuthSession(sessionId: string, session: SRPSession) {
-    // convert bigints to strings
-    const sessionJSON = srpSessionJSONSchema.parse({
-      ...session,
-      createdAt: new Date(),
-    });
+  //public async storeSRPAuthSession(sessionId: string, session: SRPSession) {
+  //  // convert bigints to strings
+  //  const sessionJSON = srpSessionJSONSchema.parse({
+  //    ...session,
+  //    createdAt: new Date(),
+  //  });
+  //
+  //  console.log('session being stored in db:', sessionJSON);
+  //  console.log('');
+  //
+  //  // TODO: uncomment
+  //  // store session in redis
+  //  //const redisPromise = this.redis.set(
+  //  //  `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
+  //  //  JSON.stringify(srpSessionJSONSchema.parse(sessionJSON)),
+  //  //  {
+  //  //    EX: SRP_SESSION_EXPIRY_SECONDS,
+  //  //  },
+  //  //);
+  //
+  //  // store session in db (fail-safe) using upsert
+  //  const mongoPromise = this.collection.updateOne(
+  //    { sessionId: sessionId },
+  //    { $set: sessionJSON },
+  //    { upsert: true },
+  //  );
+  //
+  //  // TODO: uncomment
+  //  //try {
+  //  //await redisPromise;
+  //  //return;
+  //  //} catch (e) {
+  //  //console.error(
+  //  //  'Failed to store SRP session in redis. trying mongo. error:',
+  //  //  e,
+  //  //);
+  //  try {
+  //    await mongoPromise;
+  //  } catch (mongoError) {
+  //    console.error('Failed to store SRP session in mongo:', mongoError);
+  //    throw new Error('Failed to store SRP session in both Redis and MongoDB');
+  //  }
+  //  //}
+  //}
 
-    // store session in redis
-    const redisPromise = this.redis.set(
-      `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
-      JSON.stringify(srpSessionJSONSchema.parse(sessionJSON)),
-      {
-        EX: SRP_SESSION_EXPIRY_SECONDS,
-      },
-    );
-
-    // store session in db (fail-safe) using upsert
-    const mongoPromise = this.collection.updateOne(
-      { sessionId: sessionId },
-      { $set: sessionJSON },
-      { upsert: true },
-    );
-
-    try {
-      await redisPromise;
-      return;
-    } catch (e) {
-      console.error(
-        'Failed to store SRP session in redis. trying mongo. error:',
-        e,
-      );
-      try {
-        await mongoPromise;
-      } catch (mongoError) {
-        console.error('Failed to store SRP session in mongo:', mongoError);
-        throw new Error(
-          'Failed to store SRP session in both Redis and MongoDB',
-        );
-      }
-    }
-  }
-
-  public async getSRPAuthSession(
-    sessionId: string,
-  ): Promise<SRPSession | null> {
-    const redisResult = await this.redis.get(
-      `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
-    );
-    if (redisResult) {
-      try {
-        console.log(
-          'redis result:',
-          srpSessionSchema.parse(JSON.parse(redisResult)),
-        );
-
-        return srpSessionSchema.parse(JSON.parse(redisResult));
-      } catch (e) {
-        console.error('Failed to parse SRP session from redis', e);
-        // ignore, try mongo
-      }
-    }
-    const mongoResult = await this.collection.findOne({
-      sessionId,
-    });
-    if (!mongoResult) {
-      return null;
-    }
-    console.log('mongo result:', srpSessionSchema.parse(mongoResult));
-    return srpSessionSchema.parse(mongoResult);
-  }
+  //public async getSRPAuthSession(
+  //  sessionId: string,
+  //): Promise<SRPSession | null> {
+  //  // TODO: uncomment
+  //  //const redisResult = await this.redis.get(
+  //  //  `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
+  //  //);
+  //  //if (redisResult) {
+  //  //  try {
+  //  //    console.log(
+  //  //      'redis result:',
+  //  //      srpSessionSchema.parse(JSON.parse(redisResult)),
+  //  //    );
+  //  //
+  //  //    return srpSessionSchema.parse(JSON.parse(redisResult));
+  //  //  } catch (e) {
+  //  //    console.error('Failed to parse SRP session from redis', e);
+  //  //    // ignore, try mongo
+  //  //  }
+  //  //}
+  //  const mongoResult = await this.collection.findOne({
+  //    sessionId,
+  //  });
+  //  if (!mongoResult) {
+  //    return null;
+  //  }
+  //  console.log(
+  //    'session retreived from mongo:',
+  //    srpSessionSchema.parse(mongoResult),
+  //  );
+  //  return srpSessionSchema.parse(mongoResult);
+  //}
 }

@@ -20,6 +20,34 @@ export function validateSchema<T extends z.ZodType>(
   }
 }
 
+/**
+ * Try's to run a controller, and sends a 500 response if it fails.
+ * @param res - The response object
+ * @param controller - the controller to run
+ * @param customErrorHandling - A function to add custom error handling. It
+ * returns a true if the error was handled, and false otherwise. This function
+ * will be called before the default error handling.
+ */
+export function tryAPIController(
+  res: Response,
+  controller: () => Promise<void>,
+  customErrorHandling?: (err: unknown) => boolean,
+) {
+  const handleError = (err: unknown) => {
+    if (customErrorHandling && customErrorHandling(err)) {
+      return;
+    }
+    console.log('err caught in tryAPIController');
+    console.error(err);
+    res.status(500).send({ error: 'internal server error' });
+  };
+  try {
+    controller().catch(handleError);
+  } catch (e) {
+    handleError(e);
+  }
+}
+
 export function bigIntModPow(base: bigint, exp: bigint, mod: bigint): bigint {
   let result = BigInt(1);
   base = base % mod;
@@ -33,8 +61,8 @@ export function bigIntModPow(base: bigint, exp: bigint, mod: bigint): bigint {
   return result;
 }
 
-// test bigintmodpow
-export function testBigIntModPow() {
-  console.log(bigIntModPow(BigInt(2), BigInt(3), BigInt(5))); // Should output 3n (2^3 = 8, 8 mod 5 = 3)
-  console.log(bigIntModPow(BigInt(3), BigInt(4), BigInt(7))); // Should output 4n (3^4 = 81, 81 mod 7 = 4)
-}
+//// test bigintmodpow
+//export function testBigIntModPow() {
+//  console.log(bigIntModPow(BigInt(2), BigInt(3), BigInt(5))); // Should output 3n (2^3 = 8, 8 mod 5 = 3)
+//  console.log(bigIntModPow(BigInt(3), BigInt(4), BigInt(7))); // Should output 4n (3^4 = 81, 81 mod 7 = 4)
+//}
