@@ -1,6 +1,8 @@
 import { Request } from 'express';
 import { z } from 'zod';
 import { AccessTokenUser } from './tokens';
+import { objectIdOrStringSchema, objectIdStringSchema } from '../obj-id';
+import { emailSchema } from './user';
 
 export interface AuthenticatedRequest extends Request {
   user?: AccessTokenUser | undefined;
@@ -31,30 +33,40 @@ const bigIntTransormed = z
   .transform((val) => (typeof val === 'string' ? BigInt(val) : val));
 
 export const srpSessionSchema = z.object({
-  /** the session id */
-  sessionId: z.string(),
+  /** The user's id */
+  userId: objectIdOrStringSchema,
+  /** The user's email */
+  email: emailSchema,
   /** The user's salt */
   salt: z.string(),
-  /** The user's verifier */
-  verifier: z.string(),
-  // TODO: add bigint validation in schema
-  /* Server private key */
+  /** the user's verifier */
+  verifier: bigIntTransormed,
+  /** Server private key */
   b: bigIntTransormed,
-  /* Server public key */
+  /** Server public key */
   B: bigIntTransormed,
-  /* Client public key */
-  A: bigIntTransormed.optional(),
 });
 
 export type SRPSession = z.infer<typeof srpSessionSchema>;
 
-export const srpSessionJSONSchema = srpSessionSchema.extend({
+export const SRPJSONSessionSchema = z.object({
+  /** the user's id */
+  userId: objectIdStringSchema,
+  /** The user's email */
+  email: emailSchema,
+  /** The datetime the session was created */
+  createdAt: z.coerce.date().transform((val) => val.toISOString()),
+  /** The user's salt */
+  salt: z.string(),
+  /** the user's verifier */
+  verifier: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
+  /** Server private key */
   b: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
+  /** Server public key */
   B: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
-  A: bigIntTransormed.transform((val) => `0x${val.toString(16)}`).optional(),
-  createdAt: z.coerce.date(),
 });
-export type SRPJSONSession = z.infer<typeof srpSessionJSONSchema>;
+
+export type SRPJSONSession = z.infer<typeof SRPJSONSessionSchema>;
 
 /* Error types */
 
@@ -71,6 +83,14 @@ export class MFAError extends Error {
     this.name = 'MFAError';
     Object.setPrototypeOf(this, MFAError.prototype);
     this.type = type;
+  }
+}
+
+export class AuthSessionError extends Error {
+  constructor() {
+    super('Authentication Session Error');
+    this.name = 'AuthSessionError';
+    Object.setPrototypeOf(this, AuthSessionError.prototype);
   }
 }
 

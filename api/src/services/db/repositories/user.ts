@@ -16,12 +16,12 @@ import {
   MFA,
   MFAFormattedKey,
   SRPJSONSession,
+  SRPJSONSessionSchema,
   SRPSession,
-  srpSessionJSONSchema,
-  srpSessionSchema,
 } from '../../../schemas/auth/auth';
 
 export interface UserDoc extends User {
+  _id?: ObjectId;
   /** The user's mfa formatted key */
   mfaFormattedKey: string;
   /** Whether the user has confirmed correctly setting up MFA */
@@ -80,17 +80,17 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
    */
   public async getUserSRPCredentials(
     email: Email,
-  ): Promise<{ salt: string; verifier: string }> {
+  ): Promise<{ userId: ObjectId; salt: string; verifier: string }> {
     const result = await this.collection.findOne(
       {
         email,
       },
-      { projection: { salt: 1, verifier: 1 } },
+      { projection: { _id: 1, salt: 1, verifier: 1 } },
     );
     if (!result) {
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
-    return { salt: result.salt, verifier: result.verifier };
+    return { userId: result._id, salt: result.salt, verifier: result.verifier };
   }
 
   /**
@@ -242,9 +242,8 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   }
 }
 
-interface SRPSessionDoc extends SRPJSONSession {
-  _id?: ObjectId;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface SRPSessionDoc extends SRPJSONSession {}
 
 const SRP_SESSION_COLLECTION_NAME = 'srp-sessions';
 const SRP_SESSION_KEY_PREFIX = 'srp-auth-session';
@@ -311,6 +310,60 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
     //  // Create index on createdAt for expire queries
     //  this.collection.createIndex({ createdAt: 1 }),
     //]);
+  }
+
+  /**
+   * Store's an auth session in the database. The session will expire after a
+   * set time.
+   * @param session - The session to store
+   * @returns A boolean indicating if the session was stored successfully
+   */
+  public async storeSRPSession(session: SRPSession) {
+    // convert to json friendly format
+    const jsonSession = SRPJSONSessionSchema.parse({
+      ...session,
+      createdAt: new Date(),
+    });
+
+    console.log('session being stored in db:', jsonSession);
+
+    // TODO: store session in redis
+
+    // store session in db as a backup
+    const result = await this.collection.updateOne(
+      { userId: session.userId.toString() },
+      {
+        $set: jsonSession,
+      },
+      { upsert: true },
+    );
+
+    console.log('result:', result);
+
+    return (
+      result.acknowledged &&
+      result.matchedCount + result.modifiedCount + result.upsertedCount > 0
+    );
+  }
+
+  /**
+   * Get a user's SRP session if it exists
+   * @param userId - The user's id
+   * @returns The auth session if it exists. If it doesn't undefined will be
+   * returned
+   */
+  public async getSRPSession(
+    email: Email,
+  ): Promise<SRPJSONSession | undefined> {
+    // TODO: check redis first
+
+    const session = await this.collection.findOne({
+      email: email,
+    });
+    if (!session) {
+      return;
+    }
+    return SRPJSONSessionSchema.parse(session);
   }
 
   //public async storeSRPAuthSession(sessionId: string, session: SRPSession) {

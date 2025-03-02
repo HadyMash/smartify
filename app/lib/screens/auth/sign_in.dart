@@ -42,6 +42,16 @@ class _SignInScreenState extends State<SignInScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     final as = AuthService();
+                    final result =
+                        await as.register('hady@gmail.com', 'password');
+                    debugPrint('result: $result');
+                  },
+                  child: const Text('Register'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final as = AuthService();
                     // TODO: update to get from form fields
                     await as.signIn('hady@gmail.com', 'password');
                   },

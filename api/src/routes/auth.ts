@@ -7,11 +7,11 @@ authRouter.use(requireDeviceId);
 
 authRouter.post('/register', (req, res) => AuthController.register(req, res));
 
-//authRouter.post('/init', (req, res) =>
-//  AuthController.initiateAuthSession(req, res),
-//);
-//
-//authRouter.post('/login', (req, res) => AuthController.login(req, res));
+authRouter.post('/init', (req, res) =>
+  AuthController.initateAuthSession(req, res),
+);
+
+authRouter.post('/login', (req, res) => AuthController.login(req, res));
 
 //authRouter.post('/mfa/confirm', (req, res) =>
 //  AuthController.confirmMFA(req, res),

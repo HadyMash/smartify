@@ -15,6 +15,8 @@ export function validateSchema<T extends z.ZodType>(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(data);
   } catch (_) {
+    console.log(_);
+
     res.status(400).send('Invalid Request');
     return undefined;
   }

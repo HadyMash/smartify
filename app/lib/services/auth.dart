@@ -6,26 +6,144 @@ import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 import 'package:http/http.dart' as http;
 
-// TODO: get authority from environment variables
+// TODO: get uri from environment variables
+// TODO: get device id dynamically
 class AuthService {
-  //Future<void> register() {}
-
-  Future signIn(String email, String password) async {
+  Future<({String userId, String mfaFormattedKey})?> register(
+      String email, String password,
+      {DateTime? dob, String? sex}) async {
     try {
-      // initiate auth session
-      final queryParams = {
+      final salt = SRP.generateSalt();
+      final verifier = SRP.deriveVerifier(email, password, salt);
+      final body = {
         'email': email,
+        'salt': salt,
+        'verifier': '0x${verifier.toRadixString(16)}',
       };
-      //final uri = Uri.http('localhost:3000', '/api/auth/init', queryParams);
-      final uri = Uri.parse('http://localhost:3000/api/auth/init?email=$email');
-      print(uri.toString());
-      final response = await http.get(uri, headers: {
+      if (dob != null) {
+        body['dob'] = dob.toIso8601String();
+      }
+      if (sex != null) {
+        body['sex'] = sex;
+      }
+      final uri = Uri.parse('http://localhost:3000/api/auth/register');
+      final response = await http.post(uri, body: jsonEncode(body), headers: {
+        'Content-Type': 'application/json',
         'x-device-id': '1234',
       });
-      print('init auht response status: ${response.statusCode}');
-      final authSessionBody = jsonDecode(response.body) as Map<String, String>;
 
-      print('body: $authSessionBody');
+      print('register response status: ${response.statusCode}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print('Registration successful');
+        // get json body
+        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+        try {
+          print('body: $responseBody');
+          final userId = responseBody['userId'] as String;
+          final mfaFormattedKey = responseBody['formattedKey'] as String;
+          return (userId: userId, mfaFormattedKey: mfaFormattedKey);
+        } catch (e) {
+          print('Error getting body: $e');
+        }
+      } else {
+        if (response.body.isNotEmpty) {
+          final error = jsonDecode(response.body) as Map<String, dynamic>;
+          print('Error registering: ${error['message'] ?? error['error']}');
+        }
+      }
+    } catch (e) {
+      print('Error registering: $e');
+    }
+    return null;
+  }
+
+  /// Initiates an authentication session for the user with the given [email].
+  Future<({String salt, BigInt B})?> _initiateAuthSession(String email) async {
+    try {
+      // initiate auth session
+      final uri = Uri.parse('http://localhost:3000/api/auth/init?email=$email');
+      print(uri.toString());
+      final response = await http.post(uri, headers: {
+        'x-device-id': '1234',
+      });
+      print('init auth response status: ${response.statusCode}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // get body
+        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+        print('response body: $responseBody');
+        try {
+          final salt = responseBody['salt'] as String;
+          final BString = responseBody['B'] as String;
+
+          // convert B to BigInt
+          final B = BigInt.parse(BString.substring(2), radix: 16);
+
+          return (salt: salt, B: B);
+        } catch (e) {
+          print('Error getting body: $e');
+        }
+      } else {
+        // error
+        if (response.body.isNotEmpty) {
+          final error = jsonDecode(response.body) as Map<String, dynamic>;
+          print('Error registering: ${error['message'] ?? error['error']}');
+        }
+      }
+    } catch (e) {
+      print('Error signing in: $e');
+    }
+    return null;
+  }
+
+  /// Signs the user in with the given [email] and [password]. The user must
+  /// complete the MFA challenge after this to complete the sign in process.
+  Future signIn(String email, String password) async {
+    try {
+      // create an auth session
+      final session = await _initiateAuthSession(email);
+      if (session == null) {
+        print('Error initiating auth session');
+        return;
+      }
+      print('session: $session');
+
+      // generate private key
+      final a = SRP.generatePrivateKey();
+      final proof = SRP.respondToAuthChallenge(
+          email, password, session.salt, a, session.B);
+      final body = {
+        'email': email,
+        'A': '0x${proof.A.toRadixString(16)}',
+        'Mc': '0x${proof.M.toRadixString(16)}',
+      };
+
+      final uri = Uri.parse('http://localhost:3000/api/auth/login');
+      final response = await http.post(uri, body: jsonEncode(body), headers: {
+        'Content-Type': 'application/json',
+        'x-device-id': '1234',
+      });
+
+      print('login response status: ${response.statusCode}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // get body
+        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+        print('response body: $responseBody');
+        try {
+          final MsString = responseBody['Ms'] as String;
+          print('MsString: $MsString');
+          final Ms = BigInt.parse(MsString.substring(2), radix: 16);
+          print('Ms: $Ms');
+        } catch (e) {
+          print('Error getting body: $e');
+        }
+      } else {
+        // error
+        if (response.body.isNotEmpty) {
+          final error = jsonDecode(response.body) as Map<String, dynamic>;
+          print('Error registering: ${error['message'] ?? error['error']}');
+        }
+      }
     } catch (e) {
       print('Error signing in: $e');
     }

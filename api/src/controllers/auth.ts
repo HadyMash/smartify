@@ -1,10 +1,17 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../schemas/auth/auth';
+import {
+  AuthenticatedRequest,
+  AuthSessionError,
+  IncorrectPasswordError,
+} from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
 import { tryAPIController, validateSchema } from '../util';
 import {
+  Email,
+  emailSchema,
   InvalidUserError,
   InvalidUserType,
+  loginDataSchema,
   registerDataSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
@@ -87,6 +94,7 @@ export class AuthController {
         // get data from body
         const data = validateSchema(res, registerDataSchema, req.body);
         if (!data) {
+          console.log('data invalid');
           return;
         }
 
@@ -110,92 +118,94 @@ export class AuthController {
     );
   }
 
-  //public static async register(req: AuthenticatedRequest, res: Response) {
-  //  try {
-  //    // check if they are already logged in
-  //    if (req.user) {
-  //      console.log(req.user);
-  //
-  //      res.status(400).send({ error: 'Already logged in' });
-  //      return;
-  //    }
-  //
-  //    const data = validateSchema(res, registerDataSchema, req.body);
-  //    if (!data) {
-  //      return;
-  //    }
-  //
-  //    console.log('register data:', data);
-  //
-  //    const as = new AuthService();
-  //    const { userId, formattedKey } = await as.initUserSRP(data);
-  //
-  //    res.status(201).send({ userId, formattedKey });
-  //    return;
-  //  } catch (e) {
-  //    if (
-  //      e instanceof InvalidUserError &&
-  //      e.type === InvalidUserType.ALREADY_EXISTS
-  //    ) {
-  //      // don't tell the client the user doesn't already exist
-  //      res.status(400).send({ error: 'Invalid request' });
-  //      return;
-  //    }
-  //
-  //    console.error(e);
-  //    res.status(500).send('Internal Server Error');
-  //    return;
-  //  }
-  //}
+  public static initateAuthSession(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        // check if user is already signed in
+        if (req.user) {
+          res.status(400).send({ error: 'Already logged in' });
+          return;
+        }
 
-  //public static async initiateAuthSession(
-  //  req: AuthenticatedRequest,
-  //  res: Response,
-  //) {
-  //  try {
-  //    // check if they are already logged in
-  //    if (req.user) {
-  //      console.log(req.user);
-  //
-  //      res.status(400).send({ error: 'Already logged in' });
-  //      return;
-  //    }
-  //
-  //    const email: Email | undefined = validateSchema(
-  //      res,
-  //      emailSchema,
-  //      req.query.email,
-  //    );
-  //
-  //    if (!email) {
-  //      return;
-  //    }
-  //
-  //    const as = new AuthService();
-  //
-  //    try {
-  //      const { salt, B } = await as.initAuthSession(email);
-  //
-  //      console.log('salt:', salt);
-  //      console.log('B:', B);
-  //
-  //      res.status(200).send({ salt, B });
-  //    } catch (e) {
-  //      if (e instanceof InvalidUserError) {
-  //        // don't tell the client the user doesn't exist
-  //        res.status(400).send({ error: 'Invalid request' });
-  //        return;
-  //      } else {
-  //        throw e;
-  //      }
-  //    }
-  //  } catch (e) {
-  //    console.error(e);
-  //
-  //    res.status(500).send({ error: 'Internal server error' });
-  //    return;
-  //  }
-  //}
+        // get email from query
+        const email: Email | undefined = validateSchema(
+          res,
+          emailSchema,
+          req.query.email,
+        );
+
+        if (!email) {
+          return;
+        }
+
+        const as = new AuthService();
+
+        // initiate auth session
+        const { salt, B } = await as.initiateAuthSession(email);
+        res.status(201).send({ salt, B: `0x${B.toString(16)}` });
+        return;
+      },
+      (e) => {
+        if (e instanceof InvalidUserError) {
+          // don't tell the client the user doesn't exist, return a generic
+          // error
+          res.status(400).send({ error: 'Invalid request' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  public static login(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        // check if user is already signed in
+        if (req.user) {
+          res.status(400).send({ error: 'Already logged in' });
+          return;
+        }
+
+        // validate the body
+        const data = validateSchema(res, loginDataSchema, req.body);
+        if (!data) {
+          return;
+        }
+
+        // validate the login credentials
+        const as = new AuthService();
+        const Ms = await as.validateLoginCredentials(
+          data.email,
+          data.A,
+          data.Mc,
+        );
+
+        // login credentials are correct
+        //
+        // TODO: generate mfa token to send back to user
+
+        res.status(200).send({ Ms: `0x${Ms.toString(16)}` });
+      },
+      (err) => {
+        if (err instanceof InvalidUserError) {
+          console.log('invalid user error');
+          res.status(400).send({ error: 'Invalid request' });
+          return true;
+        } else if (err instanceof IncorrectPasswordError) {
+          console.log('incorrect password');
+          res.status(400).send({ error: 'Incorrect email or password' });
+          return true;
+        } else if (err instanceof AuthSessionError) {
+          console.log('auth session does not exist');
+          res.status(404).send({ error: 'Auth session does not exist' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
 
   //public static async login(req: AuthenticatedRequest, res: Response) {
   //  try {
