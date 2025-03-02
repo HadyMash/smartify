@@ -6,6 +6,8 @@
     "start": "node --no-assertions dist/index.js",
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
+    "dev:configure-db": "ts-node src/configure-db.ts",
+    "configure-db": "node --no-assertions dist/configure-db.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

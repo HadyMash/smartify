@@ -2,6 +2,7 @@ import { Document, MongoClient, Collection, Db } from 'mongodb';
 import { RedisClientType } from 'redis';
 
 export abstract class DatabaseRepository<T extends Document> {
+  protected readonly db: Db;
   protected readonly client: MongoClient;
   protected readonly collection: Collection<T>;
   protected readonly redis: RedisClientType;
@@ -13,6 +14,7 @@ export abstract class DatabaseRepository<T extends Document> {
     redis: RedisClientType,
   ) {
     this.client = client;
+    this.db = db;
     this.collection = db.collection<T>(collectionName);
     this.redis = redis;
   }

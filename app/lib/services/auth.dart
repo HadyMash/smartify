@@ -1,5 +1,3 @@
-// ignore_for_file: non_constant_identifier_names, unused_element, avoid_print
-
 import 'dart:convert'; // for the utf8.encode method
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -9,6 +7,11 @@ import 'package:http/http.dart' as http;
 // TODO: get uri from environment variables
 // TODO: get device id dynamically
 class AuthService {
+  static String? mfaToken;
+  static String? accessToken;
+  static String? refreshToken;
+  static String? idToken;
+
   Future<({String userId, String mfaFormattedKey})?> register(
       String email, String password,
       {DateTime? dob, String? sex}) async {
@@ -32,14 +35,10 @@ class AuthService {
         'x-device-id': '1234',
       });
 
-      print('register response status: ${response.statusCode}');
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('Registration successful');
         // get json body
         final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
         try {
-          print('body: $responseBody');
           final userId = responseBody['userId'] as String;
           final mfaFormattedKey = responseBody['formattedKey'] as String;
           return (userId: userId, mfaFormattedKey: mfaFormattedKey);
@@ -63,15 +62,12 @@ class AuthService {
     try {
       // initiate auth session
       final uri = Uri.parse('http://localhost:3000/api/auth/init?email=$email');
-      print(uri.toString());
       final response = await http.post(uri, headers: {
         'x-device-id': '1234',
       });
-      print('init auth response status: ${response.statusCode}');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         // get body
         final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
-        print('response body: $responseBody');
         try {
           final salt = responseBody['salt'] as String;
           final BString = responseBody['B'] as String;
@@ -106,7 +102,6 @@ class AuthService {
         print('Error initiating auth session');
         return;
       }
-      print('session: $session');
 
       // generate private key
       final a = SRP.generatePrivateKey();
@@ -124,19 +119,14 @@ class AuthService {
         'x-device-id': '1234',
       });
 
-      print('login response status: ${response.statusCode}');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         // get body
         final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
-        print('response body: $responseBody');
-        try {
-          final MsString = responseBody['Ms'] as String;
-          print('MsString: $MsString');
-          final Ms = BigInt.parse(MsString.substring(2), radix: 16);
-          print('Ms: $Ms');
-        } catch (e) {
-          print('Error getting body: $e');
-        }
+        final MsString = responseBody['Ms'] as String;
+        final Ms = BigInt.parse(MsString.substring(2), radix: 16);
+        print('Ms: $Ms');
+
+        print('logged in successfully');
       } else {
         // error
         if (response.body.isNotEmpty) {
@@ -152,11 +142,14 @@ class AuthService {
 
 /// Client SRP methods
 class SRP {
+  // ignore: non_constant_identifier_names
   static String SRP_N_HEX = ("""
   AC6BDB41 324A9A9B F166DE5E 1389582F AF72B665 1987EE07 FC319294 3DB56050 A37329CB B4A099ED 8193E075 7767A13D D52312AB 4B03310D CD7F48A9 DA04FD50 E8083969 EDB767B0 CF609517 9A163AB3 661A05FB D5FAAAE8 2918A996 2F0B93B8 55F97993 EC975EEA A80D740A DBF4FF74 7359D041 D5C33EA7 1D281E44 6B14773B CA97B43A 23FB8016 76BD207A 436C6481 F1D2B907 8717461A 5B9D32E6 88F87748 544523B5 24B0D57D 5EA77A27 75D2ECFA 032CFBDB F52FB378 61602790 04E57AE6 AF874E73 03CE5329 9CCC041C 7BC308D8 2A5698F3 A8D0C382 71AE35F8 E9DBFBB6 94B5C803 D89F7AE4 35DE236D 525F5475 9B65E372 FCD68EF2 0FA7111F 9E4AFF73""")
       .trim()
       .replaceAll(RegExp(r'[\s\r\n]+'), '');
+  // ignore: non_constant_identifier_names
   static int SRP_GENERATOR = 2;
+  // ignore: non_constant_identifier_names
   static int SRP_K = 3;
 
   // Prime number used as modulus
@@ -238,7 +231,9 @@ class SRP {
   static BigInt calculateClientProof(
       String email, String salt, BigInt A, BigInt B, BigInt K) {
     // Hash N and g
+    // ignore: non_constant_identifier_names
     final HN = hashToBigInt(N.toRadixString(16));
+    // ignore: non_constant_identifier_names
     final Hg = hashToBigInt(g.toRadixString(16));
 
     // XOR operation (convert to buffer for easier XOR)
@@ -251,6 +246,7 @@ class SRP {
     );
 
     // hash email
+    // ignore: non_constant_identifier_names
     final Hemail = hashString(email);
 
     // concat
@@ -269,17 +265,11 @@ class SRP {
     // Step 1: derive public key
     final A = derivePublicKey(a);
 
-    print('A: 0x${A.toRadixString(16)}');
-
     // Step 2: calculate u = H(A | B)
     final u = calcluateU(A, B);
 
-    print('u: 0x${u.toRadixString(16)}');
-
     // Step 3: calculate x = H(salt | H(email | ':' | password))
     final x = calculateX(email, password, salt);
-
-    print('x: 0x${x.toRadixString(16)}');
 
     // Step 4: calculate S = (B - k * g^x)^(a + u * x) % N
     final gx = g.modPow(x, N);
@@ -290,22 +280,13 @@ class SRP {
 
     final exponent = (a + (u * x)) % (N - BigInt.one);
 
-    print('base: 0x${base.toRadixString(16)}');
-    print('exponent: 0x${exponent.toRadixString(16)}');
-
     final S = base.modPow(exponent, N);
-    print('S: 0x${S.toRadixString(16)}');
 
     // Step 5: calculate K = H(S)
     final K = hashToBigInt(S.toRadixString(16));
-    print('K: 0x${K.toRadixString(16)}');
 
     // Step 6: calculate client proof M = H(H(N) XOR H(g) | H(email) | salt | A | B | K)
     final M = calculateClientProof(email, salt, A, B, K);
-    print('M: 0x${M.toRadixString(16)}');
-
-    // TEMP
-    // TODO: update with proper typing
 
     return (
       A: A,

@@ -3,6 +3,10 @@ import {
   AuthenticatedRequest,
   AuthSessionError,
   IncorrectPasswordError,
+  MFACode,
+  mfaCodeSchema,
+  MFAError,
+  MFAErrorType,
 } from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
 import { tryAPIController, validateSchema } from '../util';
@@ -15,6 +19,8 @@ import {
   registerDataSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
+import { MFAService } from '../services/auth/mfa';
+import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
 
 const MFA_TOKEN_COOKIE_NAME = 'mfa-token';
 const ACCESS_TOKEN_COOKIE_NAME = 'access-token';
@@ -176,17 +182,45 @@ export class AuthController {
 
         // validate the login credentials
         const as = new AuthService();
-        const Ms = await as.validateLoginCredentials(
+
+        // get the auth session
+        const session = await as.getAuthSession(data.email);
+
+        const Ms = as.validateLoginCredentials(
           data.email,
           data.A,
           data.Mc,
+          session,
         );
 
         // login credentials are correct
-        //
-        // TODO: generate mfa token to send back to user
+        // generate mfa token to send back to user
+        const ts = new TokenService();
+        const mfaToken = await ts.createMFAToken(
+          session.userId.toString(),
+          req.deviceId!,
+          session.mfaConfirmed ? undefined : session.mfaFormattedKey,
+        );
 
-        res.status(200).send({ Ms: `0x${Ms.toString(16)}` });
+        this.writeMFACookie(res, mfaToken);
+
+        // don't wait for this as it will unnecessarily delay the response
+        as.deleteAuthSession(data.email).catch((e) =>
+          console.error('Error deleting auth sesssion:', e),
+        );
+
+        if (session.mfaConfirmed) {
+          res.status(200).send({ Ms: `0x${Ms.toString(16)}` });
+          return;
+        } else {
+          const mfa = new MFAService();
+          const mfaQRUri = mfa.generateMFAUri(
+            session.mfaFormattedKey,
+            data.email,
+          );
+          res.status(200).send({ Ms: `0x${Ms.toString(16)}`, mfaQRUri });
+          return;
+        }
       },
       (err) => {
         if (err instanceof InvalidUserError) {
@@ -207,261 +241,191 @@ export class AuthController {
     );
   }
 
-  //public static async login(req: AuthenticatedRequest, res: Response) {
-  //  try {
-  //    // check if they are already logged in
-  //    if (req.user) {
-  //      res.status(400).send({ error: 'Already logged in' });
-  //      return;
-  //    }
-  //
-  //    const data = validateSchema(res, loginDataSchema, req.body);
-  //
-  //    if (!data) {
-  //      return;
-  //    }
-  //
-  //    console.log('data:', data);
-  //
-  //    const as = new AuthService();
-  //
-  //    // get auth session
-  //    const session = await as.getAuthSession(data.email);
-  //
-  //    // check it exists
-  //    if (!session) {
-  //      res.status(404).send({ error: 'Auth session does not exist' });
-  //      return;
-  //    }
-  //
-  //    try {
-  //      const { user, mfa, Ms } = await as.login({
-  //        ...data,
-  //        ...session,
-  //        verifier: BigInt(session.verifier),
-  //      });
-  //
-  //      // generate mfa token to send back to user
-  //      const ts = new TokenService();
-  //      const mfaToken = await ts.createMFAToken(
-  //        user._id.toString(),
-  //        req.deviceId!,
-  //        mfa.confirmed ? undefined : mfa.formattedKey,
-  //      );
-  //
-  //      this.writeMFACookie(res, mfaToken);
-  //
-  //      if (mfa.confirmed) {
-  //        res.status(200).send({ Ms });
-  //      } else {
-  //        const ms = new MFAService();
-  //        const mfaQRUri = ms.generateMFAUri(mfa.formattedKey, user.email);
-  //        res
-  //          .status(200)
-  //          .send({ Ms, formattedKey: mfa.formattedKey, mfaQRUri });
-  //      }
-  //    } catch (e) {
-  //      if (
-  //        e instanceof InvalidUserError ||
-  //        e instanceof IncorrectPasswordError
-  //      ) {
-  //        res.status(400).send({ error: 'Incorrect email or password' });
-  //        return;
-  //      } else {
-  //        throw e;
-  //      }
-  //    }
-  //  } catch (e) {
-  //    console.error(e);
-  //    res.status(500).send({ error: 'Internal Server Error' });
-  //  }
-  //}
+  public static async confirmMFA(req: AuthenticatedRequest, res: Response) {
+    try {
+      const deviceId = req.deviceId!;
 
-  //public static async confirmMFA(req: AuthenticatedRequest, res: Response) {
-  //  try {
-  //    const deviceId = req.deviceId!;
-  //
-  //    // get mfa token
-  //    const mfaToken = req.cookies['mfa-token'] as string | undefined;
-  //    console.log(req.cookies);
-  //
-  //    if (!mfaToken) {
-  //      res.status(400).send({ error: 'MFA token not found' });
-  //      return;
-  //    }
-  //
-  //    let code: MFACode;
-  //    try {
-  //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  //      code = mfaCodeSchema.parse(req.body.code);
-  //    } catch (_) {
-  //      res.status(400).send({ error: 'Invalid code' });
-  //      return;
-  //    }
-  //
-  //    // verify mfa token
-  //    const ts = new TokenService();
-  //    let mfaPayload: MFATokenPayload;
-  //    try {
-  //      mfaPayload = await ts.verifyMFAToken(mfaToken);
-  //      console.log('mfaPayload:', mfaPayload);
-  //    } catch (e) {
-  //      if (e instanceof InvalidTokenError) {
-  //        res.status(401).send({ error: 'Invalid MFA token' });
-  //        return;
-  //      } else {
-  //        console.error(e);
-  //        res.status(500).send({ error: 'Internal Server Error' });
-  //        return;
-  //      }
-  //    }
-  //
-  //    if (deviceId !== mfaPayload.deviceId) {
-  //      res.status(400).send({ error: 'Invalid device id' });
-  //      return;
-  //    }
-  //
-  //    const as = new AuthService();
-  //    try {
-  //      await as.confirmUserMFA(mfaPayload.userId, code);
-  //      const { accessToken, refreshToken, idToken } =
-  //        await ts.generateAllTokens(mfaPayload.userId, deviceId);
-  //      this.deleteMFACookie(res);
-  //      this.writeAuthCookies(res, accessToken, refreshToken, idToken);
-  //      res.status(200).send();
-  //      return;
-  //    } catch (e) {
-  //      // mfa is valid, create a new one since the old one is now blacklisted
-  //      const newMfaToken = await ts.createMFAToken(
-  //        mfaPayload.userId,
-  //        mfaPayload.deviceId,
-  //        mfaPayload.formattedKey,
-  //      );
-  //      this.writeMFACookie(res, newMfaToken);
-  //      if (e instanceof MFAError) {
-  //        switch (e.type) {
-  //          case MFAErrorType.INCORRECT_CODE:
-  //            res.status(400).send({ error: 'Incorrect MFA Code' });
-  //            break;
-  //          case MFAErrorType.MFA_ALREADY_CONFIRMED:
-  //            res.status(400).send({ error: 'MFA already confirmed' });
-  //            break;
-  //          case MFAErrorType.MFA_NOT_CONFIRMED:
-  //            // this should never happen
-  //            console.error('mfa not confirmed in confirm mfa');
-  //            res.status(500).send({ error: 'Internal Server Error' });
-  //            break;
-  //        }
-  //      } else {
-  //        console.error(e);
-  //        res
-  //          .status(400)
-  //          // user does not exist but don't tell client that
-  //          .send({ error: 'Invalid request' });
-  //      }
-  //    }
-  //    return;
-  //  } catch (e) {
-  //    console.error(e);
-  //    res.status(500).send({ error: 'Internal Server Error' });
-  //  }
-  //}
+      // get mfa token
+      const mfaToken = req.cookies['mfa-token'] as string | undefined;
+      console.log(req.cookies);
 
-  //public static async verifyMFA(req: AuthenticatedRequest, res: Response) {
-  //  try {
-  //    // get mfa token
-  //    const mfaToken = req.cookies['mfa-token'] as string | undefined;
-  //    console.log(req.cookies);
-  //
-  //    if (!mfaToken) {
-  //      res.status(400).send({ error: 'MFA token not found' });
-  //      return;
-  //    }
-  //
-  //    let code: MFACode;
-  //    try {
-  //      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  //      code = mfaCodeSchema.parse(req.body.code);
-  //    } catch (_) {
-  //      res.status(400).send({ error: 'Invalid code' });
-  //      return;
-  //    }
-  //
-  //    // verify mfa token
-  //    const ts = new TokenService();
-  //    let mfaPayload: MFATokenPayload;
-  //    try {
-  //      mfaPayload = await ts.verifyMFAToken(mfaToken);
-  //      console.log('mfaPayload:', mfaPayload);
-  //    } catch (e) {
-  //      if (e instanceof InvalidTokenError) {
-  //        res.status(401).send({ error: 'Invalid MFA token' });
-  //        return;
-  //      } else {
-  //        console.error(e);
-  //        res.status(500).send({ error: 'Internal Server Error' });
-  //        return;
-  //      }
-  //    }
-  //
-  //    if (req.deviceId !== mfaPayload.deviceId) {
-  //      res.status(400).send({ error: 'Invalid device id' });
-  //      return;
-  //    }
-  //
-  //    const as = new AuthService();
-  //    try {
-  //      const result = await as.verifyMFA(mfaPayload.userId, code);
-  //      if (!result) {
-  //        // mfa is valid, create a new one since the old one is now blacklisted
-  //        const newMfaToken = await ts.createMFAToken(
-  //          mfaPayload.userId,
-  //          mfaPayload.deviceId,
-  //          mfaPayload.formattedKey,
-  //        );
-  //        this.writeMFACookie(res, newMfaToken);
-  //        res.status(400).send({ error: 'Incorrect MFA Code' });
-  //        return;
-  //      }
-  //
-  //      // mfa correct, generate new tokens
-  //      const { accessToken, refreshToken, idToken } =
-  //        await ts.generateAllTokens(mfaPayload.userId, mfaPayload.deviceId);
-  //      this.writeAuthCookies(res, accessToken, refreshToken, idToken);
-  //      this.deleteMFACookie(res);
-  //      res.status(200).send();
-  //      return;
-  //    } catch (e) {
-  //      if (e instanceof MFAError) {
-  //        // mfa is valid, create a new one since the old one is now blacklisted
-  //        const newMfaToken = await ts.createMFAToken(
-  //          mfaPayload.userId,
-  //          mfaPayload.deviceId,
-  //          mfaPayload.formattedKey,
-  //        );
-  //        this.writeMFACookie(res, newMfaToken);
-  //        switch (e.type) {
-  //          case MFAErrorType.INCORRECT_CODE:
-  //            res.status(400).send({ error: 'Incorrect MFA Code' });
-  //            break;
-  //          case MFAErrorType.MFA_ALREADY_CONFIRMED:
-  //            // this should never happen
-  //            console.error('mfa already confirmed in verify mfa');
-  //            res.status(500).send({ error: 'Internal Server Error' });
-  //            break;
-  //          case MFAErrorType.MFA_NOT_CONFIRMED:
-  //            res.status(400).send({ error: 'MFA not confirmed' });
-  //            break;
-  //        }
-  //      } else {
-  //        console.error(e);
-  //        res.status(500).send({ error: 'Internal Server Error' });
-  //      }
-  //      return;
-  //    }
-  //  } catch (e) {
-  //    console.error(e);
-  //    res.status(500).send({ error: 'Internal server error' });
-  //  }
-  //}
+      if (!mfaToken) {
+        res.status(400).send({ error: 'MFA token not found' });
+        return;
+      }
+
+      let code: MFACode;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        code = mfaCodeSchema.parse(req.body.code);
+      } catch (_) {
+        res.status(400).send({ error: 'Invalid code' });
+        return;
+      }
+
+      // verify mfa token
+      const ts = new TokenService();
+      let mfaPayload: MFATokenPayload;
+      try {
+        mfaPayload = await ts.verifyMFAToken(mfaToken);
+        console.log('mfaPayload:', mfaPayload);
+      } catch (e) {
+        if (e instanceof InvalidTokenError) {
+          res.status(401).send({ error: 'Invalid MFA token' });
+          return;
+        } else {
+          console.error(e);
+          res.status(500).send({ error: 'Internal Server Error' });
+          return;
+        }
+      }
+
+      if (deviceId !== mfaPayload.deviceId) {
+        res.status(400).send({ error: 'Invalid device id' });
+        return;
+      }
+
+      const as = new AuthService();
+      try {
+        await as.confirmUserMFA(mfaPayload.userId, code);
+        const { accessToken, refreshToken, idToken } =
+          await ts.generateAllTokens(mfaPayload.userId, deviceId);
+        this.deleteMFACookie(res);
+        this.writeAuthCookies(res, accessToken, refreshToken, idToken);
+        res.status(200).send();
+        return;
+      } catch (e) {
+        // mfa is valid, create a new one since the old one is now blacklisted
+        const newMfaToken = await ts.createMFAToken(
+          mfaPayload.userId,
+          mfaPayload.deviceId,
+          mfaPayload.formattedKey,
+        );
+        this.writeMFACookie(res, newMfaToken);
+        if (e instanceof MFAError) {
+          switch (e.type) {
+            case MFAErrorType.INCORRECT_CODE:
+              res.status(400).send({ error: 'Incorrect MFA Code' });
+              break;
+            case MFAErrorType.MFA_ALREADY_CONFIRMED:
+              res.status(400).send({ error: 'MFA already confirmed' });
+              break;
+            case MFAErrorType.MFA_NOT_CONFIRMED:
+              // this should never happen
+              console.error('mfa not confirmed in confirm mfa');
+              res.status(500).send({ error: 'Internal Server Error' });
+              break;
+          }
+        } else {
+          console.error(e);
+          res
+            .status(400)
+            // user does not exist but don't tell client that
+            .send({ error: 'Invalid request' });
+        }
+      }
+      return;
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ error: 'Internal Server Error' });
+    }
+  }
+
+  public static async verifyMFA(req: AuthenticatedRequest, res: Response) {
+    try {
+      // get mfa token
+      const mfaToken = req.cookies['mfa-token'] as string | undefined;
+      console.log(req.cookies);
+
+      if (!mfaToken) {
+        res.status(400).send({ error: 'MFA token not found' });
+        return;
+      }
+
+      let code: MFACode;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        code = mfaCodeSchema.parse(req.body.code);
+      } catch (_) {
+        res.status(400).send({ error: 'Invalid code' });
+        return;
+      }
+
+      // verify mfa token
+      const ts = new TokenService();
+      let mfaPayload: MFATokenPayload;
+      try {
+        mfaPayload = await ts.verifyMFAToken(mfaToken);
+        console.log('mfaPayload:', mfaPayload);
+      } catch (e) {
+        if (e instanceof InvalidTokenError) {
+          res.status(401).send({ error: 'Invalid MFA token' });
+          return;
+        } else {
+          console.error(e);
+          res.status(500).send({ error: 'Internal Server Error' });
+          return;
+        }
+      }
+
+      if (req.deviceId !== mfaPayload.deviceId) {
+        res.status(400).send({ error: 'Invalid device id' });
+        return;
+      }
+
+      const as = new AuthService();
+      try {
+        const result = await as.verifyMFA(mfaPayload.userId, code);
+        if (!result) {
+          // mfa is valid, create a new one since the old one is now blacklisted
+          const newMfaToken = await ts.createMFAToken(
+            mfaPayload.userId,
+            mfaPayload.deviceId,
+            mfaPayload.formattedKey,
+          );
+          this.writeMFACookie(res, newMfaToken);
+          res.status(400).send({ error: 'Incorrect MFA Code' });
+          return;
+        }
+
+        // mfa correct, generate new tokens
+        const { accessToken, refreshToken, idToken } =
+          await ts.generateAllTokens(mfaPayload.userId, mfaPayload.deviceId);
+        this.writeAuthCookies(res, accessToken, refreshToken, idToken);
+        this.deleteMFACookie(res);
+        res.status(200).send();
+        return;
+      } catch (e) {
+        if (e instanceof MFAError) {
+          // mfa is valid, create a new one since the old one is now blacklisted
+          const newMfaToken = await ts.createMFAToken(
+            mfaPayload.userId,
+            mfaPayload.deviceId,
+            mfaPayload.formattedKey,
+          );
+          this.writeMFACookie(res, newMfaToken);
+          switch (e.type) {
+            case MFAErrorType.INCORRECT_CODE:
+              res.status(400).send({ error: 'Incorrect MFA Code' });
+              break;
+            case MFAErrorType.MFA_ALREADY_CONFIRMED:
+              // this should never happen
+              console.error('mfa already confirmed in verify mfa');
+              res.status(500).send({ error: 'Internal Server Error' });
+              break;
+            case MFAErrorType.MFA_NOT_CONFIRMED:
+              res.status(400).send({ error: 'MFA not confirmed' });
+              break;
+          }
+        } else {
+          console.error(e);
+          res.status(500).send({ error: 'Internal Server Error' });
+        }
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ error: 'Internal server error' });
+    }
+  }
 }

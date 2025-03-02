@@ -45,6 +45,10 @@ export const srpSessionSchema = z.object({
   b: bigIntTransormed,
   /** Server public key */
   B: bigIntTransormed,
+  /** MFA formatted key */
+  mfaFormattedKey: mfaFormattedKeySchema,
+  /** Whether the user's mfa has been setup and confirmed */
+  mfaConfirmed: z.boolean(),
 });
 
 export type SRPSession = z.infer<typeof srpSessionSchema>;
@@ -64,9 +68,19 @@ export const SRPJSONSessionSchema = z.object({
   b: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
   /** Server public key */
   B: bigIntTransormed.transform((val) => `0x${val.toString(16)}`),
+  /** MFA formatted key */
+  mfaFormattedKey: mfaFormattedKeySchema,
+  /** Whether the user's mfa has been setup and confirmed */
+  mfaConfirmed: z.boolean(),
 });
 
 export type SRPJSONSession = z.infer<typeof SRPJSONSessionSchema>;
+
+export const SRPMongoSessionSchema = SRPJSONSessionSchema.extend({
+  createdAt: z.coerce.date(),
+});
+
+export type SRPMongoSession = z.infer<typeof SRPMongoSessionSchema>;
 
 /* Error types */
 

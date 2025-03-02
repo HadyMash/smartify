@@ -122,4 +122,16 @@ export class DatabaseService {
   get householdRepository(): HouseholdRepository {
     return this._householdRepository;
   }
+
+  /** Configures all of the databases collections */
+  public async configureCollections(): Promise<void> {
+    await Promise.all([
+      this._userRepository.configureCollection(),
+      this._srpRepository.configureCollection(),
+      this._tokenRepository.configureCollection(),
+      this._accessBlacklistRepository.configureCollection(),
+      this._mfaBlacklistRepository.configureCollection(),
+      this._householdRepository.configureCollection(),
+    ]);
+  }
 }

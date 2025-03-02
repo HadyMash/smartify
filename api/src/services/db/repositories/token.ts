@@ -89,11 +89,61 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     super(client, db, TOKENS_COLLECTION_NAME, redis);
   }
 
+  /**
+   * Configures the token collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: TOKENS_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(TOKENS_COLLECTION_NAME);
+      }
+
+      // Configure indices for TokenGenIdDoc collection
+      await Promise.all([
+        // Index for querying by userId and deviceId (used in getUserTokenGenerationId)
+        this.collection.createIndex({ userId: 1, deviceId: 1 }),
+
+        // Index for querying by tokenGenerationId (used in isTokenGenerationIdBlacklisted)
+        this.collection.createIndex({ tokenGenerationId: 1 }),
+
+        // Compound index for the frequent query pattern including blacklisted status
+        this.collection.createIndex({
+          userId: 1,
+          deviceId: 1,
+          blacklisted: 1,
+        }),
+
+        // Index to filter by blacklisted status and expiry
+        this.collection.createIndex({ blacklisted: 1, expiry: 1 }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+            partialFilterExpression: { expiry: { $exists: true } },
+          },
+        ),
+
+        // Index for sorting by created date (used in getUserTokenGenerationId with sort)
+        this.collection.createIndex({ created: 1 }),
+      ]);
+
+      console.log(
+        `Configured ${TOKENS_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${TOKENS_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -397,11 +447,47 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
     await Promise.all(promises);
   }
 
+  /**
+   * Configures the access token blacklist collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: ACCESS_BLACKLIST_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(ACCESS_BLACKLIST_COLLECTION_NAME);
+      }
+
+      // Configure indices
+      await Promise.all([
+        // Unique index for querying by JTI (used in isAccessTokenBlacklisted)
+        this.collection.createIndex({ jti: 1 }, { unique: true }),
+
+        // Index on created date for potential analytics or cleanup operations
+        this.collection.createIndex({ created: 1 }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+          },
+        ),
+      ]);
+
+      console.log(
+        `Configured ${ACCESS_BLACKLIST_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${ACCESS_BLACKLIST_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -525,11 +611,44 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
     await Promise.all(promises);
   }
 
+  /**
+   * Configures the MFA token blacklist collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: MFA_BLACKLIST_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(MFA_BLACKLIST_COLLECTION_NAME);
+      }
+
+      // Configure indices
+      await Promise.all([
+        // Unique index for querying by JTI (used in isMFATokenBlacklisted)
+        this.collection.createIndex({ jti: 1 }, { unique: true }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+          },
+        ),
+      ]);
+
+      console.log(
+        `Configured ${MFA_BLACKLIST_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${MFA_BLACKLIST_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /**

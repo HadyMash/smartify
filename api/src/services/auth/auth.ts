@@ -73,19 +73,13 @@ export class AuthService {
       verifier: verifierString,
     } = await this.db.userRepository.getUserSRPCredentials(email);
 
-    console.log('');
-    console.log('got user salt and verifier');
-    console.log('salt:', salt);
-    console.log('verifier:', verifierString);
-    console.log('');
-
     // generate the server keys
     const verifier = BigInt(verifierString);
     const { b, B } = SRP.generateServerKeys(verifier);
-    console.log('server keys generated');
-    console.log('b:', b.toString(16));
-    console.log('B:', B.toString(16));
-    console.log('');
+
+    // get mfa info
+    const { formattedKey, confirmed } =
+      await this.db.userRepository.getUserMFA(userId);
 
     const session: SRPSession = {
       userId: userId.toString(),
@@ -94,6 +88,8 @@ export class AuthService {
       verifier,
       B,
       b,
+      mfaFormattedKey: formattedKey,
+      mfaConfirmed: confirmed,
     };
 
     const success = await this.db.srpSessionRepository.storeSRPSession(
@@ -108,29 +104,45 @@ export class AuthService {
   }
 
   /**
-   * Verifies the client's proof is correct and generates a corresponding server
-   * proof
+   * Get a user's auth session
    * @param email - The user's email
-   * @param A - The client's public key
-   * @param Mc - The client's proof
-   * @returns The server's proof
+   * @returns The SRP session
    * @throws An {@link AuthSessionError} if the session is expired or does not exist
-   * @throws An {@link IncorrectPasswordError} if the client's proof is incorrect
    */
-  public async validateLoginCredentials(
-    email: Email,
-    A: bigint,
-    Mc: bigint,
-  ): Promise<bigint> {
-    // get the auth session
+  public async getAuthSession(email: Email): Promise<SRPSession> {
     const jsonSession: SRPJSONSession | undefined =
       await this.db.srpSessionRepository.getSRPSession(email);
 
     if (!jsonSession) {
       throw new AuthSessionError();
     }
-    const session: SRPSession = srpSessionSchema.parse(jsonSession);
+    return srpSessionSchema.parse(jsonSession);
+  }
 
+  /**
+   * Delete S a user's auth session
+   * @param email - The user's email
+   * @returns
+   */
+  public async deleteAuthSession(email: Email): Promise<void> {
+    return await this.db.srpSessionRepository.deleteSRPSession(email);
+  }
+
+  /**
+   * Verifies the client's proof is correct and generates a corresponding server
+   * proof
+   * @param email - The user's email
+   * @param A - The client's public key
+   * @param Mc - The client's proof
+   * @returns The server's proof
+   * @throws An {@link IncorrectPasswordError} if the client's proof is incorrect
+   */
+  public validateLoginCredentials(
+    email: Email,
+    A: bigint,
+    Mc: bigint,
+    session: SRPSession,
+  ): bigint {
     // check the client proof is correct
     const serverProof = SRP.verifyClientProof({
       email,
@@ -144,53 +156,6 @@ export class AuthService {
 
     return serverProof;
   }
-
-  //public async login(data: {
-  //  email: string;
-  //  salt: string;
-  //  verifier: bigint;
-  //  A: bigint;
-  //  b: bigint;
-  //  B: bigint;
-  //  Mc: bigint;
-  //}) {
-  //  const serverProof = SRP.verifyClientProof(data);
-  //
-  //  // method didn't throw, client proof correct
-  //
-  //  const user = await this.db.userRepository.getUserDocByEmail(data.email);
-  //  const mfa: MFA = {
-  //    confirmed: user.mfaConfirmed,
-  //    formattedKey: user.mfaFormattedKey,
-  //  };
-  //
-  //  return { user: userWithIdSchema.parse(user), mfa, Ms: serverProof };
-  //}
-
-  ///**
-  // * Get the user's SRP auth session
-  // * @param email - The user's email
-  // * @returns The SRP auth session if it exists
-  // */
-  //public async getAuthSession(email: Email): Promise<SRPSession | null> {
-  //  return await this.db.srpSessionRepository.getSRPAuthSession(email);
-  //}
-
-  ///**
-  // * Registers a user with our system
-  // * @param data - The user's information
-  // * @returns The user that was created and their MFA formatted key
-  // */
-  //public async registerUser(
-  //  data: CreateUserData,
-  //): Promise<{ user: UserWithId; mfaFormattedKey: MFAFormattedKey }> {
-  //  const userId = await this.db.userRepository.createUser(data, formattedKey);
-  //
-  //  return {
-  //    user: await this.db.userRepository.getUserById(userId),
-  //    mfaFormattedKey: formattedKey,
-  //  };
-  //}
 
   /**
    * Check if a user with the provided email exists
@@ -297,18 +262,6 @@ export class SRP {
   }): bigint {
     const { email, salt, verifier, A, b, B, Mc } = data;
 
-    console.log('');
-    console.log('email:', email);
-    console.log('salt:', salt);
-    console.log('verifier:', verifier.toString(16));
-    console.log('A:', A.toString(16));
-    console.log('b:', b.toString(16));
-    console.log('B:', B.toString(16));
-    console.log('Mc:', Mc.toString(16));
-
-    console.log('');
-    console.log('');
-
     // Security check: A should not be 0 mod N
     if (A % this.N === BigInt(0)) {
       console.log('A % N === 0, throwing');
@@ -318,9 +271,6 @@ export class SRP {
 
     // Calculate u = H(A | B)
     const u = this.calculateU(A, B);
-
-    console.log('u:', u.toString(16));
-    console.log('');
 
     // Security check: u should not be 0
     if (u === BigInt(0)) {
@@ -334,18 +284,11 @@ export class SRP {
     const Avu = (A * vu) % this.N;
     const S = modPow(Avu, b, this.N);
 
-    console.log('S:', S.toString(16));
-    console.log('');
-
     // Calculate K = H(S)
     const K = this.hash(S.toString(16));
-    console.log('K:', K.toString(16));
 
     // Calculate expected client proof
     const expectedMc = this.calculateClientProof(email, salt, A, B, K);
-
-    console.log('expectedMc:', expectedMc.toString(16));
-    console.log('Mc:', Mc.toString(16));
 
     // Verify client proof
     if (expectedMc !== Mc) {
@@ -357,71 +300,6 @@ export class SRP {
     // Generate server proof
     const Ms = this.calculateServerProof(A, Mc, K);
     return Ms;
-  }
-
-  /**
-   * Simulate the Dart client proof calculation to compare results in Node.
-   */
-  static simulateDartClientProof(
-    email: string,
-    password: string,
-    salt: string,
-    a: bigint,
-    B: bigint,
-  ): { A: bigint; K: bigint; M: bigint } {
-    // Log inputs for debugging
-    console.log('Simulating Dart client proof with:', {
-      email,
-      password,
-      salt,
-      a: a.toString(16),
-      B: B.toString(16),
-    });
-
-    // Step 1: A = g^a % N (with A != 0 mod N check)
-    const A = modPow(this.g, a, this.N);
-    if (A % this.N === BigInt(0)) {
-      throw new Error('Invalid A');
-    }
-    console.log('A:', A.toString(16));
-
-    // Step 2: u = H(A | B)
-    const u = this.calculateU(A, B);
-    if (u === BigInt(0)) {
-      throw new Error('Invalid u');
-    }
-    console.log('u:', u.toString(16));
-
-    // Step 3: x = H(salt | H(email:password))
-    const x = this.calculateX(email, password, salt);
-    console.log('x:', x.toString(16));
-
-    // Step 4: S = (B - k*g^x)^(a + u*x) % N
-    const gx = modPow(this.g, x, this.N);
-    console.log('gx:', gx.toString(16));
-
-    const kgx = (this.k * gx) % this.N;
-    console.log('kgx:', kgx.toString(16));
-
-    let base = (B - kgx) % this.N;
-    if (base < BigInt(0)) base += this.N;
-    console.log('base:', base.toString(16));
-
-    const exponent = (a + u * x) % (this.N - BigInt(1));
-    console.log('exponent:', exponent.toString(16));
-
-    const S = modPow(base, exponent, this.N);
-    console.log('S:', S.toString(16));
-
-    // Step 5: K = H(S)
-    const K = this.hash(S.toString(16));
-    console.log('K:', K.toString(16));
-
-    // Step 6: M = H(H(N)^H(g) | H(email) | salt | A | B | K)
-    const M = this.calculateClientProof(email, salt, A, B, K);
-    console.log('M:', M.toString(16));
-
-    return { A, K, M };
   }
 
   /**

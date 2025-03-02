@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
 import { Db, MongoClient, ObjectId } from 'mongodb';
@@ -17,6 +16,8 @@ import {
   MFAFormattedKey,
   SRPJSONSession,
   SRPJSONSessionSchema,
+  SRPMongoSession,
+  SRPMongoSessionSchema,
   SRPSession,
 } from '../../../schemas/auth/auth';
 
@@ -39,12 +40,37 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
     super(client, db, USER_COLLECTION_NAME, redis);
   }
 
-  // TODO: implement configure collection
+  // TODO: create more indexes on relevant fields
+  /**
+   * Configures the user collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: USER_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(USER_COLLECTION_NAME);
+      }
+
+      // Configure indices
+      await Promise.all([
+        // Create a unique index on email to ensure no duplicate accounts
+        this.collection.createIndex({ email: 1 }, { unique: true }),
+      ]);
+
+      console.log(
+        `Configured ${USER_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${USER_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -243,11 +269,11 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface SRPSessionDoc extends SRPJSONSession {}
+interface SRPSessionDoc extends SRPMongoSession {}
 
 const SRP_SESSION_COLLECTION_NAME = 'srp-sessions';
 const SRP_SESSION_KEY_PREFIX = 'srp-auth-session';
-const SRP_SESSION_EXPIRY_SECONDS = 60 * 20; // 20 minutes
+const SRP_SESSION_EXPIRY_SECONDS = 60 * 5; // 5 minutes
 
 export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
@@ -260,56 +286,62 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
    * Sessions older than SRP_SESSION_EXPIRY_SECONDS are considered expired and won't be loaded.
    */
   public async loadSessionsToCache(): Promise<void> {
-    // TODO: uncomment
-    //const cutoffTime = new Date(Date.now() - SRP_SESSION_EXPIRY_SECONDS * 1000);
-    //
-    //// Find all sessions that were created within the expiry window
-    //const docs = await this.collection
-    //  .find({
-    //    createdAt: { $gt: cutoffTime },
-    //  })
-    //  .toArray();
-    //
-    //console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
-    //
-    //const promises = docs.map(async (doc) => {
-    //  if (!doc.sessionId) return;
-    //
-    //  // Calculate remaining TTL
-    //  const createdAt =
-    //    doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
-    //  const elapsedSeconds = Math.floor(
-    //    (Date.now() - createdAt.getTime()) / 1000,
-    //  );
-    //  const remainingTTL = SRP_SESSION_EXPIRY_SECONDS - elapsedSeconds;
-    //
-    //  // Only cache if there's remaining time
-    //  if (remainingTTL <= 0) return;
-    //
-    //  try {
-    //    await this.redis.set(
-    //      `${SRP_SESSION_KEY_PREFIX}:${doc.sessionId}`,
-    //      JSON.stringify(srpSessionJSONSchema.parse(doc)),
-    //      {
-    //        EX: remainingTTL,
-    //      },
-    //    );
-    //  } catch (e) {
-    //    console.error(`Failed to cache SRP session ${doc.sessionId}:`, e);
-    //  }
-    //});
-    //
-    //await Promise.all(promises);
+    const cutoffTime = new Date(Date.now() - SRP_SESSION_EXPIRY_SECONDS * 1000);
+
+    // Find all sessions that were created within the expiry window
+    const docs = await this.collection
+      .find({
+        createdAt: { $gt: cutoffTime },
+      })
+      .toArray();
+
+    console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
+
+    const promises = docs.map(async (doc) => {
+      // Calculate remaining TTL
+      const createdAt = new Date(doc.createdAt);
+      const elapsedSeconds = Math.floor(
+        (Date.now() - createdAt.getTime()) / 1000,
+      );
+      const remainingTTL = SRP_SESSION_EXPIRY_SECONDS - elapsedSeconds;
+
+      // Only cache if there's remaining time
+      if (remainingTTL <= 0) return;
+
+      try {
+        await this.redis.set(
+          `${SRP_SESSION_KEY_PREFIX}:${doc.email}`,
+          JSON.stringify(SRPJSONSessionSchema.parse(doc)),
+          {
+            EX: remainingTTL,
+          },
+        );
+      } catch (e) {
+        console.error(`Failed to cache SRP session ${doc.email}:`, e);
+      }
+    });
+
+    await Promise.all(promises);
   }
 
-  // TODO: implement configure collection
   public async configureCollection(): Promise<void> {
-    //await Promise.all([
-    //  // Create unique index on sessionId
-    //  this.collection.createIndex({ sessionId: 1 }, { unique: true }),
-    //  // Create index on createdAt for expire queries
-    //  this.collection.createIndex({ createdAt: 1 }),
-    //]);
+    // Check if collection exists, if not MongoDB will create it automatically
+    const collections = await this.db
+      .listCollections({ name: USER_COLLECTION_NAME })
+      .toArray();
+    if (collections.length === 0) {
+      await this.db.createCollection(USER_COLLECTION_NAME);
+    }
+
+    await Promise.all([
+      // Create unique index on sessionId
+      this.collection.createIndex({ email: 1 }, { unique: true }),
+      // Create TTL index on createdAt for auto-expiration after SRP_SESSION_EXPIRY_SECONDS
+      this.collection.createIndex(
+        { createdAt: 1 },
+        { expireAfterSeconds: SRP_SESSION_EXPIRY_SECONDS },
+      ),
+    ]);
   }
 
   /**
@@ -325,25 +357,47 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
       createdAt: new Date(),
     });
 
-    console.log('session being stored in db:', jsonSession);
+    // store session in redis
+    const redisPromise = this.redis.set(
+      `${SRP_SESSION_KEY_PREFIX}:${session.email}`,
+      JSON.stringify(jsonSession),
+      {
+        EX: SRP_SESSION_EXPIRY_SECONDS,
+      },
+    );
 
-    // TODO: store session in redis
-
-    // store session in db as a backup
-    const result = await this.collection.updateOne(
+    // store session in mongo as a backup (fail-safe)
+    const mongoPromise = this.collection.updateOne(
       { userId: session.userId.toString() },
       {
-        $set: jsonSession,
+        $set: SRPMongoSessionSchema.parse(jsonSession),
       },
       { upsert: true },
     );
 
-    console.log('result:', result);
+    try {
+      const redisResult = await redisPromise;
+      if (redisResult) {
+        return true;
+      }
+    } catch (e) {
+      console.error('Failed to store SRP session in redis:', e);
+      // ignore, try mongo
+    }
 
-    return (
-      result.acknowledged &&
-      result.matchedCount + result.modifiedCount + result.upsertedCount > 0
-    );
+    try {
+      const mongoResult = await mongoPromise;
+      return (
+        mongoResult.acknowledged &&
+        mongoResult.matchedCount +
+          mongoResult.modifiedCount +
+          mongoResult.upsertedCount >
+          0
+      );
+    } catch (e) {
+      console.error('Failed to store SRP session in mongo:', e);
+    }
+    return false;
   }
 
   /**
@@ -355,7 +409,19 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
   public async getSRPSession(
     email: Email,
   ): Promise<SRPJSONSession | undefined> {
-    // TODO: check redis first
+    // check redis first
+    const redisResult = await this.redis.get(
+      `${SRP_SESSION_KEY_PREFIX}:${email}`,
+    );
+
+    if (redisResult) {
+      try {
+        return SRPJSONSessionSchema.parse(JSON.parse(redisResult));
+      } catch (e) {
+        console.error('Failed to parse SRP session from redis', e);
+        // ignore, try mongo
+      }
+    }
 
     const session = await this.collection.findOne({
       email: email,
@@ -366,81 +432,21 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
     return SRPJSONSessionSchema.parse(session);
   }
 
-  //public async storeSRPAuthSession(sessionId: string, session: SRPSession) {
-  //  // convert bigints to strings
-  //  const sessionJSON = srpSessionJSONSchema.parse({
-  //    ...session,
-  //    createdAt: new Date(),
-  //  });
-  //
-  //  console.log('session being stored in db:', sessionJSON);
-  //  console.log('');
-  //
-  //  // TODO: uncomment
-  //  // store session in redis
-  //  //const redisPromise = this.redis.set(
-  //  //  `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
-  //  //  JSON.stringify(srpSessionJSONSchema.parse(sessionJSON)),
-  //  //  {
-  //  //    EX: SRP_SESSION_EXPIRY_SECONDS,
-  //  //  },
-  //  //);
-  //
-  //  // store session in db (fail-safe) using upsert
-  //  const mongoPromise = this.collection.updateOne(
-  //    { sessionId: sessionId },
-  //    { $set: sessionJSON },
-  //    { upsert: true },
-  //  );
-  //
-  //  // TODO: uncomment
-  //  //try {
-  //  //await redisPromise;
-  //  //return;
-  //  //} catch (e) {
-  //  //console.error(
-  //  //  'Failed to store SRP session in redis. trying mongo. error:',
-  //  //  e,
-  //  //);
-  //  try {
-  //    await mongoPromise;
-  //  } catch (mongoError) {
-  //    console.error('Failed to store SRP session in mongo:', mongoError);
-  //    throw new Error('Failed to store SRP session in both Redis and MongoDB');
-  //  }
-  //  //}
-  //}
+  /**
+   * Delete a user's SRP session
+   * @param email - The user's email
+   */
+  public async deleteSRPSession(email: Email): Promise<void> {
+    try {
+      await this.redis.del(`${SRP_SESSION_KEY_PREFIX}:${email}`);
+    } catch (e) {
+      console.error('Failed to delete SRP session from redis:', e);
+    }
 
-  //public async getSRPAuthSession(
-  //  sessionId: string,
-  //): Promise<SRPSession | null> {
-  //  // TODO: uncomment
-  //  //const redisResult = await this.redis.get(
-  //  //  `${SRP_SESSION_KEY_PREFIX}:${sessionId}`,
-  //  //);
-  //  //if (redisResult) {
-  //  //  try {
-  //  //    console.log(
-  //  //      'redis result:',
-  //  //      srpSessionSchema.parse(JSON.parse(redisResult)),
-  //  //    );
-  //  //
-  //  //    return srpSessionSchema.parse(JSON.parse(redisResult));
-  //  //  } catch (e) {
-  //  //    console.error('Failed to parse SRP session from redis', e);
-  //  //    // ignore, try mongo
-  //  //  }
-  //  //}
-  //  const mongoResult = await this.collection.findOne({
-  //    sessionId,
-  //  });
-  //  if (!mongoResult) {
-  //    return null;
-  //  }
-  //  console.log(
-  //    'session retreived from mongo:',
-  //    srpSessionSchema.parse(mongoResult),
-  //  );
-  //  return srpSessionSchema.parse(mongoResult);
-  //}
+    try {
+      await this.collection.deleteOne({ email: email });
+    } catch (e) {
+      console.error('Failed to delete SRP session from mongo:', e);
+    }
+  }
 }

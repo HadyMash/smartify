@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:smartify/screens/auth/sign_in.dart';
-import 'package:smartify/services/auth.dart';
 
 import 'models/mfa.dart';
 import 'models/user.dart';
