@@ -459,4 +459,52 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       throw e;
     }
   }
+  public async startAction(
+    deviceId: string,
+    actionId: string,
+    args: Record<string, unknown>
+  ): Promise<DeviceWithState | undefined> {
+    try {
+      const device = await this.getDevice(deviceId);
+      if (!device) throw new Error('Device not found');
+
+      const capability = device.capabilities.find((c) => c.id === actionId);
+      if (!capability) throw new Error('Action not supported');
+
+      if (capability.readonly) {
+        throw new Error('Cannot modify readonly capabilities');
+      }
+
+      const response = await this.axiosInstance.post(
+        `/devices/${deviceId}/actions/${actionId}`,
+        { args }
+      );
+
+      if (response.status !== 200) {
+        throw new Error('Failed to start action');
+      }
+
+      return this.getDevice(deviceId);
+    } catch (error) {
+      console.error('Error starting action:', error);
+      return undefined;
+    }
+  }
+
+  public async startActions(
+    actions: Record<string, { actionId: string; args: Record<string, unknown> }>
+  ): Promise<DeviceWithState[] | undefined> {
+    try {
+      const results = await Promise.all(
+        Object.entries(actions).map(([deviceId, { actionId, args }]) =>
+          this.startAction(deviceId, actionId, args)
+        )
+      );
+
+      return results.filter((result): result is DeviceWithState => result !== undefined);
+    } catch (error) {
+      console.error('Error starting multiple actions:', error);
+      return undefined;
+    }
+  }
 }
