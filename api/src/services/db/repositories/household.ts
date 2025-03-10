@@ -9,7 +9,10 @@ import {
   HouseholdRoom,
   Invite,
 } from '../../../schemas/household';
-import { ObjectIdOrString } from '../../../schemas/obj-id';
+import {
+  ObjectIdOrString,
+  objectIdOrStringSchema,
+} from '../../../schemas/obj-id';
 
 type HouseholdDoc = Household;
 
@@ -74,7 +77,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     memberId: ObjectIdOrString,
   ): Promise<HouseholdDoc | null> {
     return this.collection.findOneAndUpdate(
-      { _id: new ObjectId(householdId) },
+      { _id: objectIdOrStringSchema.parse(householdId) },
       { $pull: { members: { id: new ObjectId(memberId) } } },
       { returnDocument: 'after' },
     );
@@ -140,9 +143,9 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     }
     return this.collection.findOneAndUpdate(
       {
-        _id: new ObjectId(householdId),
+        _id: objectIdOrStringSchema.parse(householdId),
         owner: ownerId,
-        'members.id': new ObjectId(memberId),
+        'members.id': objectIdOrStringSchema.parse(memberId),
         permissions: permissions,
       },
       { $set: { 'members.$.role': newRole } },
@@ -158,8 +161,8 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
   public async manageRooms(
     householdId: ObjectIdOrString,
-    room: { _id: ObjectIdOrString; type: string; name: string; floor: number },
-    action: 'add' | 'remove',
+    room: HouseholdRoom,
+    action: 'add' | 'edit' | 'remove',
   ): Promise<HouseholdDoc | null> {
     const update =
       action === 'add'
@@ -167,18 +170,13 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
             $push: {
               rooms: {
                 _id: new ObjectId(room._id),
-                type: room.type as
-                  | 'living'
-                  | 'kitchen'
-                  | 'bathroom'
-                  | 'bedroom'
-                  | 'other',
+                type: room.type,
                 name: room.name,
                 floor: room.floor,
               },
             },
           }
-        : { $pull: { rooms: { _id: new ObjectId(room._id) } } };
+        : { $pull: { rooms: { _id: objectIdOrStringSchema.parse(room._id) } } };
 
     return this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
@@ -200,7 +198,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   ): Promise<HouseholdDoc | null> {
     return this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
-      { $pull: { rooms: { _id: new ObjectId(roomId) } } },
+      { $pull: { rooms: { _id: objectIdOrStringSchema.parse(roomId) } } },
       { returnDocument: 'after' },
     );
   }
@@ -227,14 +225,14 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   ): Promise<Household | null> {
     return this.collection.findOneAndUpdate(
       {
-        _id: new ObjectId(householdId),
-        'members.id': { $ne: new ObjectId(userId) },
-        'invites.userId': { $ne: new ObjectId(userId) },
+        _id: objectIdOrStringSchema.parse(householdId),
+        'members.id': { $ne: objectIdOrStringSchema.parse(userId) },
+        'invites.userId': { $ne: objectIdOrStringSchema.parse(userId) },
       },
       {
         $addToSet: {
           invites: {
-            userId: new ObjectId(userId),
+            userId: objectIdOrStringSchema.parse(userId),
             role,
             permissions,
           },
@@ -249,7 +247,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @returns A list of all invites for the user.
    */
   public async getUserInvites(userId: ObjectIdOrString): Promise<Invite[]> {
-    const parsedUserId = new ObjectId(userId);
+    const parsedUserId = objectIdOrStringSchema.parse(userId);
     const households = await this.collection
       .find(
         { 'invites.userId': parsedUserId },
@@ -288,14 +286,14 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     if (response) {
       return this.collection.findOneAndUpdate(
         {
-          'invites._id': new ObjectId(inviteId),
-          'invites.userId': new ObjectId(userId),
+          'invites._id': objectIdOrStringSchema.parse(inviteId),
+          'invites.userId': objectIdOrStringSchema.parse(userId),
         },
         {
-          $pull: { invites: { _id: new ObjectId(inviteId) } },
+          $pull: { invites: { _id: objectIdOrStringSchema.parse(inviteId) } },
           $addToSet: {
             members: {
-              id: new ObjectId(userId),
+              id: objectIdOrStringSchema.parse(userId),
               role: 'dweller',
               permissions: {
                 appliances: false,
@@ -311,10 +309,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     } else {
       return this.collection.findOneAndUpdate(
         {
-          'invites._id': new ObjectId(inviteId),
-          'invites.userId': new ObjectId(userId),
+          'invites._id': objectIdOrStringSchema.parse(inviteId),
+          'invites.userId': objectIdOrStringSchema.parse(userId),
         },
-        { $pull: { invites: { _id: new ObjectId(inviteId) } } },
+        { $pull: { invites: { _id: objectIdOrStringSchema.parse(inviteId) } } },
         { returnDocument: 'after' },
       );
     }

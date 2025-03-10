@@ -4,7 +4,6 @@ import {
   HouseholdRoom,
   Invite,
 } from '../schemas/household';
-import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {
@@ -119,8 +118,8 @@ export class HouseholdService {
    */
   public async manageRooms(
     householdId: string,
-    room: { _id: ObjectIdOrString; type: string; name: string; floor: number },
-    action: 'add' | 'remove',
+    room: HouseholdRoom,
+    action: 'add' | 'edit' | 'remove',
   ): Promise<Household | null> {
     return this.db.householdRepository.manageRooms(householdId, room, action);
   }

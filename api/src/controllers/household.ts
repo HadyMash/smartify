@@ -11,10 +11,11 @@ import {
   householdSchema,
   HouseholdMember,
   inviteMemberSchema,
+  HouseholdRoom,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/token';
-import { ObjectIdOrString, objectIdOrStringSchema } from '../schemas/obj-id';
+import { objectIdOrStringSchema } from '../schemas/obj-id';
 import { ObjectId } from 'mongodb';
 
 // TODO: proper error handling (maybe implement custom error classes)
@@ -285,12 +286,7 @@ export class HouseholdController {
     try {
       const { householdId, room, action } = req.body as {
         householdId: string;
-        room: {
-          _id: ObjectIdOrString;
-          type: string;
-          name: string;
-          floor: number;
-        };
+        room: HouseholdRoom;
         action: 'add' | 'remove';
       };
 

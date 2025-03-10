@@ -177,9 +177,9 @@ export const roomRequestDataSchema = z.object({
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
 export const inviteMemberSchema = z.object({
-  householdId: z.string(),
-  memberId: z.string(),
-  role: z.string(),
-  permissions: z.array(z.string()),
+  householdId: objectIdOrStringSchema,
+  memberId: objectIdOrStringSchema,
+  role: memberRoleSchema,
+  permissions: memberPermissionsSchema.optional(),
 });
 export type InviteMember = z.infer<typeof inviteMemberSchema>;
