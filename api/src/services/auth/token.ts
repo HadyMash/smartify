@@ -564,7 +564,10 @@ export class TokenService {
    * @param deviceId - The device ID to revoke tokens for
    * @returns the user's new token generation ID
    */
-  public async revokeDeviceRefreshTokens(userId: string, deviceId: string) {
+  public async revokeDeviceRefreshTokens(
+    userId: ObjectIdOrString,
+    deviceId: string,
+  ) {
     return await this.db.tokenRepository.changeUserTokenGenerationId(
       userId,
       deviceId,
@@ -583,7 +586,7 @@ export class TokenService {
    *
    * @param userId - The user for whom to revoke all tokens
    */
-  public async revokeAllTokensImmediately(userId: string) {
+  public async revokeAllTokensImmediately(userId: ObjectIdOrString) {
     // add to blacklist
     await this.db.tokenRepository.blacklistTokenGenerationIds(userId);
   }
@@ -652,7 +655,7 @@ export class TokenService {
    * @returns The generated MFA token
    */
   public async createMFAToken(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     formattedKey?: MFAFormattedKey,
   ): Promise<string> {
@@ -661,7 +664,7 @@ export class TokenService {
 
     const mfaTokenPayload: Omit<MFATokenPayload, 'exp'> = {
       type: 'MFA',
-      userId,
+      userId: userId.toString(),
       deviceId,
       iat: createdSeconds,
       jti: randomUUID(),

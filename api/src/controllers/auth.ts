@@ -20,7 +20,11 @@ import {
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
-import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
+import {
+  InvalidTokenError,
+  MFATokenPayload,
+  tokenTypeSchema,
+} from '../schemas/auth/tokens';
 
 const MFA_TOKEN_COOKIE_NAME = 'mfa-token';
 const ACCESS_TOKEN_COOKIE_NAME = 'access-token';
@@ -28,7 +32,14 @@ const REFRESH_TOKEN_COOKIE_NAME = 'refresh-token';
 const ID_TOKEN_COOKIE_NAME = 'id-token';
 
 export class AuthController {
-  private static writeAuthCookies(
+  /**
+   * Write the auth tokens to the response's cookies
+   * @param res - The response
+   * @param accessToken - The access token
+   * @param refreshToken - The refresh token
+   * @param idToken - The id token
+   */
+  public static writeAuthCookies(
     res: Response,
     accessToken: string,
     refreshToken?: string,
@@ -61,7 +72,12 @@ export class AuthController {
     }
   }
 
-  private static writeMFACookie(res: Response, mfaToken: string) {
+  /**
+   * Write the MFA token to the response's cookies
+   * @param res - The response
+   * @param mfaToken - The MFA token
+   */
+  public static writeMFACookie(res: Response, mfaToken: string) {
     res.cookie(MFA_TOKEN_COOKIE_NAME, mfaToken, {
       httpOnly: true,
       secure: false,
@@ -72,18 +88,30 @@ export class AuthController {
     });
   }
 
-  private static deleteAllCookies(res: Response) {
+  /**
+   * Delete all auth cookies from the response (auth and MFA)
+   * @param res - The response
+   */
+  public static deleteAllAuthCookies(res: Response) {
     this.deleteMFACookie(res);
     this.deleteAuthCookies(res);
   }
 
-  private static deleteAuthCookies(res: Response) {
+  /**
+   * Delete the auth token cookies from the response
+   * @param res - The response
+   */
+  public static deleteAuthCookies(res: Response) {
     res.clearCookie(ACCESS_TOKEN_COOKIE_NAME);
     res.clearCookie(REFRESH_TOKEN_COOKIE_NAME);
     res.clearCookie(ID_TOKEN_COOKIE_NAME);
   }
 
-  private static deleteMFACookie(res: Response) {
+  /**
+   * Delete the MFA token cookie from the response
+   * @param res - The response
+   */
+  public static deleteMFACookie(res: Response) {
     res.clearCookie(MFA_TOKEN_COOKIE_NAME);
   }
 
@@ -427,5 +455,75 @@ export class AuthController {
       console.error(e);
       res.status(500).send({ error: 'Internal server error' });
     }
+  }
+
+  /**
+   * Refreshes the user's tokens. This method will not send a response, it only
+   * adds the tokens to the response object.
+   * @param req - The request
+   * @param res - The response
+   */
+  public static async refresh(req: AuthenticatedRequest, res: Response) {
+    // auto refresh
+    // if access token is invalid (possibly expired) or expiring soon (within 5 minutes)
+    if (
+      !req.accessTokenPayload ||
+      req.accessTokenPayload.exp - Date.now() / 1000 < 300
+    ) {
+      // check refresh token
+      const refreshToken: string | undefined = req.cookies['refresh-token'] as
+        | string
+        | undefined;
+
+      if (refreshToken) {
+        const ts = new TokenService();
+        const { valid, payload } = await ts.verifyToken(refreshToken, true);
+
+        if (valid) {
+          if (payload!.type === tokenTypeSchema.enum.REFRESH && req.deviceId) {
+            // refresh tokens
+            const {
+              accessToken,
+              refreshToken: newRefreshToken,
+              idToken,
+            } = await ts.refreshTokens(refreshToken, req.deviceId);
+
+            // set new tokens in cookies
+            AuthController.writeAuthCookies(
+              res,
+              accessToken,
+              newRefreshToken,
+              idToken,
+            );
+            req.tokensRefreshed = true;
+          }
+        }
+      }
+    }
+  }
+
+  public static refreshTokens(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      if (req.tokensRefreshed) {
+        res.status(200).send();
+        return;
+      }
+      await this.refresh(req, res);
+      res.status(200).send();
+      return;
+    });
+  }
+
+  public static logout(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      // change generation id
+      const ts = new TokenService();
+      await ts.revokeDeviceRefreshTokens(req.user!._id, req.deviceId!);
+
+      // delete all auth cookies
+      this.deleteAllAuthCookies(res);
+
+      res.status(200).send();
+    });
   }
 }

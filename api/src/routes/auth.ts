@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth';
-import { requireDeviceId } from '../middleware/auth';
+import { requireAuth, requireDeviceId } from '../middleware/auth';
 
 export const authRouter = Router();
 authRouter.use(requireDeviceId);
@@ -19,4 +19,12 @@ authRouter.post('/mfa/confirm', (req, res) =>
 
 authRouter.post('/mfa/verify', (req, res) =>
   AuthController.verifyMFA(req, res),
+);
+
+authRouter.get('/refresh', requireAuth, (req, res) =>
+  AuthController.refreshTokens(req, res),
+);
+
+authRouter.get('/logout', requireAuth, (req, res) =>
+  AuthController.logout(req, res),
 );
