@@ -7,6 +7,7 @@ import { emailSchema } from './user';
 export interface AuthenticatedRequest extends Request {
   user?: AccessTokenUser | undefined;
   accessTokenPayload?: AccessTokenPayload | undefined;
+  refreshToken?: string | undefined;
   deviceId?: string | undefined;
   tokensRefreshed?: boolean | undefined;
 }

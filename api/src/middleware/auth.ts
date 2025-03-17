@@ -55,7 +55,30 @@ export const parseAuth = async (
       }
     }
 
-    await AuthController.refresh(req, res);
+    // check if refresh token exists
+    const refreshToken: string | undefined = req.cookies['refresh-token'] as
+      | string
+      | undefined;
+
+    if (refreshToken) {
+      const ts = new TokenService();
+      const { valid, payload } = await ts.verifyToken(refreshToken, true);
+
+      if (valid && payload!.type === tokenTypeSchema.enum.REFRESH) {
+        req.refreshToken = refreshToken;
+      }
+    }
+
+    // auto refresh
+    // if access token is invalid (possibly expired) or expiring soon (within 5 minutes)
+    if (
+      (!req.accessTokenPayload ||
+        req.accessTokenPayload.exp - Date.now() / 1000 < 300) &&
+      req.refreshToken !== undefined &&
+      req.deviceId !== undefined
+    ) {
+      await AuthController.refresh(req, res);
+    }
 
     next();
   } catch (e) {

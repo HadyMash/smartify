@@ -20,11 +20,7 @@ import {
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
-import {
-  InvalidTokenError,
-  MFATokenPayload,
-  tokenTypeSchema,
-} from '../schemas/auth/tokens';
+import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
 
 const MFA_TOKEN_COOKIE_NAME = 'mfa-token';
 const ACCESS_TOKEN_COOKIE_NAME = 'access-token';
@@ -464,42 +460,24 @@ export class AuthController {
    * @param res - The response
    */
   public static async refresh(req: AuthenticatedRequest, res: Response) {
-    // auto refresh
-    // if access token is invalid (possibly expired) or expiring soon (within 5 minutes)
-    if (
-      !req.accessTokenPayload ||
-      req.accessTokenPayload.exp - Date.now() / 1000 < 300
-    ) {
-      // check refresh token
-      const refreshToken: string | undefined = req.cookies['refresh-token'] as
-        | string
-        | undefined;
-
-      if (refreshToken) {
-        const ts = new TokenService();
-        const { valid, payload } = await ts.verifyToken(refreshToken, true);
-
-        if (valid) {
-          if (payload!.type === tokenTypeSchema.enum.REFRESH && req.deviceId) {
-            // refresh tokens
-            const {
-              accessToken,
-              refreshToken: newRefreshToken,
-              idToken,
-            } = await ts.refreshTokens(refreshToken, req.deviceId);
-
-            // set new tokens in cookies
-            AuthController.writeAuthCookies(
-              res,
-              accessToken,
-              newRefreshToken,
-              idToken,
-            );
-            req.tokensRefreshed = true;
-          }
-        }
-      }
+    if (req.refreshToken === undefined) {
+      throw new Error('No refresh token to refresh with');
     }
+    if (req.deviceId === undefined) {
+      throw new Error('No device id to refresh with');
+    }
+
+    const ts = new TokenService();
+    // refresh tokens
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      idToken,
+    } = await ts.refreshTokens(req.refreshToken, req.deviceId);
+
+    // set new tokens in cookies
+    AuthController.writeAuthCookies(res, accessToken, newRefreshToken, idToken);
+    req.tokensRefreshed = true;
   }
 
   public static refreshTokens(req: AuthenticatedRequest, res: Response) {
