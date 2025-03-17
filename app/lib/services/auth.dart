@@ -3,14 +3,62 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'package:dio/dio.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+
+import 'package:dio_cookie_manager/dio_cookie_manager.dart'; // Add this import
+
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+
+//import 'dart:html' as web; // For web-specific data
+
+// export 'device_id_stub.dart' // Fallback import for platforms where it's not explicitly defined
+//     if (dart.library.html) 'device_id_web.dart' // Web implementation
+//     if (dart.library.io) 'device_id_mobile.dart'; // Mobile implementation
 
 // TODO: get uri from environment variables
 // TODO: get device id dynamically
+
 class AuthService {
   static String? mfaToken;
   static String? accessToken;
   static String? refreshToken;
   static String? idToken;
+
+  final String apiBaseUrl =
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
+
+  final Dio _dio = Dio();
+  final CookieJar _cookieJar = CookieJar();
+
+  AuthService() {
+    _dio.interceptors.add(CookieManager(_cookieJar));
+  }
+
+  Future<String> getDeviceId() async {
+    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+      return androidInfo.id ?? 'unknown-android-id';
+    } else if (Platform.isIOS) {
+      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+      return iosInfo.identifierForVendor ?? 'unknown-ios-id';
+    } else if (Platform.isWindows) {
+      WindowsDeviceInfo windowsInfo = await deviceInfo.windowsInfo;
+      return windowsInfo.computerName;
+    } else if (Platform.isMacOS) {
+      MacOsDeviceInfo macOsInfo = await deviceInfo.macOsInfo;
+      return macOsInfo.systemGUID ?? 'unknown-macos-id';
+    } else if (Platform.isLinux) {
+      LinuxDeviceInfo linuxInfo = await deviceInfo.linuxInfo;
+      return linuxInfo.machineId ?? 'unknown-linux-id';
+    }
+
+    return 'unknown-device-id';
+  }
 
   Future<({String userId, String mfaFormattedKey})?> register(
       String email, String password,
@@ -29,15 +77,20 @@ class AuthService {
       if (sex != null) {
         body['sex'] = sex;
       }
-      final uri = Uri.parse('http://localhost:3000/api/auth/register');
-      final response = await http.post(uri, body: jsonEncode(body), headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': '1234',
-      });
+      final uri = Uri.parse('$apiBaseUrl/api/auth/register');
+      final response = await _dio.post(uri.toString(),
+          data: jsonEncode(body),
+          options: Options(headers: {
+            'Content-Type': 'application/json',
+            'x-device-id': await getDeviceId(),
+          }));
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      print("Response Status Code: ${response.statusCode}");
+      print("Response Body: ${response.data}");
+
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
         // get json body
-        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+        final responseBody = response.data as Map<String, dynamic>;
         try {
           final userId = responseBody['userId'] as String;
           final mfaFormattedKey = responseBody['formattedKey'] as String;
@@ -46,8 +99,8 @@ class AuthService {
           print('Error getting body: $e');
         }
       } else {
-        if (response.body.isNotEmpty) {
-          final error = jsonDecode(response.body) as Map<String, dynamic>;
+        if (response.data != null) {
+          final error = response.data as Map<String, dynamic>;
           print('Error registering: ${error['message'] ?? error['error']}');
         }
       }
@@ -61,7 +114,7 @@ class AuthService {
   Future<({String salt, BigInt B})?> _initiateAuthSession(String email) async {
     try {
       // initiate auth session
-      final uri = Uri.parse('http://localhost:3000/api/auth/init?email=$email');
+      final uri = Uri.parse('$apiBaseUrl/api/auth/init?email=$email');
       final response = await http.post(uri, headers: {
         'x-device-id': '1234',
       });
@@ -92,6 +145,68 @@ class AuthService {
     return null;
   }
 
+//Verifies the MFA code during login.
+
+  Future<bool> verifyMFA(String code) async {
+    try {
+      final uri = Uri.parse('$apiBaseUrl/api/auth/mfa/verify');
+      final response = await _dio.post(uri.toString(),
+          data: jsonEncode({'code': code}),
+          options: Options(
+            headers: {
+              'Content-Type': 'application/json',
+              'x-device-id': await getDeviceId(),
+            },
+          ));
+
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
+        final responseBody = response.data as Map<String, dynamic>;
+        accessToken = responseBody['access_token'];
+        refreshToken = responseBody['refresh_token'];
+        idToken = responseBody['id_token'];
+        return true;
+      } else {
+        if (response.data != null) {
+          final error = response.data as Map<String, dynamic>;
+          print('Error verifying MFA: ${error['message'] ?? error['error']}');
+        }
+      }
+    } catch (e) {
+      print('Error verifying MFA: $e');
+    }
+    return false;
+  }
+
+//Confirms MFA setup by verifying the user's initial code.
+
+  Future<bool> confirmMFA(String code) async {
+    try {
+      final uri = Uri.parse('$apiBaseUrl/api/auth/mfa/confirm');
+      final response = await _dio.post(
+        uri.toString(),
+        data: jsonEncode({'code': code}),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'x-device-id': await getDeviceId(),
+          },
+        ),
+      );
+
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
+        return true; // MFA setup confirmed
+      } else {
+        if (response.data != null) {
+          final error = response.data as Map<String, dynamic>;
+          print('Error confirming MFA: ${error['message'] ?? error['error']}');
+        }
+      }
+    } catch (e) {
+      print('Error confirming MFA: $e');
+    }
+    return false;
+  }
+
   /// Signs the user in with the given [email] and [password]. The user must
   /// complete the MFA challenge after this to complete the sign in process.
   Future signIn(String email, String password) async {
@@ -113,25 +228,23 @@ class AuthService {
         'Mc': '0x${proof.M.toRadixString(16)}',
       };
 
-      final uri = Uri.parse('http://localhost:3000/api/auth/login');
-      final response = await http.post(uri, body: jsonEncode(body), headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': '1234',
-      });
+      final uri = Uri.parse('$apiBaseUrl/api/auth/login');
+      final response = await _dio.post(uri.toString(),
+          data: jsonEncode(body),
+          options: Options(headers: {
+            'Content-Type': 'application/json',
+            'x-device-id': await getDeviceId(),
+          }));
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
         // get body
-        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
-        final MsString = responseBody['Ms'] as String;
-        final Ms = BigInt.parse(MsString.substring(2), radix: 16);
-        print('Ms: $Ms');
-
-        print('logged in successfully');
+        final responseBody = response.data as Map<String, dynamic>;
+        mfaToken = responseBody['mfa_token'];
+        return true;
       } else {
-        // error
-        if (response.body.isNotEmpty) {
-          final error = jsonDecode(response.body) as Map<String, dynamic>;
-          print('Error registering: ${error['message'] ?? error['error']}');
+        if (response.data != null) {
+          final error = response.data as Map<String, dynamic>;
+          print('Error signing in: ${error['message'] ?? error['error']}');
         }
       }
     } catch (e) {
