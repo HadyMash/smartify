@@ -536,7 +536,6 @@ export const deviceSchema = z.object({
       },
       { message: 'Capability IDs must be unique' },
     ),
-  isPaired: z.boolean(),
 });
 
 /** The schema for a device's state or action state */

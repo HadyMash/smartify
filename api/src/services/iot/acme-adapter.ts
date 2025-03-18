@@ -462,7 +462,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   public async startAction(
     deviceId: string,
     actionId: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
   ): Promise<DeviceWithState | undefined> {
     try {
       const device = await this.getDevice(deviceId);
@@ -477,7 +477,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       const response = await this.axiosInstance.post(
         `/devices/${deviceId}/actions/${actionId}`,
-        { args }
+        { args },
       );
 
       if (response.status !== 200) {
@@ -492,16 +492,21 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   }
 
   public async startActions(
-    actions: Record<string, { actionId: string; args: Record<string, unknown> }>
+    actions: Record<
+      string,
+      { actionId: string; args: Record<string, unknown> }
+    >,
   ): Promise<DeviceWithState[] | undefined> {
     try {
       const results = await Promise.all(
         Object.entries(actions).map(([deviceId, { actionId, args }]) =>
-          this.startAction(deviceId, actionId, args)
-        )
+          this.startAction(deviceId, actionId, args),
+        ),
       );
 
-      return results.filter((result): result is DeviceWithState => result !== undefined);
+      return results.filter(
+        (result): result is DeviceWithState => result !== undefined,
+      );
     } catch (error) {
       console.error('Error starting multiple actions:', error);
       return undefined;

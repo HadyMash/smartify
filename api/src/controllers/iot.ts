@@ -88,12 +88,10 @@ export class IoTController {
         state: device.state,
       }));
 
-      res
-        .status(200)
-        .send({
-          message: 'All devices state retrieved',
-          devices: formattedDevices,
-        });
+      res.status(200).send({
+        message: 'All devices state retrieved',
+        devices: formattedDevices,
+      });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -144,14 +142,12 @@ export class IoTController {
       const existingDevices = await adapter.getDevices(deviceIds);
 
       const alreadyPaired =
-        existingDevices?.filter((device) => device.isPaired) || [];
+        existingDevices?.filter((device) => device.id) || [];
       if (alreadyPaired.length > 0) {
-        return res
-          .status(400)
-          .send({
-            message: 'Devices are already paired',
-            devices: alreadyPaired,
-          });
+        return res.status(400).send({
+          message: 'Devices are already paired',
+          devices: alreadyPaired,
+        });
       }
 
       await adapter.pairDevices(deviceIds);
@@ -160,12 +156,10 @@ export class IoTController {
         return res.status(400).send({ message: 'Failed to pair devices' });
       }
 
-      res
-        .status(200)
-        .send({
-          message: 'Devices paired successfully',
-          devices: pairedDevices,
-        });
+      res.status(200).send({
+        message: 'Devices paired successfully',
+        devices: pairedDevices,
+      });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -202,12 +196,10 @@ export class IoTController {
         return res.status(400).send({ message: 'Failed to start action' });
       }
 
-      res
-        .status(200)
-        .send({
-          message: 'Action started successfully',
-          device: updatedDevice,
-        });
+      res.status(200).send({
+        message: 'Action started successfully',
+        device: updatedDevice,
+      });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -228,12 +220,10 @@ export class IoTController {
         return res.status(400).send({ message: 'Failed to start actions' });
       }
 
-      res
-        .status(200)
-        .send({
-          message: 'Actions started successfully',
-          devices: updatedDevices,
-        });
+      res.status(200).send({
+        message: 'Actions started successfully',
+        devices: updatedDevices,
+      });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });

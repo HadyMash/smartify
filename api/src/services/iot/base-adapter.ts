@@ -161,7 +161,10 @@ export abstract class BaseIotAdapter {
   // * @throws Error if the request fails, action is not supported, or arguments are invalid
   */
   public abstract startAction(
-        deviceId: string,  actionId: string, args: Record<string, unknown>, ): Promise<DeviceWithState | undefined>;
+    deviceId: string,
+    actionId: string,
+    args: Record<string, unknown>,
+  ): Promise<DeviceWithState | undefined>;
 
   /**
   // * Starts actions on multiple devices.
@@ -170,5 +173,10 @@ export abstract class BaseIotAdapter {
   // * @returns Promise containing array of devices with their current states including action states, or undefined if not supported
   // * @throws Error if any request fails, action is not supported, or arguments are invalid
    */
-  public abstract startActions(actions: Record<string, { actionId: string; args: Record<string, unknown> } >,): Promise<DeviceWithState[] | undefined>;
+  public abstract startActions(
+    actions: Record<
+      string,
+      { actionId: string; args: Record<string, unknown> }
+    >,
+  ): Promise<DeviceWithState[] | undefined>;
 }
