@@ -164,7 +164,9 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   members: z.array(memberSchema),
   invites: z.array(inviteSchema).optional(),
   rooms: z.array(householdRoomSchema).nonempty(),
-  //roomAdjacencyList: z.record(z.string(), z.array(z.string())).optional(),
+  roomAdjacencyList: z
+    .record(objectIdOrStringSchema, z.array(objectIdOrStringSchema))
+    .optional(),
 });
 
 export type Household = z.infer<typeof householdSchema>;
@@ -176,10 +178,23 @@ export const roomRequestDataSchema = z.object({
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
-export const inviteMemberSchema = z.object({
-  householdId: objectIdOrStringSchema,
-  memberId: objectIdOrStringSchema,
-  role: memberRoleSchema,
-  permissions: memberPermissionsSchema.optional(),
-});
+export const inviteMemberSchema = z
+  .object({
+    householdId: objectIdOrStringSchema,
+    memberId: objectIdOrStringSchema,
+    role: memberRoleSchema,
+    permissions: memberPermissionsSchema.optional(),
+  })
+  .refine(
+    ({ role, permissions }) => {
+      if (role === 'dweller' && !permissions) {
+        return false;
+      }
+      return true;
+    },
+    {
+      path: ['permissions'],
+      message: 'Permissions are required for dweller role',
+    },
+  );
 export type InviteMember = z.infer<typeof inviteMemberSchema>;

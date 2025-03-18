@@ -39,7 +39,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   public async createHousehold(data: Household): Promise<Household> {
     // insert into db
     const result = await this.collection.insertOne(data);
-
+    console.log('household:', result);
     if (!result.acknowledged || !result.insertedId) {
       throw new Error('Failed to create household');
     }
@@ -57,11 +57,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   public async getHouseholdById(
     id: ObjectId | string,
   ): Promise<Household | null> {
-    const result = await this.collection.findOne({ _id: id });
-    if (!result) {
-      return null;
-    }
-    return result;
+    const objectId =
+      typeof id === 'string' ? objectIdOrStringSchema.parse(id) : id;
+    console.log('Household ID:', objectId);
+    return this.collection.findOne({ _id: objectId });
   }
 
   /**
@@ -76,19 +75,33 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     householdId: ObjectIdOrString,
     memberId: ObjectIdOrString,
   ): Promise<HouseholdDoc | null> {
-    return this.collection.findOneAndUpdate(
-      { _id: objectIdOrStringSchema.parse(householdId) },
-      { $pull: { members: { id: new ObjectId(memberId) } } },
+    console.log('removing id:', memberId);
+
+    const objectId =
+      typeof householdId === 'string' ? new ObjectId(householdId) : householdId;
+    const parsedMemberId =
+      typeof memberId === 'string' ? memberId : memberId.toString();
+
+    const result = await this.collection.findOneAndUpdate(
+      { _id: objectId },
+      { $pull: { members: { id: parsedMemberId } } }, // Ensure `id` matches the format in DB
       { returnDocument: 'after' },
     );
+
+    console.log('post removal:', result);
+    return result;
   }
+
   /**
    * Deletes a household.
    * @param householdId - The ID of the household to delete.
    * @param ownerId - The ID of the household owner.
    */
   public async deleteHousehold(householdId: string): Promise<void> {
-    await this.collection.deleteOne({ _id: householdId });
+    await this.collection.deleteOne({
+      _id: objectIdOrStringSchema.parse(householdId),
+    });
+    console.log('Household deleted');
   }
   /**
    * Adds a room to a household.
@@ -101,11 +114,13 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     householdId: string,
     roomData: HouseholdRoom,
   ): Promise<HouseholdDoc | null> {
-    return this.collection.findOneAndUpdate(
+    const result = this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
       { $push: { rooms: roomData } },
       { returnDocument: 'after' },
     );
+    console.log('household room update', result);
+    return result;
   }
   /**
    * Changes the role of a household member.
@@ -169,7 +184,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
         ? {
             $push: {
               rooms: {
-                _id: new ObjectId(room._id),
+                _id: objectIdOrStringSchema.parse(room._id),
                 type: room.type,
                 name: room.name,
                 floor: room.floor,
@@ -196,11 +211,13 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     householdId: string,
     roomId: string,
   ): Promise<HouseholdDoc | null> {
-    return this.collection.findOneAndUpdate(
+    const result = await this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
       { $pull: { rooms: { _id: objectIdOrStringSchema.parse(roomId) } } },
       { returnDocument: 'after' },
     );
+    console.log('household update removed room:', result);
+    return result;
   }
   //TODO: public async userPermissions(){}
 
@@ -232,6 +249,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       {
         $addToSet: {
           invites: {
+            _id: new ObjectId(),
             userId: objectIdOrStringSchema.parse(userId),
             role,
             permissions,
@@ -279,21 +297,24 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @returns The updated household document after processing the response.
    */
   public async processInviteResponse(
-    inviteId: string,
+    inviteId: ObjectIdOrString,
     response: boolean,
-    userId: string,
+    userId: ObjectIdOrString,
   ): Promise<Household | null> {
+    const parsedInviteId = objectIdOrStringSchema.parse(inviteId);
+    const parsedUserId = objectIdOrStringSchema.parse(userId);
+
     if (response) {
       return this.collection.findOneAndUpdate(
         {
-          'invites._id': objectIdOrStringSchema.parse(inviteId),
-          'invites.userId': objectIdOrStringSchema.parse(userId),
+          'invites._id': parsedInviteId,
+          'invites.userId': parsedUserId,
         },
         {
-          $pull: { invites: { _id: objectIdOrStringSchema.parse(inviteId) } },
+          $pull: { invites: { _id: parsedInviteId } },
           $addToSet: {
             members: {
-              id: objectIdOrStringSchema.parse(userId),
+              id: parsedUserId,
               role: 'dweller',
               permissions: {
                 appliances: false,
@@ -309,10 +330,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     } else {
       return this.collection.findOneAndUpdate(
         {
-          'invites._id': objectIdOrStringSchema.parse(inviteId),
-          'invites.userId': objectIdOrStringSchema.parse(userId),
+          'invites._id': parsedInviteId,
+          'invites.userId': parsedUserId,
         },
-        { $pull: { invites: { _id: objectIdOrStringSchema.parse(inviteId) } } },
+        { $pull: { invites: { _id: parsedInviteId } } },
         { returnDocument: 'after' },
       );
     }
