@@ -8,6 +8,7 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "dev:configure-db": "ts-node src/configure-db.ts",
     "configure-db": "node --no-assertions dist/configure-db.js",
+    "generate-jwe-key": "ts-node src/generate-jwe-encryption-key.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
