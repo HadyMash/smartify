@@ -10,9 +10,14 @@ export class IoTController {
     try {
       // TODO check authenticated request to check user has permission to update the device
 
-      const { deviceId, state } = req.body as { deviceId: string; state: Record<string, unknown> };
+      const { deviceId, state } = req.body as {
+        deviceId: string;
+        state: Record<string, unknown>;
+      };
       if (!deviceId || !state) {
-        return res.status(400).send({ message: 'deviceId and state are required' });
+        return res
+          .status(400)
+          .send({ message: 'deviceId and state are required' });
       }
       // TODO: check device info in db to figure out adapter type etc and make sure it exists
 
@@ -26,10 +31,14 @@ export class IoTController {
 
       const updatedDevice = await adapter.setDeviceState(deviceId, state);
       if (!updatedDevice) {
-        return res.status(400).send({ message: 'Failed to update device state' });
+        return res
+          .status(400)
+          .send({ message: 'Failed to update device state' });
       }
 
-      res.status(200).send({ message: 'Device updated', device: updatedDevice });
+      res
+        .status(200)
+        .send({ message: 'Device updated', device: updatedDevice });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -50,14 +59,19 @@ export class IoTController {
         return res.status(404).send({ message: 'Device not found' });
       }
 
-      res.status(200).send({ message: 'Device state retrieved', state: device.state });
+      res
+        .status(200)
+        .send({ message: 'Device state retrieved', state: device.state });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
     }
   }
 
-  public static async getAllDevicesState(req: AuthenticatedRequest, res: Response) {
+  public static async getAllDevicesState(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
       const devices = await adapter.discoverDevices();
@@ -66,13 +80,20 @@ export class IoTController {
         return res.status(404).send({ message: 'No connected devices found' });
       }
 
-      const devicesWithState = await adapter.getDevices(devices.map(d => d.id));
-      const formattedDevices = devicesWithState?.map(device => ({
+      const devicesWithState = await adapter.getDevices(
+        devices.map((d) => d.id),
+      );
+      const formattedDevices = devicesWithState?.map((device) => ({
         id: device.id,
         state: device.state,
       }));
 
-      res.status(200).send({ message: 'All devices state retrieved', devices: formattedDevices });
+      res
+        .status(200)
+        .send({
+          message: 'All devices state retrieved',
+          devices: formattedDevices,
+        });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -81,9 +102,14 @@ export class IoTController {
 
   public static async setDeviceState(req: AuthenticatedRequest, res: Response) {
     try {
-      const { deviceId, state } = req.body as { deviceId: string; state: Record<string, unknown> };
+      const { deviceId, state } = req.body as {
+        deviceId: string;
+        state: Record<string, unknown>;
+      };
       if (!deviceId || !state) {
-        return res.status(400).send({ message: 'deviceId and state are required' });
+        return res
+          .status(400)
+          .send({ message: 'deviceId and state are required' });
       }
 
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
@@ -94,30 +120,52 @@ export class IoTController {
 
       const updatedDevice = await adapter.setDeviceState(deviceId, state);
       if (!updatedDevice) {
-        return res.status(400).send({ message: 'Failed to update device state' });
+        return res
+          .status(400)
+          .send({ message: 'Failed to update device state' });
       }
 
-      res.status(200).send({ message: 'Device state updated', device: updatedDevice });
+      res
+        .status(200)
+        .send({ message: 'Device state updated', device: updatedDevice });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
     }
   }
-  public static async pairDevice(req: AuthenticatedRequest, res: Response) {
+  public static async pairDevices(req: AuthenticatedRequest, res: Response) {
     try {
-      const { deviceId } = req.body;
-      if (!deviceId) {
-        return res.status(400).send({ message: 'deviceId is required' });
+      const { deviceIds } = req.body as { deviceIds: string[] };
+      if (!deviceIds || deviceIds.length === 0) {
+        return res.status(400).send({ message: 'deviceIds are required' });
       }
 
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
-      await adapter.pairDevices(deviceId);
-      const pairedDevice = await adapter.getDevice(deviceId);
-      if (!pairedDevice) {
-        return res.status(400).send({ message: 'Failed to pair device' });
+      const existingDevices = await adapter.getDevices(deviceIds);
+
+      const alreadyPaired =
+        existingDevices?.filter((device) => device.isPaired) || [];
+      if (alreadyPaired.length > 0) {
+        return res
+          .status(400)
+          .send({
+            message: 'Devices are already paired',
+            devices: alreadyPaired,
+          });
       }
 
-      res.status(200).send({ message: 'Device paired successfully', device: pairedDevice });
+      await adapter.pairDevices(deviceIds);
+      const pairedDevices = await adapter.getDevices(deviceIds);
+      if (!pairedDevices || pairedDevices.length === 0) {
+        return res.status(400).send({ message: 'Failed to pair devices' });
+      }
+
+      res
+        .status(200)
+        .send({
+          message: 'Devices paired successfully',
+          devices: pairedDevices,
+        });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
@@ -133,6 +181,59 @@ export class IoTController {
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
       await adapter.unpairDevices([deviceId]);
       res.status(200).send({ message: 'Device unpaired successfully' });
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ message: 'Internal Server Error' });
+    }
+  }
+  public static async startAction(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { deviceId, actionId, args } = req.body;
+      if (!deviceId || !actionId || !args) {
+        return res
+          .status(400)
+          .send({ message: 'deviceId, actionId, and args are required' });
+      }
+
+      const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+      const updatedDevice = await adapter.startAction(deviceId, actionId, args);
+
+      if (!updatedDevice) {
+        return res.status(400).send({ message: 'Failed to start action' });
+      }
+
+      res
+        .status(200)
+        .send({
+          message: 'Action started successfully',
+          device: updatedDevice,
+        });
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ message: 'Internal Server Error' });
+    }
+  }
+
+  public static async startActions(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { actions } = req.body;
+      if (!actions || Object.keys(actions).length === 0) {
+        return res.status(400).send({ message: 'actions are required' });
+      }
+
+      const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+      const updatedDevices = await adapter.startActions(actions);
+
+      if (!updatedDevices || updatedDevices.length === 0) {
+        return res.status(400).send({ message: 'Failed to start actions' });
+      }
+
+      res
+        .status(200)
+        .send({
+          message: 'Actions started successfully',
+          devices: updatedDevices,
+        });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
