@@ -132,6 +132,13 @@ export class AuthController {
         const { userId, formattedKey } = await as.registerUser(data);
         const mfa = new MFAService();
         const mfaQRUri = mfa.generateMFAUri(formattedKey, data.email);
+        const ts = new TokenService();
+        const mfaToken = await ts.createMFAToken(
+          userId.toString(),
+          req.deviceId!,
+          formattedKey,
+        );
+        this.writeMFACookie(res, mfaToken);
         res
           .status(201)
           .send({ userId, mfaFormattedKey: formattedKey, mfaQRUri });
