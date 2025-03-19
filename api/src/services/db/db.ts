@@ -25,14 +25,14 @@ export class DatabaseService {
   private _householdRepository!: HouseholdRepository;
 
   constructor() {
-    // Start connection process in constructor
-    this.connect().catch((err) => {
-      console.error(
-        'Failed to connect to databases during initialization:',
-        err,
-      );
-      throw new Error('Failed to connect to databases during initialization');
-    });
+    //// Start connection process in constructor
+    //this.connect().catch((err) => {
+    //  console.error(
+    //    'Failed to connect to databases during initialization:',
+    //    err,
+    //  );
+    //  throw new Error('Failed to connect to databases during initialization');
+    //});
   }
 
   /**
@@ -42,25 +42,28 @@ export class DatabaseService {
   public async connect(): Promise<void> {
     // If we're already connecting or connected, return the existing promise
     if (DatabaseService.connectionPromise) {
-      return DatabaseService.connectionPromise;
-    }
-
-    // Create a new connection promise
-    DatabaseService.connectionPromise = this.establishConnections();
-
-    try {
-      // Wait for connections to be established
       await DatabaseService.connectionPromise;
 
-      // Initialize repositories after successful connection
-      this.initializeRepositories();
+      // Make sure repositories are initialized even for duplicate calls
+      if (!this._userRepository) {
+        this.initializeRepositories();
+      }
+      return;
+    }
+
+    try {
+      // Create a new connection promise
+      DatabaseService.connectionPromise = this.establishConnections();
+
+      // Wait for connections to be established
+      await DatabaseService.connectionPromise;
     } catch (error) {
       // Reset connection promise on failure so a future call can try again
       DatabaseService.connectionPromise = null;
       throw error;
     }
 
-    return DatabaseService.connectionPromise;
+    return;
   }
 
   /**
@@ -71,6 +74,9 @@ export class DatabaseService {
     // to know specifically which one failed if there's an error
     await this.connectToMongoDB();
     await this.connectToRedis();
+
+    // Initialize repositories after successful connections
+    this.initializeRepositories();
   }
 
   /**
@@ -162,38 +168,50 @@ export class DatabaseService {
    */
   private initializeRepositories(): void {
     // Initialize repositories
-    this._userRepository = new UserRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
-    this._srpRepository = new SRPSessionRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
+    if (!this._userRepository) {
+      this._userRepository = new UserRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
+    if (!this._srpRepository) {
+      this._srpRepository = new SRPSessionRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
 
-    this._tokenRepository = new TokenRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
-    this._accessBlacklistRepository = new AccessBlacklistRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
-    this._mfaBlacklistRepository = new MFABlacklistRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
+    if (!this._tokenRepository) {
+      this._tokenRepository = new TokenRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
+    if (!this._accessBlacklistRepository) {
+      this._accessBlacklistRepository = new AccessBlacklistRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
+    if (!this._mfaBlacklistRepository) {
+      this._mfaBlacklistRepository = new MFABlacklistRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
 
-    this._householdRepository = new HouseholdRepository(
-      DatabaseService.client,
-      DatabaseService.db,
-      DatabaseService.redis,
-    );
+    if (!this._householdRepository) {
+      this._householdRepository = new HouseholdRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
   }
 
   get userRepository(): UserRepository {

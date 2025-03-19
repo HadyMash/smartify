@@ -40,9 +40,11 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () async {
-                    final as = AuthService();
-                    final result = await as.register(
-                        _emailController.text, _passwordController.text);
+                    final as = await AuthService.create();
+                    //final result = await as.register(
+                    //    _emailController.text, _passwordController.text);
+                    final result =
+                        await as.register('hady@gmail.com', 'Passowrd1!');
                     debugPrint('result: $result');
                   },
                   child: const Text('Register'),
@@ -50,7 +52,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () async {
-                    final as = AuthService();
+                    final as = await AuthService.create();
                     await as.signIn(
                         _emailController.text, _passwordController.text);
                   },

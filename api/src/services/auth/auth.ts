@@ -43,6 +43,7 @@ export class AuthService {
   public async registerUser(
     data: RegisterData,
   ): Promise<{ userId: ObjectIdOrString; formattedKey: MFAFormattedKey }> {
+    // Ensure database is fully connected before proceeding
     await this.db.connect();
     // check user doesn't already exist
     const userExists = await this.db.userRepository.userExistsEmail(data.email);

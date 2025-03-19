@@ -41,7 +41,7 @@ export function tryAPIController(
     }
     console.log('err caught in tryAPIController');
     console.error(err);
-    res.status(500).send({ error: 'internal server error' });
+    res.status(500).send({ error: 'Internal Server Error' });
   };
   try {
     controller().catch(handleError);

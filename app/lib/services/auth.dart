@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert'; // for the utf8.encode method
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -8,12 +10,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart'; // Add this import
+import 'package:path_provider/path_provider.dart';
 
-// Add this import
-
-import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:smartify/utils/device_id.dart';
 
 //import 'dart:html' as web; // For web-specific data
 
@@ -25,41 +25,43 @@ import 'package:device_info_plus/device_info_plus.dart';
 // TODO: get device id dynamically
 
 class AuthService {
-  static String? mfaToken;
-  static String? accessToken;
-  static String? refreshToken;
-  static String? idToken;
+  //static String? mfaToken;
+  //static String? accessToken;
+  //static String? refreshToken;
+  //static String? idToken;
 
   final String apiBaseUrl =
       dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
 
-  final Dio _dio = Dio();
-  final CookieJar _cookieJar = CookieJar();
+  final Dio _dio;
+  // ignore: unused_field
+  final CookieJar _cookieJar;
 
-  AuthService() {
-    _dio.interceptors.add(CookieManager(_cookieJar));
-  }
+  /// Private constructor for factory constructor
+  AuthService._(this._dio, this._cookieJar);
 
-  Future<String> getDeviceId() async {
-    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    if (Platform.isAndroid) {
-      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-      return androidInfo.id ?? 'unknown-android-id';
-    } else if (Platform.isIOS) {
-      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-      return iosInfo.identifierForVendor ?? 'unknown-ios-id';
-    } else if (Platform.isWindows) {
-      WindowsDeviceInfo windowsInfo = await deviceInfo.windowsInfo;
-      return windowsInfo.computerName;
-    } else if (Platform.isMacOS) {
-      MacOsDeviceInfo macOsInfo = await deviceInfo.macOsInfo;
-      return macOsInfo.systemGUID ?? 'unknown-macos-id';
-    } else if (Platform.isLinux) {
-      LinuxDeviceInfo linuxInfo = await deviceInfo.linuxInfo;
-      return linuxInfo.machineId ?? 'unknown-linux-id';
-    }
+  static Future<AuthService> create() async {
+    final Dio dio = Dio(BaseOptions(
+      headers: {
+        'x-device-id': await getDeviceId(),
+      },
+      responseType: ResponseType.json,
+      validateStatus: (status) => status != null && status < 300,
+    ));
 
-    return 'unknown-device-id';
+    // Get application documents directory
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final cookiePath = '${appDocDir.path}/.cookies/';
+
+    // Use persistent cookie jar to save cookies between app restarts
+    final cookieJar = PersistCookieJar(
+      storage: FileStorage(cookiePath),
+    );
+
+    // Add cookie manager to dio
+    dio.interceptors.add(CookieManager(cookieJar));
+
+    return AuthService._(dio, cookieJar);
   }
 
   Future<({String mfaFormattedKey, String mfaQRUri})?> register(
@@ -80,35 +82,37 @@ class AuthService {
         body['sex'] = sex;
       }
       final uri = Uri.parse('$apiBaseUrl/api/auth/register');
-      final response = await _dio.post(uri.toString(),
-          data: jsonEncode(body),
-          options: Options(headers: {
-            'Content-Type': 'application/json',
-            'x-device-id': await getDeviceId(),
-          }));
+      final response = await _dio.post(
+        uri.toString(),
+        data: jsonEncode(body),
+      );
 
       print("Response Status Code: ${response.statusCode}");
       print("Response Body: ${response.data}");
 
-      if (response.statusCode! >= 200 && response.statusCode! < 300) {
-        // get json body
-        final responseBody = response.data as Map<String, dynamic>;
-        try {
-          //final userId = responseBody['userId'] as String;
-          final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
-          final mfaQRUri = responseBody['mfaQRUri'] as String?;
-          if (mfaFormattedKey == null || mfaQRUri == null) {
-            print('Error registering: MFA key or QR URI not found');
-            return null;
-          }
-
-          return (mfaQRUri: mfaQRUri, mfaFormattedKey: mfaFormattedKey);
-        } catch (e) {
-          print('Error getting body: $e');
+      // get json body
+      final responseBody = response.data as Map<String, dynamic>;
+      try {
+        // check cookies
+        final cookies = await _cookieJar.loadForRequest(uri);
+        print(cookies);
+        //final userId = responseBody['userId'] as String;
+        final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
+        final mfaQRUri = responseBody['mfaQRUri'] as String?;
+        if (mfaFormattedKey == null || mfaQRUri == null) {
+          print('Error registering: MFA key or QR URI not found');
+          return null;
         }
-      } else {
-        if (response.data != null) {
-          final error = response.data as Map<String, dynamic>;
+
+        return (mfaQRUri: mfaQRUri, mfaFormattedKey: mfaFormattedKey);
+      } catch (e) {
+        print('Error getting body: $e');
+      }
+    } on DioError catch (e) {
+      print('Dio Error registering: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        if (e.response!.data != null) {
+          final error = e.response!.data as Map<String, dynamic>;
           print('Error registering: ${error['message'] ?? error['error']}');
         }
       }
@@ -171,15 +175,10 @@ class AuthService {
           ));
 
       if (response.statusCode! >= 200 && response.statusCode! < 300) {
-        final responseBody = response.data as Map<String, dynamic>;
-        accessToken = responseBody['access_token'];
-        refreshToken = responseBody['refresh_token'];
-        idToken = responseBody['id_token'];
-
-        // Save cookies after successful login (Dio will handle this automatically)
-        _cookieJar.saveFromResponse(
-            Uri.parse(apiBaseUrl), response.headers as List<Cookie>);
-
+        //final responseBody = response.data as Map<String, dynamic>;
+        //accessToken = responseBody['access_token'];
+        //refreshToken = responseBody['refresh_token'];
+        //idToken = responseBody['id_token'];
         return true;
       } else {
         if (response.data != null) {
@@ -258,7 +257,7 @@ class AuthService {
       if (response.statusCode! >= 200 && response.statusCode! < 300) {
         // get body
         final responseBody = response.data as Map<String, dynamic>;
-        mfaToken = responseBody['mfa_token'];
+        //mfaToken = responseBody['mfa_token'];
         return true;
       } else {
         if (response.data != null) {
