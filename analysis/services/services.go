@@ -49,12 +49,16 @@ func (s *AnalysisService) fetchAndAnalyzeData() {
         return
     }
 
+    if len(allDeviceData) == 0 {
+        fmt.Println("Warning: No device data available for analysis")
+        return
+    }
+
     energyData := make([]float64, len(allDeviceData))
     for i, data := range allDeviceData {
         energyData[i] = data.EnergyConsumed
     }
 
-    // Perform analysis (e.g., average, max, std deviation)
     result := models.AnalysisResult{
         AverageEnergy:   Average(energyData),
         MaxEnergy:       Max(energyData),
@@ -74,10 +78,15 @@ func Average(data []float64) float64 {
     return sum / float64(len(data))
 }
 
-// max finds the max value in the data
-func Max(data []float64) float64 {
-    maxVal := data[0]
-    for _, v := range data {
+// Max finds the max value in the data
+func Max(values []float64) float64 {
+    if len(values) == 0 {
+        fmt.Println("Warning: Max called on empty slice")
+        return 0 // Return a default value instead of panicking
+    }
+    
+    maxVal := values[0]
+    for _, v := range values {
         if v > maxVal {
             maxVal = v
         }
@@ -85,8 +94,13 @@ func Max(data []float64) float64 {
     return maxVal
 }
 
-// min finds the min value in the data
+// Min finds the min value in the data
 func Min(data []float64) float64 {
+    if len(data) == 0 {
+        fmt.Println("Warning: Min called on empty slice")
+        return 0 // Return a default value
+    }
+    
     minVal := data[0]
     for _, v := range data {
         if v < minVal {
@@ -96,8 +110,13 @@ func Min(data []float64) float64 {
     return minVal
 }
 
-// stdDeviation calculates the standard deviation of the energy data
+// StdDeviation calculates the standard deviation of the energy data
 func StdDeviation(data []float64) float64 {
+    if len(data) == 0 {
+        fmt.Println("Warning: StdDeviation called on empty slice")
+        return 0 // Return a default value
+    }
+
     mean := Average(data)
     var sum float64
     for _, v := range data {
