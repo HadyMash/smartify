@@ -1,5 +1,4 @@
 import * as authenticator from 'authenticator';
-import { DatabaseService } from '../db/db';
 import { Email } from '../../schemas/auth/user';
 import { MFAFormattedKey, MFACode } from '../../schemas/auth/auth';
 
