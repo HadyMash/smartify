@@ -12,16 +12,27 @@ import (
 func main() {
     // Initialize MongoDB connection
     utils.InitMongoClient("mongodb://localhost:27017")
-    db := utils.GetDatabase("smart_home_db")  // Get the database
+    db := utils.GetDatabase("smart_home_db") 
 
-    // Create analysis service and pass the db
-    analysisService := services.NewAnalysisService(db)  // Pass the database to the constructor
+    // Create services
+    analysisService := services.NewAnalysisService(db)
+    securityService := services.NewSecurityService(db)
+    deviceUsageService := services.NewDeviceUsageService(db)
+    leaderboardService := services.NewLeaderboardService(db)
 
-    // Create handler
+    // Create handlers
     analysisHandler := handlers.NewAnalysisHandler(analysisService)
+    securityHandler := handlers.NewSecurityHandler(securityService)
+    deviceUsageHandler := handlers.NewDeviceUsageHandler(deviceUsageService)
+    leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService)
 
     // Register routes
     http.HandleFunc("/api/analyze", analysisHandler.PerformAnalysis)
+    http.HandleFunc("/api/security/log", securityHandler.LogSecurityEvent)
+    http.HandleFunc("/api/device/usage", deviceUsageHandler.AnalyzeDeviceUsage)
+    http.HandleFunc("/api/device/lifespan", deviceUsageHandler.TrackDeviceLifespan)
+    http.HandleFunc("/api/leaderboard", leaderboardHandler.GetLeaderboard)
+    http.HandleFunc("/api/statistics", leaderboardHandler.GetStatistics)
 
     // Start the server
     fmt.Println("Server running on port 8080...")
