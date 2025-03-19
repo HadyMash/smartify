@@ -216,6 +216,7 @@ export class TokenService {
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
+    await this.db.connect();
     // check user exists
     const userExists = await this.db.userRepository.userExists(userId);
 
@@ -400,6 +401,7 @@ export class TokenService {
 
       const payload = this.parseToken(result);
 
+      await this.db.connect();
       // check token generation ID isn't blacklisted
       const blacklisted =
         await this.db.tokenRepository.isTokenGenerationIdBlacklisted(
@@ -476,6 +478,7 @@ export class TokenService {
     //
     // get user's email
 
+    await this.db.connect();
     const userDoc = await this.db.userRepository.getUserById(
       oldRefreshPayload.userId,
     );
@@ -568,6 +571,7 @@ export class TokenService {
     userId: ObjectIdOrString,
     deviceId: string,
   ) {
+    await this.db.connect();
     return await this.db.tokenRepository.changeUserTokenGenerationId(
       userId,
       deviceId,
@@ -587,6 +591,7 @@ export class TokenService {
    * @param userId - The user for whom to revoke all tokens
    */
   public async revokeAllTokensImmediately(userId: ObjectIdOrString) {
+    await this.db.connect();
     // add to blacklist
     await this.db.tokenRepository.blacklistTokenGenerationIds(userId);
   }
@@ -621,6 +626,7 @@ export class TokenService {
     if (!exp) {
       throw new InvalidTokenError('Token has no expiry time');
     }
+    await this.db.connect();
 
     // Blacklist the token
     await this.db.accessBlacklistRepository.blacklistAccessToken(
@@ -716,6 +722,7 @@ export class TokenService {
       throw new InvalidTokenError('Token is not an MFA token');
     }
 
+    await this.db.connect();
     // check token generation ID isn't blacklisted
     const blacklisted =
       await this.db.mfaBlacklistRepository.isMFATokenBlacklisted(data.jti);
@@ -738,6 +745,7 @@ export class TokenService {
     if (!exp) {
       throw new InvalidTokenError('Token has no expiry time');
     }
+    await this.db.connect();
 
     await this.db.mfaBlacklistRepository.blacklistMFA(token.jti, exp);
   }

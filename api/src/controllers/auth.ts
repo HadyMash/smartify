@@ -130,7 +130,18 @@ export class AuthController {
 
         const as = new AuthService();
         const { userId, formattedKey } = await as.registerUser(data);
-        res.status(201).send({ userId, formattedKey });
+        const mfa = new MFAService();
+        const mfaQRUri = mfa.generateMFAUri(formattedKey, data.email);
+        const ts = new TokenService();
+        const mfaToken = await ts.createMFAToken(
+          userId.toString(),
+          req.deviceId!,
+          formattedKey,
+        );
+        this.writeMFACookie(res, mfaToken);
+        res
+          .status(201)
+          .send({ userId, mfaFormattedKey: formattedKey, mfaQRUri });
         return;
       },
       (e) => {
@@ -242,7 +253,11 @@ export class AuthController {
             session.mfaFormattedKey,
             data.email,
           );
-          res.status(200).send({ Ms: `0x${Ms.toString(16)}`, mfaQRUri });
+          res.status(200).send({
+            Ms: `0x${Ms.toString(16)}`,
+            mfaFormattedKey: session.mfaFormattedKey,
+            mfaQRUri,
+          });
           return;
         }
       },

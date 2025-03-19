@@ -92,9 +92,15 @@ class AuthService {
         // get json body
         final responseBody = response.data as Map<String, dynamic>;
         try {
-          final userId = responseBody['userId'] as String;
-          final mfaFormattedKey = responseBody['formattedKey'] as String;
-          return (userId: userId, mfaFormattedKey: mfaFormattedKey);
+          //final userId = responseBody['userId'] as String;
+          final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
+          final mfaQRUri = responseBody['mfaQRUri'] as String?;
+          if (mfaFormattedKey == null || mfaQRUri == null) {
+            print('Error registering: MFA key or QR URI not found');
+            return null;
+          }
+
+          return (mfaQRUri: mfaQRUri, mfaFormattedKey: mfaFormattedKey);
         } catch (e) {
           print('Error getting body: $e');
         }
