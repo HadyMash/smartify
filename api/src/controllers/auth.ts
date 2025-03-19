@@ -310,7 +310,7 @@ export class AuthController {
         console.log('mfaPayload:', mfaPayload);
       } catch (e) {
         if (e instanceof InvalidTokenError) {
-          res.status(401).send({ error: 'Invalid MFA token' });
+          res.status(401).send({ error: 'Invalid MFA auth token' });
           return;
         } else {
           console.error(e);
@@ -344,9 +344,11 @@ export class AuthController {
         if (e instanceof MFAError) {
           switch (e.type) {
             case MFAErrorType.INCORRECT_CODE:
+              console.log('incorrect code');
               res.status(400).send({ error: 'Incorrect MFA Code' });
               break;
             case MFAErrorType.MFA_ALREADY_CONFIRMED:
+              console.log('mfa already confirmed');
               res.status(400).send({ error: 'MFA already confirmed' });
               break;
             case MFAErrorType.MFA_NOT_CONFIRMED:
@@ -374,7 +376,6 @@ export class AuthController {
     try {
       // get mfa token
       const mfaToken = req.cookies['mfa-token'] as string | undefined;
-      console.log(req.cookies);
 
       if (!mfaToken) {
         res.status(400).send({ error: 'MFA token not found' });
@@ -398,7 +399,7 @@ export class AuthController {
         console.log('mfaPayload:', mfaPayload);
       } catch (e) {
         if (e instanceof InvalidTokenError) {
-          res.status(401).send({ error: 'Invalid MFA token' });
+          res.status(401).send({ error: 'Invalid MFA auth token' });
           return;
         } else {
           console.error(e);
@@ -423,6 +424,8 @@ export class AuthController {
             mfaPayload.formattedKey,
           );
           this.writeMFACookie(res, newMfaToken);
+          console.log('incorrect code');
+
           res.status(400).send({ error: 'Incorrect MFA Code' });
           return;
         }
@@ -445,6 +448,8 @@ export class AuthController {
           this.writeMFACookie(res, newMfaToken);
           switch (e.type) {
             case MFAErrorType.INCORRECT_CODE:
+              console.log('incorrect code');
+
               res.status(400).send({ error: 'Incorrect MFA Code' });
               break;
             case MFAErrorType.MFA_ALREADY_CONFIRMED:
@@ -453,6 +458,7 @@ export class AuthController {
               res.status(500).send({ error: 'Internal Server Error' });
               break;
             case MFAErrorType.MFA_NOT_CONFIRMED:
+              console.log('mfa not confirmed');
               res.status(400).send({ error: 'MFA not confirmed' });
               break;
           }

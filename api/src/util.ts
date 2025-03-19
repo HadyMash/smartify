@@ -17,7 +17,7 @@ export function validateSchema<T extends z.ZodType>(
   } catch (_) {
     console.log(_);
 
-    res.status(400).send('Invalid Request');
+    res.status(400).send({ error: 'Invalid Request' });
     return undefined;
   }
 }
