@@ -60,7 +60,7 @@ class AuthService {
     return 'unknown-device-id';
   }
 
-  Future<({String userId, String mfaFormattedKey})?> register(
+  Future<({String mfaFormattedKey, String mfaQRUri})?> register(
       String email, String password,
       {DateTime? dob, String? sex}) async {
     try {
