@@ -43,6 +43,7 @@ export class AuthService {
   public async registerUser(
     data: RegisterData,
   ): Promise<{ userId: ObjectIdOrString; formattedKey: MFAFormattedKey }> {
+    await this.db.connect();
     // check user doesn't already exist
     const userExists = await this.db.userRepository.userExistsEmail(data.email);
     if (userExists) {
@@ -66,6 +67,7 @@ export class AuthService {
   public async initiateAuthSession(
     email: Email,
   ): Promise<{ salt: string; B: bigint }> {
+    await this.db.connect();
     // get the user's SRP credentiails
     const {
       userId,
@@ -110,6 +112,7 @@ export class AuthService {
    * @throws An {@link AuthSessionError} if the session is expired or does not exist
    */
   public async getAuthSession(email: Email): Promise<SRPSession> {
+    await this.db.connect();
     const jsonSession: SRPJSONSession | undefined =
       await this.db.srpSessionRepository.getSRPSession(email);
 
@@ -125,6 +128,7 @@ export class AuthService {
    * @returns
    */
   public async deleteAuthSession(email: Email): Promise<void> {
+    await this.db.connect();
     return await this.db.srpSessionRepository.deleteSRPSession(email);
   }
 
@@ -163,6 +167,7 @@ export class AuthService {
    * @returns true if the email is registered, false otherwise
    */
   public async userExistsEmail(email: Email): Promise<boolean> {
+    await this.db.connect();
     return await this.db.userRepository.userExistsEmail(email);
   }
 
@@ -172,6 +177,7 @@ export class AuthService {
    * @returns true if the user exists, false otherwise
    */
   public async userExistsId(userId: string): Promise<boolean> {
+    await this.db.connect();
     return await this.db.userRepository.userExists(userId);
   }
 
@@ -184,6 +190,7 @@ export class AuthService {
    * @throws An IncorrectMFATokenError if the code is incorrect
    */
   public async confirmUserMFA(userId: string, code: MFACode) {
+    await this.db.connect();
     const userMFA = await this.db.userRepository.getUserMFA(userId);
     if (userMFA.confirmed) {
       throw new MFAError(MFAErrorType.MFA_ALREADY_CONFIRMED);
@@ -203,6 +210,7 @@ export class AuthService {
    * @returns The user
    */
   public async getUserById(userId: ObjectIdOrString): Promise<UserWithId> {
+    await this.db.connect();
     return await this.db.userRepository.getUserById(userId);
   }
 
@@ -217,6 +225,7 @@ export class AuthService {
     userId: ObjectIdOrString,
     code: MFACode,
   ): Promise<boolean> {
+    await this.db.connect();
     const mfa = await this.db.userRepository.getUserMFA(userId);
     if (!mfa.confirmed) {
       throw new MFAError(MFAErrorType.MFA_NOT_CONFIRMED);

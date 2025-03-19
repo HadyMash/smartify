@@ -15,6 +15,7 @@ export class HouseholdService {
   public async createHousehold(
     data: Omit<Household, '_id'>,
   ): Promise<Household> {
+    await this.db.connect();
     return this.db.householdRepository.createHousehold(data);
   }
 
@@ -24,6 +25,7 @@ export class HouseholdService {
    * @returns
    */
   public async getHousehold(id: string): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.getHouseholdById(id);
   }
   public async addMember(
@@ -31,6 +33,7 @@ export class HouseholdService {
     memberId: string,
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.addMember(
       householdId,
       memberId,
@@ -43,6 +46,7 @@ export class HouseholdService {
     memberId: string,
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.removeMember(
       householdId,
       memberId,
@@ -54,6 +58,7 @@ export class HouseholdService {
     response: boolean,
     userId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.processInviteResponse(
       inviteId,
       response,
@@ -64,6 +69,7 @@ export class HouseholdService {
     householdId: string,
     ownerId: string,
   ): Promise<void> {
+    await this.db.connect();
     await this.db.householdRepository.deleteHousehold(householdId, ownerId);
   }
   public async addRoom(
@@ -71,6 +77,7 @@ export class HouseholdService {
     roomData: HouseholdRoom,
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.addRoom(householdId, roomData, ownerId);
   }
   public async removeRoom(
@@ -78,6 +85,7 @@ export class HouseholdService {
     roomId: string,
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.removeRoom(householdId, roomId, ownerId);
   }
   public async changeUserRole(
@@ -86,6 +94,7 @@ export class HouseholdService {
     newRole: HouseholdMember,
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.changeUserRole(
       householdId,
       memberId,
@@ -99,6 +108,7 @@ export class HouseholdService {
     action: 'add' | 'remove',
     ownerId: string,
   ): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.manageRooms(
       householdId,
       roomId,
