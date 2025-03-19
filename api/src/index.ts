@@ -34,6 +34,8 @@ app.use('/api', router);
 async function start() {
   const db = new DatabaseService();
 
+  await db.connect();
+
   await Promise.all([
     db.accessBlacklistRepository.loadBlacklistToCache(),
     db.mfaBlacklistRepository.loadBlacklistToCache(),

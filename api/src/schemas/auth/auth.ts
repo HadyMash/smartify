@@ -1,12 +1,15 @@
 import { Request } from 'express';
 import { z } from 'zod';
-import { AccessTokenUser } from './tokens';
+import { AccessTokenPayload, AccessTokenUser } from './tokens';
 import { objectIdOrStringSchema, objectIdStringSchema } from '../obj-id';
 import { emailSchema } from './user';
 
 export interface AuthenticatedRequest extends Request {
   user?: AccessTokenUser | undefined;
+  accessTokenPayload?: AccessTokenPayload | undefined;
+  refreshToken?: string | undefined;
   deviceId?: string | undefined;
+  tokensRefreshed?: boolean | undefined;
 }
 
 export const mfaFormattedKeySchema = z.string();
