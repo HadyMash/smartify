@@ -12,7 +12,7 @@ class AuthService {
   static String? refreshToken;
   static String? idToken;
 
-  Future<({String userId, String mfaFormattedKey})?> register(
+  Future<({String mfaFormattedKey, String mfaQRUri})?> register(
       String email, String password,
       {DateTime? dob, String? sex}) async {
     try {
@@ -39,9 +39,15 @@ class AuthService {
         // get json body
         final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
         try {
-          final userId = responseBody['userId'] as String;
-          final mfaFormattedKey = responseBody['formattedKey'] as String;
-          return (userId: userId, mfaFormattedKey: mfaFormattedKey);
+          //final userId = responseBody['userId'] as String;
+          final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
+          final mfaQRUri = responseBody['mfaQRUri'] as String?;
+          if (mfaFormattedKey == null || mfaQRUri == null) {
+            print('Error registering: MFA key or QR URI not found');
+            return null;
+          }
+
+          return (mfaQRUri: mfaQRUri, mfaFormattedKey: mfaFormattedKey);
         } catch (e) {
           print('Error getting body: $e');
         }
