@@ -8,7 +8,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 
-import 'package:dio_cookie_manager/dio_cookie_manager.dart'; // Add this import
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+
+// Add this import
 
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -157,7 +159,10 @@ class AuthService {
     try {
       final uri = Uri.parse('$apiBaseUrl/api/auth/mfa/verify');
       final response = await _dio.post(uri.toString(),
-          data: jsonEncode({'code': code}),
+          data: jsonEncode({
+            'code': code,
+            'mfa_token': mfaToken,
+          }),
           options: Options(
             headers: {
               'Content-Type': 'application/json',
@@ -170,6 +175,11 @@ class AuthService {
         accessToken = responseBody['access_token'];
         refreshToken = responseBody['refresh_token'];
         idToken = responseBody['id_token'];
+
+        // Save cookies after successful login (Dio will handle this automatically)
+        _cookieJar.saveFromResponse(
+            Uri.parse(apiBaseUrl), response.headers as List<Cookie>);
+
         return true;
       } else {
         if (response.data != null) {
@@ -190,7 +200,10 @@ class AuthService {
       final uri = Uri.parse('$apiBaseUrl/api/auth/mfa/confirm');
       final response = await _dio.post(
         uri.toString(),
-        data: jsonEncode({'code': code}),
+        data: jsonEncode({
+          'code': code,
+          'mfa_token': mfaToken,
+        }),
         options: Options(
           headers: {
             'Content-Type': 'application/json',
