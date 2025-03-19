@@ -40,11 +40,8 @@ export class DatabaseService {
    * Ensures only one connection attempt is made regardless of how many times it's called.
    */
   public async connect(): Promise<void> {
-    console.log('connect db called');
-
     // If we're already connecting or connected, return the existing promise
     if (DatabaseService.connectionPromise) {
-      console.log('duplicate call, returning promise');
       await DatabaseService.connectionPromise;
 
       // Make sure repositories are initialized even for duplicate calls
