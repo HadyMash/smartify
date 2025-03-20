@@ -2,6 +2,8 @@ import { Response } from 'express';
 import {
   AuthenticatedRequest,
   AuthSessionError,
+  Email,
+  emailSchema,
   IncorrectPasswordError,
   MFACode,
   mfaCodeSchema,
@@ -12,12 +14,11 @@ import { TokenService } from '../services/auth/token';
 import { tryAPIController, validateSchema } from '../util';
 import {
   changePasswordDataSchema,
-  Email,
-  emailSchema,
   InvalidUserError,
   InvalidUserType,
   loginDataSchema,
   registerDataSchema,
+  resetPasswordDataSchema,
   userWithIdSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
@@ -568,6 +569,37 @@ export class AuthController {
   }
 
   public static resetPassword(req: AuthenticatedRequest, res: Response) {
-    tryAPIController(res, async () => {});
+    tryAPIController(
+      res,
+      async () => {
+        if (req.user) {
+          res.status(400).send({ error: 'Already logged in' });
+          return;
+        }
+
+        const data = validateSchema(res, resetPasswordDataSchema, req.body);
+        if (!data) {
+          res.status(400).send({ error: 'Invalid request' });
+          return;
+        }
+
+        const as = new AuthService();
+        await as.resetPassword(data);
+        res.status(200).send({ message: 'Password reset successfully' });
+        return;
+      },
+      (e: unknown) => {
+        if (e instanceof InvalidUserError) {
+          // don't tell the client the user doesn't exist, just return ok status
+          res.status(200).send();
+          return true;
+        }
+        if (e instanceof MFAError && e.type == MFAErrorType.INCORRECT_CODE) {
+          res.status(400).send({ error: 'MFA code incorrect or missing' });
+          return true;
+        }
+        return false;
+      },
+    );
   }
 }

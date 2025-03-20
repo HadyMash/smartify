@@ -2,7 +2,6 @@ import { Request } from 'express';
 import { z } from 'zod';
 import { AccessTokenPayload, AccessTokenUser } from './tokens';
 import { objectIdOrStringSchema, objectIdStringSchema } from '../obj-id';
-import { emailSchema } from './user';
 
 export interface AuthenticatedRequest extends Request {
   user?: AccessTokenUser | undefined;
@@ -11,6 +10,11 @@ export interface AuthenticatedRequest extends Request {
   deviceId?: string | undefined;
   tokensRefreshed?: boolean | undefined;
 }
+
+/** Email address */
+export const emailSchema = z.string().email();
+/** Email address */
+export type Email = z.infer<typeof emailSchema>;
 
 export const mfaFormattedKeySchema = z.string();
 export type MFAFormattedKey = z.infer<typeof mfaFormattedKeySchema>;

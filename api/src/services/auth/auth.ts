@@ -10,13 +10,14 @@ import {
   MFAFormattedKey,
   SRPJSONSession,
   AuthSessionError,
+  Email,
 } from '../../schemas/auth/auth';
 import {
-  Email,
   InvalidUserError,
   InvalidUserType,
   LoginData,
   RegisterData,
+  ResetPasswordData,
   UserWithId,
   userWithIdSchema,
 } from '../../schemas/auth/user';
@@ -268,6 +269,38 @@ export class AuthService {
       salt,
       `0x${verifier.toString(16)}`,
     );
+  }
+  public async resetPassword(data: ResetPasswordData) {
+    await this.db.connect();
+    // get user by email
+    const user = await this.db.userRepository.getUserDocByEmail(data.email);
+
+    // check if mfa is confirmed
+    if (user.mfaConfirmed) {
+      if (!data.code) {
+        console.log('code missing');
+
+        throw new MFAError(MFAErrorType.INCORRECT_CODE);
+      }
+      // validate the mfa code and reset password if correct
+      const ms = new MFAService();
+      if (ms.verifyCode(user.mfaFormattedKey, data.code)) {
+        await this.db.userRepository.changeUserSRPCredentials(
+          user._id!,
+          data.salt,
+          `0x${data.verifier.toString(16)}`,
+        );
+      } else {
+        throw new MFAError(MFAErrorType.INCORRECT_CODE);
+      }
+    } else {
+      // mfa not confirmed, reset password
+      await this.db.userRepository.changeUserSRPCredentials(
+        user._id!,
+        data.salt,
+        `0x${data.verifier.toString(16)}`,
+      );
+    }
   }
 }
 

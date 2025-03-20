@@ -37,6 +37,10 @@ authRouter.patch('/password/change', requireAuth, (req, res) =>
   AuthController.changePassword(req, res),
 );
 
+authRouter.patch('/password/reset', (req, res) =>
+  AuthController.resetPassword(req, res),
+);
+
 authRouter.get('/logout', requireAuth, (req, res) =>
   AuthController.logout(req, res),
 );

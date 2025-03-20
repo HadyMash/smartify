@@ -289,6 +289,45 @@ class AuthService {
       throw Exception('MFA confirmation failed: $e');
     }
   }
+
+  Future<void> resetPassword(
+      String email, String newPassword, String? mfaCode) async {
+    if (_currentAuthState != AuthState.signedOut) {
+      throw Exception('User is not signed out');
+    }
+
+    try {
+      // generate new salt and verifier
+      final salt = _SRP.generateSalt();
+      final verifier = _SRP.deriveVerifier(email, newPassword, salt);
+      print('new salt: $salt');
+      print('new verifier: $verifier');
+      final body = {
+        'email': email,
+        'salt': salt,
+        'verifier': '0x${verifier.toRadixString(16)}',
+      };
+      if (mfaCode != null && mfaCode.isNotEmpty) {
+        print('adding mfa code: $mfaCode to request body');
+        body['code'] = mfaCode;
+      }
+      final response = await _dio.patch('/auth/password/reset', data: body);
+
+      print('Password changed status: ${response.statusCode}');
+      return;
+    } on DioError catch (e) {
+      print('Dio Error resetting password: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        if (e.response!.data != null) {
+          final error = e.response!.data as Map<String, dynamic>;
+          print(
+              'Error resetting password: ${error['message'] ?? error['error']}');
+        }
+      }
+    } catch (e) {
+      throw Exception('MFA confirmation failed: $e');
+    }
+  }
 }
 
 /// Client SRP methods
