@@ -53,6 +53,7 @@ dependencies:
   gesture_x_detector: ^1.1.1
   uuid: ^4.5.1
   path_provider: ^2.1.5
+  jwt_decoder: ^2.0.1
 
 dev_dependencies:
   flutter_test:

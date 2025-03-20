@@ -99,14 +99,14 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   }
 
   /**
-   * Get the user's SRP credentials
+   * Get the user's SRP credentials by email
    * @param email - The user's email
    * @returns the user's salt and verifier
    * @throws An InvalidUserError if the user does not exist
    */
-  public async getUserSRPCredentials(
+  public async getUserSRPCredentialsByEmail(
     email: Email,
-  ): Promise<{ userId: ObjectId; salt: string; verifier: string }> {
+  ): Promise<{ userId: ObjectIdOrString; salt: string; verifier: string }> {
     const result = await this.collection.findOne(
       {
         email,
@@ -117,6 +117,46 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
     return { userId: result._id, salt: result.salt, verifier: result.verifier };
+  }
+
+  /**
+   * Get the user's SRP credentials by id
+   * @param userId - The user's id
+   * @returns the user's salt and verifier
+   * @throws An InvalidUserError if the user does not exist
+   */
+  public async getUserSRPCredentialsById(
+    userId: ObjectIdOrString,
+  ): Promise<{ salt: string; verifier: string }> {
+    const result = await this.collection.findOne(
+      {
+        _id: objectIdSchema.parse(userId),
+      },
+      { projection: { _id: 1, salt: 1, verifier: 1 } },
+    );
+    if (!result) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return { salt: result.salt, verifier: result.verifier };
+  }
+
+  /**
+   * Change the user's SRP credentials
+   * @param userId - The user's id
+   * @param salt - The new salt
+   * @param verifier - The new verifier
+   * @returns a boolean indicating successful
+   */
+  public async changeUserSRPCredentials(
+    userId: ObjectIdOrString,
+    salt: string,
+    verifier: string,
+  ) {
+    const result = await this.collection.updateOne(
+      { _id: objectIdSchema.parse(userId) },
+      { $set: { salt, verifier } },
+    );
+    return result.acknowledged && result.matchedCount === 1;
   }
 
   /**

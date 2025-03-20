@@ -37,54 +37,54 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
   }
 
   Future<void> _verifyCode() async {
-  String code = _controllers.map((controller) => controller.text).join();
+    String code = _controllers.map((controller) => controller.text).join();
 
-  if (code.length != 6) {
-    setState(() => _isError = true);
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-    _isError = false;
-  });
-
-  try {
-    // Create an instance of AuthService using the factory method
-    final authService = await AuthService.create();
-
-    bool success = false;
-    if (widget.isSetup) {
-      success = await authService.confirmMFA(code); // Use the instance
-    } else {
-      success = await authService.verifyMFA(code); // Use the instance
-    }
-
-    if (success) {
-      if (widget.isSetup) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MFASetupCompleteScreen(),
-          ),
-        );
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } else {
+    if (code.length != 6) {
       setState(() => _isError = true);
+      return;
     }
-  } catch (e) {
+
     setState(() {
-      _isError = true;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      _isLoading = true;
+      _isError = false;
     });
-  } finally {
-    setState(() => _isLoading = false);
+
+    try {
+      // Create an instance of AuthService using the factory method
+      final authService = await AuthService.create();
+
+      bool success = false;
+      if (widget.isSetup) {
+        success = await authService.confirmMFA(code); // Use the instance
+      } else {
+        success = await authService.verifyMFA(code); // Use the instance
+      }
+
+      if (success) {
+        if (widget.isSetup) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MFASetupCompleteScreen(),
+            ),
+          );
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      } else {
+        setState(() => _isError = true);
+      }
+    } catch (e) {
+      setState(() {
+        _isError = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      });
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {

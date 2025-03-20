@@ -157,35 +157,41 @@ class _SignInScreenState extends State<SignInScreen> {
 
                         try {
                           // Call the signIn method from AuthService
-                          final response = await _authService.signIn(email, password);
+                          final response =
+                              await _authService.signIn(email, password);
 
                           if (response?.mfa != null) {
                             // If MFA is required, navigate to the MFA verification screen
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const MFAVerificationScreen(
-                                  isSetup: false, // Set this based on your logic (is setup or sign-in)
+                                builder: (context) =>
+                                    const MFAVerificationScreen(
+                                  isSetup:
+                                      false, // Set this based on your logic (is setup or sign-in)
                                 ),
                               ),
                             );
                           } else if (response?.success == true) {
                             // Successful sign-in, navigate to next screen
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Sign-in successful!')),
+                              const SnackBar(
+                                  content: Text('Sign-in successful!')),
                             );
 
                             // Navigate to the main screen (e.g., CreateAccountScreen or ViewHouseholdScreen)
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const CreateAccountScreen(),
+                                builder: (context) =>
+                                    const CreateAccountScreen(),
                               ),
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('Sign-in failed. Please try again.')),
+                                  content: Text(
+                                      'Sign-in failed. Please try again.')),
                             );
                           }
                         } catch (e) {

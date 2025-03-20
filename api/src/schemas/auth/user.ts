@@ -1,5 +1,6 @@
 import { objectIdOrStringSchema } from '../obj-id';
 import { z } from 'zod';
+//import { mfaCodeSchema } from './auth';
 
 /** Email address */
 export const emailSchema = z.string().email();
@@ -105,3 +106,16 @@ export const loginDataSchema = z.object({
   Mc: bigIntTransformed,
 });
 export type LoginData = z.infer<typeof loginDataSchema>;
+
+export const changePasswordDataSchema = z.object({
+  salt: z.string(),
+  verifier: bigIntTransformed,
+});
+
+export type ChangePasswordData = z.infer<typeof changePasswordDataSchema>;
+
+//export const resetPasswordDataSchema = z.object({
+//  code: mfaCodeSchema.optional(),
+//  salt: z.string(),
+//  verifier: bigIntTransformed,
+//});

@@ -28,7 +28,8 @@ class QRSetupScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const MFAVerificationScreen(isSetup: true), // Passing 'true' for setup
+        builder: (context) => const MFAVerificationScreen(
+            isSetup: true), // Passing 'true' for setup
       ),
     );
   }
@@ -48,7 +49,8 @@ class QRSetupScreen extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 40, // Fixed width for the back button
-                    child: CustomBackButton(), // Use the custom back button widget
+                    child:
+                        CustomBackButton(), // Use the custom back button widget
                   ),
                 ],
               ),
@@ -96,7 +98,8 @@ class QRSetupScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 32),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),

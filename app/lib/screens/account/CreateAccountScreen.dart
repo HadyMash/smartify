@@ -6,7 +6,6 @@ import 'qr_setup_screen.dart';
 import 'package:smartify/widgets/back_button.dart';
 import 'package:smartify/services/auth.dart';
 
-
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
 
@@ -77,8 +76,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       });
     }
   }
-
-
 
   void _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;

@@ -11,12 +11,14 @@ import {
 import { TokenService } from '../services/auth/token';
 import { tryAPIController, validateSchema } from '../util';
 import {
+  changePasswordDataSchema,
   Email,
   emailSchema,
   InvalidUserError,
   InvalidUserType,
   loginDataSchema,
   registerDataSchema,
+  userWithIdSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
@@ -524,5 +526,48 @@ export class AuthController {
 
       res.status(200).send();
     });
+  }
+
+  //public static srpCredentials(req: AuthenticatedRequest, res: Response) {
+  //  tryAPIController(res, async () => {
+  //    const userId = req.user!._id;
+  //    const as = new AuthService();
+  //    const srp = await as.getUserSRPCredentials(userId);
+  //    res.status(200).send(srp);
+  //  });
+  //}
+
+  public static userData(req: AuthenticatedRequest, res: Response) {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    tryAPIController(res, async () => {
+      res.status(200).send(userWithIdSchema.parse(req.user));
+    });
+  }
+
+  public static changePassword(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      const userId = req.user!._id;
+      const data = validateSchema(res, changePasswordDataSchema, req.body);
+      if (!data) {
+        return;
+      }
+
+      const as = new AuthService();
+      const success = await as.changeUserSRPCredentials(
+        userId,
+        data.salt,
+        data.verifier,
+      );
+      if (success) {
+        res.status(200).send();
+        return;
+      } else {
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+  }
+
+  public static resetPassword(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {});
   }
 }

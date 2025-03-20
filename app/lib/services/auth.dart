@@ -13,20 +13,30 @@ import 'package:smartify/models/mfa.dart';
 import 'package:smartify/utils/device_id.dart';
 
 class AuthService {
+  // Token names
+  // ignore: unused_field, constant_identifier_names
+  static const String _ID_TOKEN_NAME = 'id-token';
+  // ignore: unused_field, constant_identifier_names
+  static const String _REFRESH_TOKEN_NAME = 'refresh-token';
+  // ignore: unused_field, constant_identifier_names
+  static const String _ACCESS_TOKEN_NAME = 'access-token';
+  // ignore: unused_field, constant_identifier_names
+  static const String _MFA_TOKEN_NAME = 'mfa-token';
+
   final Dio _dio;
   final CookieJar _cookieJar;
   final Uri _apiBaseUrl;
 
-  AuthState _currentAuthState;
-  
+  static AuthState _currentAuthState = AuthState.signedOut;
+
   final StreamController<AuthEvent> _eventStream =
       StreamController<AuthEvent>.broadcast();
   Stream<AuthEvent> get authEventStream => _eventStream.stream;
   AuthState get state => _currentAuthState;
 
-  AuthService._(
-      this._dio, this._cookieJar, this._apiBaseUrl, this._currentAuthState);
+  AuthService._(this._dio, this._cookieJar, this._apiBaseUrl);
 
+  /// factory method to create an instance of AuthService
   static Future<AuthService> create() async {
     final apiBaseUrl =
         Uri.parse(dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000/api');
@@ -50,20 +60,26 @@ class AuthService {
     final cookies = await cookieJar.loadForRequest(apiBaseUrl);
     var authState = AuthState.signedOut;
     if (cookies.any((cookie) =>
-        (cookie.name == 'access-token' || cookie.name == 'refresh-token') &&
+        (cookie.name == _ACCESS_TOKEN_NAME ||
+            cookie.name == _REFRESH_TOKEN_NAME) &&
         cookie.expires != null &&
         cookie.expires!.isAfter(DateTime.now()))) {
       authState = AuthState.signedIn;
     }
 
-    return AuthService._(dio, cookieJar, apiBaseUrl, authState);
+    _currentAuthState = authState;
+
+    return AuthService._(dio, cookieJar, apiBaseUrl);
   }
 
+  // TEMP
   Future<List<Cookie>> getCookies() {
     return _cookieJar.loadForRequest(_apiBaseUrl);
   }
 
- Future<MFAFormattedKey?> register(String email, String password,
+  /// Registers a new user with the given email and password and optional data
+  /// This will also sign the user in, and only need to confirm setting up MFA
+  Future<MFAFormattedKey?> register(String email, String password,
       {DateTime? dob, String? sex}) async {
     try {
       if (state != AuthState.signedOut) {
@@ -129,8 +145,7 @@ class AuthService {
     return null;
   }
 
-
-
+  /// Initiates a server side SRP auth session and gets the salt and B values
   Future<({String salt, BigInt B})?> _initiateAuthSession(String email) async {
     try {
       if (state == AuthState.signedInMFAVerify ||
@@ -149,12 +164,14 @@ class AuthService {
 
       return (salt: salt, B: B);
     } on DioError catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Failed to initiate session');
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to initiate session');
     } catch (e) {
       throw Exception('Failed to initiate session: $e');
     }
   }
 
+  /// Signs the user in with the given email and password
   Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
       String email, String password) async {
     try {
@@ -174,21 +191,29 @@ class AuthService {
         'A': '0x${proof.A.toRadixString(16)}',
         'Mc': '0x${proof.M.toRadixString(16)}',
       });
+      print('Response Status Code: ${response.statusCode}');
 
       final responseBody = response.data as Map<String, dynamic>;
       final mfa = MFAFormattedKey.fromJson(responseBody);
+      print('MFA: $mfa');
 
       _currentAuthState = AuthState.signedInMFAVerify;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
 
       return (success: true, error: null, mfa: mfa);
     } on DioError catch (e) {
-      return (success: false, error: e.response?.data['message'] as String?, mfa: null);
+      print('Dio Error signing in: ${e.message}');
+      return (
+        success: false,
+        error: e.response?.data['message'] as String?,
+        mfa: null
+      );
     } catch (e) {
       return (success: false, error: 'Sign-in failed', mfa: null);
     }
   }
 
+  /// Verifies the MFA code
   Future<bool> verifyMFA(String code) async {
     try {
       await _dio.post('/auth/mfa/verify', data: {'code': code});
@@ -203,6 +228,7 @@ class AuthService {
     }
   }
 
+  /// Confirms setting up the user's MFA by verifying the MFA code
   Future<bool> confirmMFA(String code) async {
     try {
       await _dio.post('/auth/mfa/confirm', data: {'code': code});
@@ -217,14 +243,50 @@ class AuthService {
     }
   }
 
+  /// Signs the user out
   Future<void> signOut() async {
     try {
       await _dio.get('/auth/logout');
     } catch (e) {
-      await _cookieJar.deleteAll();
+      try {
+        await _cookieJar.deleteAll();
+      } catch (_) {}
     } finally {
       _currentAuthState = AuthState.signedOut;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+    }
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    if (_currentAuthState != AuthState.signedIn) {
+      throw Exception('User is not signed in');
+    }
+    try {
+      // get email
+      final userResponse = await _dio.get('/auth/user');
+      final user = userResponse.data as Map<String, dynamic>;
+      if (user['email'] == null) {
+        throw Exception('Email not found');
+      }
+      final email = user['email'] as String;
+      print('Email: $email');
+
+      // generate new salt and verifier
+      final salt = _SRP.generateSalt();
+      final verifier = _SRP.deriveVerifier(email, newPassword, salt);
+      print('new salt: $salt');
+      print('new verifier: $verifier');
+      final response = await _dio.patch('/auth/password/change', data: {
+        'salt': salt,
+        'verifier': '0x${verifier.toRadixString(16)}',
+      });
+
+      print('Password changed status: ${response.statusCode}');
+      return;
+    } on DioError catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'MFA confirmation failed');
+    } catch (e) {
+      throw Exception('MFA confirmation failed: $e');
     }
   }
 }

@@ -74,7 +74,7 @@ export class AuthService {
       userId,
       salt,
       verifier: verifierString,
-    } = await this.db.userRepository.getUserSRPCredentials(email);
+    } = await this.db.userRepository.getUserSRPCredentialsByEmail(email);
 
     // generate the server keys
     const verifier = BigInt(verifierString);
@@ -234,6 +234,40 @@ export class AuthService {
     const ms = new MFAService();
     const result = ms.verifyCode(mfa.formattedKey, code);
     return result;
+  }
+
+  ///**
+  // * Get a user's SRP auth credentials
+  // * @param userId - The user's id
+  // * @returns The user's SRP credentials
+  // */
+  //public async getUserSRPCredentials(
+  //  userId: ObjectIdOrString,
+  //): Promise<{ salt: string; verifier: bigint }> {
+  //  await this.db.connect();
+  //  const { salt, verifier } =
+  //    await this.db.userRepository.getUserSRPCredentialsById(userId);
+  //  return { salt: salt, verifier: BigInt(verifier) };
+  //}
+
+  /**
+   * Change the user's password (by changing SRP credentials)
+   * @param userId - The user's id
+   * @param salt - The new salt
+   * @param verifier - The new verifier
+   * @returns a boolean indicating success
+   */
+  public async changeUserSRPCredentials(
+    userId: ObjectIdOrString,
+    salt: string,
+    verifier: bigint,
+  ): Promise<boolean> {
+    await this.db.connect();
+    return await this.db.userRepository.changeUserSRPCredentials(
+      userId,
+      salt,
+      `0x${verifier.toString(16)}`,
+    );
   }
 }
 
