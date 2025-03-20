@@ -10,4 +10,8 @@ class MFAFormattedKey {
 
   String get formattedKey => _formattedKey;
   String get qrCodeUri => _qrCodeUri;
+
+  get mfaFormattedKey => _formattedKey;
+
+  get mfaQRUri => _qrCodeUri;
 }

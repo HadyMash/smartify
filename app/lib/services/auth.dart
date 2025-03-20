@@ -1,45 +1,29 @@
-// ignore_for_file: avoid_print
-
 import 'dart:async';
-import 'dart:convert'; // for the utf8.encode method
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-
-import 'package:dio_cookie_manager/dio_cookie_manager.dart'; // Add this import
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:smartify/models/mfa.dart';
-
 import 'package:smartify/utils/device_id.dart';
 
-//import 'dart:html' as web; // For web-specific data
-
-// export 'device_id_stub.dart' // Fallback import for platforms where it's not explicitly defined
-//     if (dart.library.html) 'device_id_web.dart' // Web implementation
-//     if (dart.library.io) 'device_id_mobile.dart'; // Mobile implementation
-
-// TODO: error handling
-// TODO: setup dio interceptor to update the auth state and auth streams
-// TODO: setup a timer to periodically check the cookies and update auth state
-// and automatically refresh the access token if it's expired or close to expiry
 class AuthService {
   final Dio _dio;
-  // ignore: unused_field
   final CookieJar _cookieJar;
   final Uri _apiBaseUrl;
 
   AuthState _currentAuthState;
+  
   final StreamController<AuthEvent> _eventStream =
       StreamController<AuthEvent>.broadcast();
   Stream<AuthEvent> get authEventStream => _eventStream.stream;
   AuthState get state => _currentAuthState;
 
-  /// Private constructor for factory constructor
   AuthService._(
       this._dio, this._cookieJar, this._apiBaseUrl, this._currentAuthState);
 
@@ -57,26 +41,16 @@ class AuthService {
       baseUrl: apiBaseUrl.toString(),
     ));
 
-    // Get application documents directory
     final appDocDir = await getApplicationDocumentsDirectory();
     final cookiePath = '${appDocDir.path}/.cookies/';
+    final cookieJar = PersistCookieJar(storage: FileStorage(cookiePath));
 
-    // Use persistent cookie jar to save cookies between app restarts
-    final cookieJar = PersistCookieJar(
-      storage: FileStorage(cookiePath),
-    );
-
-    // Add cookie manager to dio
     dio.interceptors.add(CookieManager(cookieJar));
 
-    // check cookies to determine current auth state
     final cookies = await cookieJar.loadForRequest(apiBaseUrl);
-    print('cookies in auth service create: $cookies');
     var authState = AuthState.signedOut;
     if (cookies.any((cookie) =>
-        // is access or refresh token
         (cookie.name == 'access-token' || cookie.name == 'refresh-token') &&
-        // and expires in the future
         cookie.expires != null &&
         cookie.expires!.isAfter(DateTime.now()))) {
       authState = AuthState.signedIn;
@@ -85,12 +59,11 @@ class AuthService {
     return AuthService._(dio, cookieJar, apiBaseUrl, authState);
   }
 
-  // TEMP METHOD
   Future<List<Cookie>> getCookies() {
     return _cookieJar.loadForRequest(_apiBaseUrl);
   }
 
-  Future<MFAFormattedKey?> register(String email, String password,
+ Future<MFAFormattedKey?> register(String email, String password,
       {DateTime? dob, String? sex}) async {
     try {
       if (state != AuthState.signedOut) {
@@ -156,203 +129,101 @@ class AuthService {
     return null;
   }
 
-  /// Initiates an authentication session for the user with the given [email].
+
+
   Future<({String salt, BigInt B})?> _initiateAuthSession(String email) async {
     try {
       if (state == AuthState.signedInMFAVerify ||
           state == AuthState.signedInMFAConfirm) {
-        print('Error initiating auth session: user is already signed in');
-        return null;
+        throw Exception('User is already signed in');
       }
 
-      // initiate auth session
       final response = await _dio.post('/auth/init', queryParameters: {
         'email': email,
       });
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Response Body: ${response.data}");
-
       final responseBody = response.data as Map<String, dynamic>;
+      final salt = responseBody['salt'] as String;
+      final BString = responseBody['B'] as String;
+      final B = BigInt.parse(BString.substring(2), radix: 16);
 
-      try {
-        final salt = responseBody['salt'] as String;
-        // ignore: non_constant_identifier_names
-        final BString = responseBody['B'] as String;
-
-        // convert B to BigInt
-        final B = BigInt.parse(BString.substring(2), radix: 16);
-
-        return (salt: salt, B: B);
-      } catch (e) {
-        print('Error getting body: $e');
-      }
+      return (salt: salt, B: B);
     } on DioError catch (e) {
-      print('Dio Error initiating auth session: ${e.message}');
-      if (e.response != null && e.response!.data != null) {
-        if (e.response!.data != null) {
-          final error = e.response!.data as Map<String, dynamic>;
-          print(
-              'Error initiating auth session: ${error['message'] ?? error['error']}');
-        }
-      }
+      throw Exception(e.response?.data['message'] ?? 'Failed to initiate session');
     } catch (e) {
-      print('Error initiating auth session: $e');
+      throw Exception('Failed to initiate session: $e');
     }
-    return null;
   }
 
-  /// Signs the user in with the given [email] and [password]. The user must
-  /// complete the MFA challenge after this to complete the sign in process.
   Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
       String email, String password) async {
     try {
       if (state != AuthState.signedOut) {
-        print('Error signing in: user is already signed in');
-        return null;
-      }
-      // create an auth session
-      final session = await _initiateAuthSession(email);
-      if (session == null) {
-        print('Error initiating auth session');
-        return null;
+        throw Exception('User is already signed in');
       }
 
-      // generate private key
+      final session = await _initiateAuthSession(email);
+      if (session == null) throw Exception('Failed to initiate session');
+
       final a = _SRP.generatePrivateKey();
       final proof = _SRP.respondToAuthChallenge(
           email, password, session.salt, a, session.B);
 
-      final response = await _dio.post(
-        '/auth/login',
-        data: {
-          'email': email,
-          'A': '0x${proof.A.toRadixString(16)}',
-          'Mc': '0x${proof.M.toRadixString(16)}',
-        },
-      );
-
-      print("Response Status Code: ${response.statusCode}");
-      print("Response Body: ${response.data}");
+      final response = await _dio.post('/auth/login', data: {
+        'email': email,
+        'A': '0x${proof.A.toRadixString(16)}',
+        'Mc': '0x${proof.M.toRadixString(16)}',
+      });
 
       final responseBody = response.data as Map<String, dynamic>;
+      final mfa = MFAFormattedKey.fromJson(responseBody);
 
-      try {
-        final mfa = MFAFormattedKey.fromJson(responseBody);
-        final cookies = await _cookieJar.loadForRequest(_apiBaseUrl);
-        if (cookies.any((cookie) => cookie.name == 'mfa-token')) {
-          print("MFA token found in cookies");
-          _currentAuthState = AuthState.signedInMFAVerify;
-          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-          return (success: true, error: null, mfa: mfa);
-        } else {
-          print("MFA token not found in cookies");
-        }
-      } catch (e) {
-        print('error getting body: $e');
-        return null;
-      }
+      _currentAuthState = AuthState.signedInMFAVerify;
+      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
 
-      //final uri = Uri.parse('$apiBaseUrl/api/auth/login');
-      //final response = await _dio.post(uri.toString(),
-      //    data: jsonEncode(body),
-      //    options: Options(headers: {
-      //      'Content-Type': 'application/json',
-      //      'x-device-id': await getDeviceId(),
-      //    }));
-      //
-      //  // get body
-      //  final responseBody = response.data as Map<String, dynamic>;
-      //  //mfaToken = responseBody['mfa_token'];
-      //  return true
+      return (success: true, error: null, mfa: mfa);
     } on DioError catch (e) {
-      print('Dio Error signing in: ${e.message}');
-      if (e.response != null && e.response!.data != null) {
-        if (e.response!.data != null) {
-          final body = e.response!.data as Map<String, dynamic>;
-          final String? error = body['message'] ?? body['error'];
-          print('Error signing in: $error');
-          //return ((error: error['message'] ?? error['error']) as String?, mfa: null);
-          return (success: false, error: error, mfa: null);
-        }
-      }
+      return (success: false, error: e.response?.data['message'] as String?, mfa: null);
     } catch (e) {
-      print('Error signing in: $e');
+      return (success: false, error: 'Sign-in failed', mfa: null);
     }
-    return null;
   }
 
-  /// Verify the user has entered the correct MFA code and log them in
   Future<bool> verifyMFA(String code) async {
     try {
-      final response = await _dio.post(
-        '/auth/mfa/verify',
-        data: {'code': code},
-      );
+      await _dio.post('/auth/mfa/verify', data: {'code': code});
 
-      print("Response Status Code: ${response.statusCode}");
-
-      // no error thrown meaning the code was verified
       _currentAuthState = AuthState.signedIn;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
       return true;
     } on DioError catch (e) {
-      // TODO: handle error, 400 status code could mean incorrect error or some
-      // other similar error
-      print('Dio Error verify mfa: ${e.message}');
-      if (e.response != null && e.response!.data != null) {
-        if (e.response!.data != null) {
-          final error = e.response!.data as Map<String, dynamic>;
-          print('Error verify mfa: ${error['message'] ?? error['error']}');
-        }
-      }
+      throw Exception(e.response?.data['message'] ?? 'MFA verification failed');
     } catch (e) {
-      print('Error verify mfa: $e');
+      throw Exception('MFA verification failed: $e');
     }
-    return false;
   }
 
-  /// Confirm the MFA code after the user has set it up and log them in
-  Future<bool> confirmMFASetup(String code) async {
+  Future<bool> confirmMFA(String code) async {
     try {
-      final response = await _dio.post(
-        '/auth/mfa/confirm',
-        data: {'code': code},
-      );
+      await _dio.post('/auth/mfa/confirm', data: {'code': code});
 
-      print("Response Status Code: ${response.statusCode}");
-
-      // no error thrown meaning the code was verified
       _currentAuthState = AuthState.signedIn;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
       return true;
     } on DioError catch (e) {
-      // TODO: handle error, 400 status code could mean incorrect error or some
-      // other similar error
-      print('Dio Error confirming mfa: ${e.message}');
-      if (e.response != null && e.response!.data != null) {
-        if (e.response!.data != null) {
-          final error = e.response!.data as Map<String, dynamic>;
-          print('Error confirming mfa: ${error['message'] ?? error['error']}');
-        }
-      }
+      throw Exception(e.response?.data['message'] ?? 'MFA confirmation failed');
     } catch (e) {
-      print('Error confirming mfa: $e');
+      throw Exception('MFA confirmation failed: $e');
     }
-    return false;
   }
 
   Future<void> signOut() async {
     try {
-      await _dio.get(
-        '/auth/logout',
-      );
+      await _dio.get('/auth/logout');
     } catch (e) {
-      print('Error signing out: $e');
-      // manually clear cookies
       await _cookieJar.deleteAll();
     } finally {
-      _currentAuthState = AuthState.signedIn;
+      _currentAuthState = AuthState.signedOut;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
     }
   }

@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter/gestures.dart';
 import 'qr_setup_screen.dart';
 import 'package:smartify/widgets/back_button.dart';
-
 import 'package:smartify/services/auth.dart';
+
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -22,8 +22,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String? _selectedGender;
   DateTime? _selectedDate;
 
-  final AuthService _authService =
-      AuthService(); // Create an instance of AuthService
+  late AuthService _authService; // Declare AuthService
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAuthService();
+  }
+
+  Future<void> _initializeAuthService() async {
+    _authService = await AuthService.create(); // Initialize AuthService
+  }
 
   @override
   void dispose() {
@@ -68,60 +78,42 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
   }
 
-  bool _isLoading = false;
+
 
   void _handleSignUp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true; // Start loading
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      final email = _emailController.text;
-      final password = _passwordController.text;
-      final dob = _selectedDate;
-      final sex = _selectedGender;
+    setState(() {
+      _isLoading = true;
+    });
 
-      // Call the register method from AuthService
-      final result =
-          await _authService.register(email, password, dob: dob, sex: sex);
+    try {
+      final mfa = await _authService.register(
+        _emailController.text,
+        _passwordController.text,
+        dob: _selectedDate,
+        sex: _selectedGender,
+      );
 
-      setState(() {
-        _isLoading = false; // Stop loading
-      });
-
-      if (result != null) {
-        // Registration successful
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful!'),
+      if (mfa != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QRSetupScreen(
+              mfaSecret: mfa.formattedKey,
+              mfaQRUri: mfa.qrCodeUri,
+            ),
           ),
         );
-
-        // Now call login to get the MFA token
-        final loginResult = await _authService.signIn(email, password);
-
-        if (loginResult != null) {
-          // Login successful, pass mfa-token to QRSetupScreen
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  QRSetupScreen(mfaSecret: loginResult['mfaToken']),
-            ),
-          );
-        } else {
-          // Login failed
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed. Please try again.')),
-          );
-        }
-      } else {
-        // Registration failed
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Registration failed. Please try again.')),
-        );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration failed: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
