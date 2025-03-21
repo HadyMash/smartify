@@ -36,6 +36,8 @@ export const deviceCapabilityTypesSchema = z.enum([
   'action', // action with basic capability arguments
 ]);
 
+const iconSchema = z.string();
+
 /** The base device capability schema
  *
  * contains properties shared by all capabilities
@@ -53,7 +55,7 @@ const baseCapabilitySchema = z
     /** Whether the capability is readonly */
     readonly: z.boolean().optional(),
     /** The capability's icon */
-    icon: z.string().optional(),
+    icon: iconSchema.optional(),
   })
   .strict();
 
@@ -547,6 +549,8 @@ export const deviceSchema = z.object({
   id: z.string().min(1),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
+  /** The device's icon */
+  icon: iconSchema.optional(),
   /** Device capabilities */
   capabilities: z
     .array(deviceCapabilitySchema)
@@ -668,13 +672,9 @@ export const deviceWithStateSchema = deviceSchema
             return capability.modes.includes(String(value));
           case 'date':
             try {
-              console.log('trying date: ', value, 'type:', typeof value);
               if (typeof value !== 'number') {
-                console.log('returning false:', value);
-
                 return false;
               }
-              console.log('value', value);
               const d = new Date(value);
 
               return !isNaN(d.getTime());
@@ -867,13 +867,9 @@ export const deviceWithPartialStateSchema = deviceSchema
             return capability.modes.includes(String(value));
           case 'date':
             try {
-              console.log('trying date: ', value, 'type:', typeof value);
               if (typeof value !== 'number') {
-                console.log('returning false:', value);
-
                 return false;
               }
-              console.log('value', value);
               const d = new Date(value);
 
               return !isNaN(d.getTime());
