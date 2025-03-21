@@ -16,6 +16,13 @@ export const basicCapabilityTypesSchema = z.enum([
   'image', // image as bytes
 ]);
 
+export const capabilitySubtypesSchema = z.object({
+  swtich: z.enum(['power', 'lock', 'mute']),
+  number: z.enum(['timer']),
+  multirange: z.enum(['color']),
+  multivalue: z.enum(['list']),
+});
+
 /** All capability types a device can have, extending basic types with multi-variants and actions */
 export const deviceCapabilityTypesSchema = z.enum([
   // basic capabilities
@@ -39,10 +46,14 @@ const baseCapabilitySchema = z
     id: z.string().min(1),
     /** The capability  */
     type: deviceCapabilityTypesSchema,
+    /** The extension type */
+    extensionType: z.string().optional(),
     /** Human readable name */
     name: z.string().optional(),
     /** Whether the capability is readonly */
     readonly: z.boolean().optional(),
+    /** The capability's icon */
+    icon: z.string().optional(),
   })
   .strict();
 
