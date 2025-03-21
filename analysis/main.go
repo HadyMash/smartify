@@ -4,39 +4,72 @@ import (
     "fmt"
     "log"
     "net/http"
+    "os"
+
     "smart-home-analysis/handlers"
     "smart-home-analysis/services"
     "smart-home-analysis/utils"
+
+    "github.com/joho/godotenv"
 )
 
-func main() {
-    // Initialize MongoDB connection
-    utils.InitMongoClient("mongodb://localhost:27017")
-    db := utils.GetDatabase("smart_home_db") 
+// App holds the services and handlers
+type App struct {
+    AnalysisHandler   *handlers.AnalysisHandler
+    SecurityHandler   *handlers.SecurityHandler
+    DeviceUsageHandler *handlers.DeviceUsageHandler
+    LeaderboardHandler *handlers.LeaderboardHandler
+}
 
-    // Create services
+// Initialize application services and handlers
+func (app *App) Initialize() {
+    // Load .env file
+    err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
+
+    // Initialize MongoDB connection
+    mongoURI := os.Getenv("MONGO_URI")
+    utils.InitMongoClient(mongoURI)
+    db := utils.GetDatabase("smartify")
+
+    // Initialize services
     analysisService := services.NewAnalysisService(db)
     securityService := services.NewSecurityService(db)
     deviceUsageService := services.NewDeviceUsageService(db)
     leaderboardService := services.NewLeaderboardService(db)
 
-    // Create handlers
-    analysisHandler := handlers.NewAnalysisHandler(analysisService)
-    securityHandler := handlers.NewSecurityHandler(securityService)
-    deviceUsageHandler := handlers.NewDeviceUsageHandler(deviceUsageService)
-    leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService)
+    // Initialize handlers
+    app.AnalysisHandler = handlers.NewAnalysisHandler(analysisService)
+    app.SecurityHandler = handlers.NewSecurityHandler(securityService)
+    app.DeviceUsageHandler = handlers.NewDeviceUsageHandler(deviceUsageService)
+    app.LeaderboardHandler = handlers.NewLeaderboardHandler(leaderboardService)
+}
 
-    // Register routes
-    http.HandleFunc("/api/analyze", analysisHandler.PerformAnalysis)
-    http.HandleFunc("/api/security/log", securityHandler.LogSecurityEvent)
-    http.HandleFunc("/api/device/usage", deviceUsageHandler.AnalyzeDeviceUsage)
-    http.HandleFunc("/api/device/lifespan", deviceUsageHandler.TrackDeviceLifespan)
-    http.HandleFunc("/api/leaderboard", leaderboardHandler.GetLeaderboard)
-    http.HandleFunc("/api/statistics", leaderboardHandler.GetStatistics)
+// Register API routes
+func (app *App) RegisterRoutes() {
+    http.HandleFunc("/api/analyze", app.AnalysisHandler.PerformAnalysis)
+    http.HandleFunc("/api/security/log", app.SecurityHandler.LogSecurityEvent)
+    http.HandleFunc("/api/device/usage", app.DeviceUsageHandler.AnalyzeDeviceUsage)
+    http.HandleFunc("/api/device/lifespan", app.DeviceUsageHandler.TrackDeviceLifespan)
+    http.HandleFunc("/api/leaderboard", app.LeaderboardHandler.GetLeaderboard)
+    http.HandleFunc("/api/statistics", app.LeaderboardHandler.GetStatistics)
+}
 
-    // Start the server
-    fmt.Println("Server running on port 8080...")
-    if err := http.ListenAndServe(":8080", nil); err != nil {
-        log.Fatal("Server failed: ", err)
+// Run the server only if webhooks are needed
+func (app *App) Run() {
+    if os.Getenv("ENABLE_WEBHOOKS") == "true" {
+        fmt.Println("Webhook server running on port 8080...")
+        log.Fatal(http.ListenAndServe(":8080", nil))
+    } else {
+        fmt.Println("Webhooks disabled. Server not started.")
     }
+}
+
+func main() {
+    app := &App{}
+    app.Initialize()
+    app.RegisterRoutes()
+    app.Run()
 }
