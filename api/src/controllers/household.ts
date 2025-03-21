@@ -16,7 +16,6 @@ import {
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/token';
 import { objectIdOrStringSchema } from '../schemas/obj-id';
-import { ObjectId } from 'mongodb';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {
@@ -43,7 +42,7 @@ export class HouseholdController {
         {
           name: 'default',
           type: 'other',
-          _id: new ObjectId(),
+          _id: req.user!._id,
           floor: 1,
         },
       ],
@@ -145,15 +144,17 @@ export class HouseholdController {
     res: Response,
   ) {
     try {
-      const { inviteId, response } = req.body as {
+      const { inviteId, response, householdId } = req.body as {
         inviteId: string;
         response: boolean;
+        householdId: string;
       };
       const hs = new HouseholdService();
       const updatedHousehold = await hs.respondToInvite(
         inviteId,
         response,
         req.user!._id,
+        householdId,
       );
       res.status(200).send(updatedHousehold);
     } catch (e) {
@@ -216,9 +217,9 @@ export class HouseholdController {
 
   public static async addRoom(req: AuthenticatedRequest, res: Response) {
     try {
-      let roomRequestData: RoomRequestData;
+      let roomsRequestData: RoomRequestData[];
       try {
-        roomRequestData = roomRequestDataSchema.parse(req.body);
+        roomsRequestData = roomRequestDataSchema.array().parse(req.body);
       } catch (_) {
         res.status(400).send({ error: 'Invalid data' });
         return;
@@ -226,7 +227,10 @@ export class HouseholdController {
 
       const { householdId } = req.params;
       const hs = new HouseholdService();
-      const roomData = { ...roomRequestData, _id: new ObjectId() };
+      const roomData = roomsRequestData.map((room) => ({
+        ...room,
+        _id: req.user!._id,
+      }));
       const updatedHousehold = await hs.addRoom(householdId, roomData);
       res.status(200).send(updatedHousehold);
     } catch (e) {

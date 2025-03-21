@@ -6,7 +6,7 @@ import {
   memberRoleSchema,
   householdRoomSchema,
   roomRequestDataSchema,
-  inviteSchema,
+  inviteMemberSchema,
 } from '../../schemas/household';
 
 describe('Coordinates Schema Validation', () => {
@@ -55,6 +55,10 @@ describe('Member Role Schema Validation', () => {
     expect(() => memberRoleSchema.parse('')).toThrow();
     expect(() => memberRoleSchema.parse(123)).toThrow();
   });
+
+  test('should reject null as a role', () => {
+    expect(() => memberRoleSchema.parse(null)).toThrow();
+  });
 });
 
 describe('Member Permissions Schema Validation', () => {
@@ -91,6 +95,21 @@ describe('Member Permissions Schema Validation', () => {
         security: true,
         energy: false,
         extra: true,
+      }),
+    ).toThrow();
+  });
+
+  test('should reject empty permissions object', () => {
+    expect(() => memberPermissionsSchema.parse({})).toThrow();
+  });
+
+  test('should reject missing boolean values', () => {
+    expect(() =>
+      memberPermissionsSchema.parse({
+        appliances: true,
+        health: undefined,
+        security: false,
+        energy: true,
       }),
     ).toThrow();
   });
@@ -165,13 +184,25 @@ describe('Household Schema Validation', () => {
       }),
     ).toThrow();
   });
+
+  test('should reject additional unexpected properties in household', () => {
+    expect(() =>
+      householdSchema.parse({
+        _id: new ObjectId().toString(),
+        name: 'Extra Fields House',
+        floors: 2,
+        owner: new ObjectId().toString(),
+        extraField: 'invalid',
+      }),
+    ).toThrow();
+  });
 });
 
 describe('Room Schema Validation', () => {
   test('should validate a correct room', () => {
     expect(() =>
       householdRoomSchema.parse({
-        _id: new ObjectId(),
+        _id: new ObjectId().toString(),
         name: 'Master Bedroom',
         type: 'bedroom',
         floor: 2,
@@ -211,6 +242,17 @@ describe('Room Schema Validation', () => {
       }),
     ).toThrow();
   });
+
+  test('should allow valid additional room types (if applicable)', () => {
+    expect(() =>
+      householdRoomSchema.parse({
+        _id: new ObjectId().toString(),
+        name: 'Library',
+        type: 'other',
+        floor: 1,
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe('Room Request Schema Validation', () => {
@@ -229,71 +271,173 @@ describe('Room Request Schema Validation', () => {
   });
 });
 
-describe('Invite Schema Validation', () => {
-  test('should validate a correct invite', () => {
-    expect(() =>
-      inviteSchema.parse({
-        _id: '507f1f77bcf86cd799439030',
-        userId: '507f1f77bcf86cd799439031',
-        role: 'admin',
-        permissions: {
-          appliances: true,
-          health: false,
-          security: true,
-          energy: false,
-        },
-      }),
-    ).not.toThrow();
+describe('inviteMemberSchema Validation', () => {
+  const validHouseholdId = '60d21b4667d0d8992e610c85'; // Example valid ObjectId string
+  const validMemberId = '60d21b4667d0d8992e610c86';
+
+  const validPermissions = {
+    appliances: true,
+    health: false,
+    security: true,
+    energy: false,
+  };
+
+  test('should accept a valid invite for admin without permissions', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'admin',
+    });
+    expect(result.success).toBe(true);
   });
 
-  test('should reject invite with invalid role', () => {
-    expect(() =>
-      inviteSchema.parse({
-        _id: '507f1f77bcf86cd799439032',
-        userId: '507f1f77bcf86cd799439033',
-        role: 'guest',
-        permissions: {
-          appliances: true,
-          health: false,
-          security: true,
-          energy: false,
-        },
-      }),
-    ).toThrow();
+  test('should accept a valid invite for dweller with permissions', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'dweller',
+      permissions: validPermissions,
+    });
+    expect(result.success).toBe(true);
   });
 
-  test('should reject invite with missing userId', () => {
-    expect(() =>
-      inviteSchema.parse({
-        _id: '507f1f77bcf86cd799439034',
-        role: 'dweller',
-        permissions: {
-          appliances: true,
-          health: false,
-          security: true,
-          energy: false,
-        },
-      }),
-    ).toThrow();
+  test('should reject invite for dweller without permissions', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'dweller',
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.format()).toHaveProperty('permissions');
+      expect(result.error.format().permissions?._errors).toContain(
+        'Permissions are required for dweller role',
+      );
+    }
   });
 
-  test('should reject invite with missing permissions for dweller role', () => {
-    expect(() =>
-      inviteSchema.parse({
-        _id: '507f1f77bcf86cd799439035',
-        userId: '507f1f77bcf86cd799439036',
-        role: 'dweller',
-      }),
-    ).toThrow();
+  test('should reject invite with an invalid householdId format', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: 'invalid-id', // Invalid format
+      memberId: validMemberId,
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(false);
   });
 
-  test('should allow invite without permissions for admin role', () => {
-    expect(() =>
-      inviteSchema.parse({
-        _id: '507f1f77bcf86cd799439037',
-        userId: '507f1f77bcf86cd799439038',
-        role: 'admin',
-      }),
-    ).not.toThrow();
+  test('should reject invite with an invalid memberId format', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: 1234, // Invalid type
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject invite with an invalid role', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'guest', // Not allowed
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject invite with extra unexpected properties', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'admin',
+      extraField: 'unexpected',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject empty object', () => {
+    const result = inviteMemberSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject missing householdId', () => {
+    const result = inviteMemberSchema.safeParse({
+      memberId: validMemberId,
+      role: 'admin',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject missing memberId', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      role: 'admin',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject missing role', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject if permissions contain invalid fields', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: validHouseholdId,
+      memberId: validMemberId,
+      role: 'dweller',
+      permissions: {
+        appliances: true,
+        invalidField: 'not allowed', // Invalid property
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('should accept householdId and memberId as valid ObjectId strings', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: '507f1f77bcf86cd799439011',
+      memberId: '507f1f77bcf86cd799439012',
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('should accept householdId and memberId as valid hex strings', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: 'abcdef123456abcdef123456',
+      memberId: 'abcdef654321abcdef654321',
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('should reject householdId or memberId if they are invalid hex strings', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: 'xyz123', // Invalid hex format
+      memberId: validMemberId,
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('should reject householdId or memberId if they contain spaces', () => {
+    const result = inviteMemberSchema.safeParse({
+      householdId: '507 f1f77bcf86cd799439011', // Invalid because of space
+      memberId: validMemberId,
+      role: 'admin',
+    });
+
+    expect(result.success).toBe(false);
   });
 });

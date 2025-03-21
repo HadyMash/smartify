@@ -12,6 +12,14 @@ export class HouseholdService {
   constructor() {
     this.db = new DatabaseService();
   }
+
+  /**
+   * Configures the household collection with validation and indexing.
+   */
+  public async configureCollection(): Promise<void> {
+    await this.db.householdRepository.configureCollection();
+  }
+
   /**
    * Creates a new household.
    * @param data - The household data (excluding the _id field).
@@ -60,7 +68,7 @@ export class HouseholdService {
    */
   public async addRoom(
     householdId: string,
-    roomData: HouseholdRoom,
+    roomData: HouseholdRoom[],
   ): Promise<Household | null> {
     return this.db.householdRepository.addRoom(householdId, roomData);
   }
@@ -174,11 +182,13 @@ export class HouseholdService {
     inviteId: string,
     response: boolean,
     userId: string,
+    householdId: string,
   ): Promise<Household | null> {
     return this.db.householdRepository.processInviteResponse(
       inviteId,
       response,
       userId,
+      householdId,
     );
   }
 }

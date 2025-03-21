@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { Db, MongoClient, ObjectId, UpdateFilter } from 'mongodb';
 import {
   Household,
   HouseholdMember,
@@ -17,16 +19,139 @@ import {
 type HouseholdDoc = Household;
 
 export class HouseholdRepository extends DatabaseRepository<Household> {
+  private db: Db;
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, 'households', redis);
+    this.db = db;
   }
 
-  // TODO: implement configure collection
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      const collections = await this.db
+        .listCollections({ name: 'households' })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection('households', {
+          validator: {
+            $jsonSchema: {
+              bsonType: 'object',
+              required: ['name', 'owner', 'members', 'rooms'],
+              properties: {
+                name: {
+                  bsonType: 'string',
+                  description: 'Household name must be a string',
+                },
+                owner: {
+                  bsonType: 'objectId',
+                  description: 'Owner must be an ObjectId',
+                },
+                members: {
+                  bsonType: 'array',
+                  items: {
+                    bsonType: 'object',
+                    required: ['id', 'role'],
+                    properties: {
+                      id: {
+                        bsonType: 'objectId',
+                        description: 'Member ID must be an ObjectId',
+                      },
+                      role: {
+                        bsonType: 'string',
+                        enum: ['owner', 'admin', 'dweller'],
+                        description:
+                          'Role must be one of: owner, admin, dweller',
+                      },
+                      permissions: {
+                        bsonType: 'object',
+                        properties: {
+                          appliances: { bsonType: 'bool' },
+                          health: { bsonType: 'bool' },
+                          security: { bsonType: 'bool' },
+                          energy: { bsonType: 'bool' },
+                        },
+                        description: 'Optional permissions object for members',
+                      },
+                    },
+                  },
+                },
+                rooms: {
+                  bsonType: 'array',
+                  minItems: 1,
+                  items: {
+                    bsonType: 'object',
+                    required: ['_id', 'type', 'name', 'floor'],
+                    properties: {
+                      _id: {
+                        bsonType: 'objectId',
+                        description: 'Room ID must be an ObjectId',
+                      },
+                      type: {
+                        bsonType: 'string',
+                        description: 'Room type must be a string',
+                      },
+                      name: {
+                        bsonType: 'string',
+                        description: 'Room name must be a string',
+                      },
+                      floor: {
+                        bsonType: 'int',
+                        description: 'Floor must be an integer',
+                      },
+                    },
+                  },
+                  description: 'Household must have at least one room.',
+                },
+                invites: {
+                  bsonType: 'array',
+                  items: {
+                    bsonType: 'object',
+                    required: ['_id', 'userId', 'role'],
+                    properties: {
+                      _id: {
+                        bsonType: 'objectId',
+                        description: 'Invite ID must be an ObjectId',
+                      },
+                      userId: {
+                        bsonType: 'objectId',
+                        description: 'User ID must be an ObjectId',
+                      },
+                      role: {
+                        bsonType: 'string',
+                        enum: ['dweller', 'admin'],
+                        description: 'Role must be either dweller or admin',
+                      },
+                      permissions: {
+                        bsonType: 'object',
+                        properties: {
+                          appliances: { bsonType: 'bool' },
+                          health: { bsonType: 'bool' },
+                          security: { bsonType: 'bool' },
+                          energy: { bsonType: 'bool' },
+                        },
+                        description:
+                          'Optional permissions object for invited members',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+        console.log('Households collection created with schema validation.');
+      }
+
+      await this.collection.createIndex({ name: 1 }, { unique: true });
+      await this.collection.createIndex({ owner: 1 });
+      await this.collection.createIndex({ 'members.id': 1 });
+      await this.collection.createIndex({ 'rooms._id': 1 });
+      await this.collection.createIndex({ 'invites.userId': 1 });
+
+      console.log('Indexes created for households collection.');
+    } catch (error) {
+      console.error('Error configuring households collection:', error);
+      throw error;
+    }
   }
 
   /**
@@ -39,15 +164,18 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   public async createHousehold(data: Household): Promise<Household> {
     // insert into db
     const result = await this.collection.insertOne(data);
-    console.log('household:', result);
     if (!result.acknowledged || !result.insertedId) {
       throw new Error('Failed to create household');
     }
 
-    return {
+    const createdHousehold = await this.collection.findOne({
       _id: result.insertedId,
-      ...data,
-    };
+    });
+    if (!createdHousehold) {
+      throw new Error('Failed to retrieve created household');
+    }
+
+    return createdHousehold;
   }
 
   /**
@@ -55,12 +183,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @param id - The household's ID
    */
   public async getHouseholdById(
-    id: ObjectId | string,
+    id: ObjectIdOrString,
   ): Promise<Household | null> {
-    const objectId =
-      typeof id === 'string' ? objectIdOrStringSchema.parse(id) : id;
-    console.log('Household ID:', objectId);
-    return this.collection.findOne({ _id: objectId });
+    const household = await this.collection.findOne({ _id: new ObjectId(id) });
+    return household ? household : null;
   }
 
   /**
@@ -70,25 +196,30 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @param ownerId - The ID of the household owner.
    * @returns The updated household document.
    */
-
   public async removeMember(
-    householdId: ObjectIdOrString,
-    memberId: ObjectIdOrString,
+    householdId: string,
+    memberId: string,
   ): Promise<HouseholdDoc | null> {
-    console.log('removing id:', memberId);
+    const household = await this.getHouseholdById(householdId);
+    if (!household) throw new Error('Household not found');
 
-    const objectId =
-      typeof householdId === 'string' ? new ObjectId(householdId) : householdId;
-    const parsedMemberId =
-      typeof memberId === 'string' ? memberId : memberId.toString();
+    if (!household.members.some((m) => m.id?.toString() === memberId)) {
+      throw new Error('Member not found');
+    }
 
+    // Filter out the member to be removed
+    const updatedMembers = household.members.filter(
+      (member) => member.id && member.id.toString() !== memberId,
+    );
+
+    // Update the household with the new members array
     const result = await this.collection.findOneAndUpdate(
-      { _id: objectId },
-      { $pull: { members: { id: parsedMemberId } } }, // Ensure `id` matches the format in DB
+      { _id: new ObjectId(householdId) },
+      { $set: { members: updatedMembers } },
       { returnDocument: 'after' },
     );
 
-    console.log('post removal:', result);
+    console.log('Updated household after removing member:', result);
     return result;
   }
 
@@ -97,11 +228,12 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @param householdId - The ID of the household to delete.
    * @param ownerId - The ID of the household owner.
    */
-  public async deleteHousehold(householdId: string): Promise<void> {
-    await this.collection.deleteOne({
+  public async deleteHousehold(householdId: string): Promise<boolean> {
+    const result = await this.collection.deleteOne({
       _id: objectIdOrStringSchema.parse(householdId),
     });
-    console.log('Household deleted');
+    console.log('Household deleted:', result);
+    return result.deletedCount === 1;
   }
   /**
    * Adds a room to a household.
@@ -112,14 +244,28 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
   public async addRoom(
     householdId: string,
-    roomData: HouseholdRoom,
+    rooms: HouseholdRoom[],
   ): Promise<HouseholdDoc | null> {
-    const result = this.collection.findOneAndUpdate(
-      { _id: new ObjectId(householdId) },
-      { $push: { rooms: roomData } },
+    const household = await this.getHouseholdById(householdId);
+    if (!household) throw new Error('Household not found');
+
+    const existingRoomIds = new Set(
+      household.rooms.map((r) => r._id.toString()),
+    );
+    const newRooms = rooms.filter(
+      (room) => !existingRoomIds.has(room._id.toString()),
+    );
+
+    if (newRooms.length === 0) {
+      throw new Error('All rooms already exist');
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      { _id: objectIdOrStringSchema.parse(householdId) },
+      { $push: { rooms: { $each: newRooms } } },
       { returnDocument: 'after' },
     );
-    console.log('household room update', result);
+    console.log('Updated household with new rooms:', result);
     return result;
   }
   /**
@@ -142,8 +288,20 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       energy: boolean;
     },
   ): Promise<HouseholdDoc | null> {
+    const householdObjectId = objectIdOrStringSchema.parse(householdId);
+    const memberObjectId = objectIdOrStringSchema.parse(memberId);
+
+    // Debugging: Check if household exists before update
+    const household = await this.collection.findOne({ _id: householdObjectId });
+    console.log('Household before update:', household);
+
+    if (!household) {
+      console.error('Household not found:', householdObjectId);
+      return null;
+    }
+
     const updateQuery: any = {
-      'members.$.role': newRole,
+      'members.$.role': newRole.role,
     };
 
     if (newRole.role === 'dweller') {
@@ -154,18 +312,26 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       }
       updateQuery['members.$.permissions'] = permissions;
     } else {
-      updateQuery['members.$.permissions'] = undefined;
+      updateQuery['members.$.permissions'] = {}; // Reset permissions for non-dwellers
     }
-    return this.collection.findOneAndUpdate(
+
+    const updatedHousehold = await this.collection.findOneAndUpdate(
       {
-        _id: objectIdOrStringSchema.parse(householdId),
+        _id: householdObjectId,
         owner: ownerId,
-        'members.id': objectIdOrStringSchema.parse(memberId),
-        permissions: permissions,
+        'members.id': memberObjectId, // Ensure we match `id` (check if `_id` is used in members instead)
       },
-      { $set: { 'members.$.role': newRole } },
+      { $set: updateQuery },
       { returnDocument: 'after' },
     );
+
+    console.log('Updated Household After Role Change:', updatedHousehold); // Debugging log
+
+    if (!updatedHousehold) {
+      console.error('Update failed: No matching document found.');
+    }
+
+    return updatedHousehold;
   }
   /**
    * Manages rooms in a household by adding or removing them.
@@ -175,28 +341,86 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @returns The updated household document.
    */
   public async manageRooms(
-    householdId: ObjectIdOrString,
+    householdId: string,
     room: HouseholdRoom,
     action: 'add' | 'edit' | 'remove',
   ): Promise<HouseholdDoc | null> {
-    const update =
-      action === 'add'
-        ? {
-            $push: {
-              rooms: {
-                _id: objectIdOrStringSchema.parse(room._id),
-                type: room.type,
-                name: room.name,
-                floor: room.floor,
-              },
-            },
-          }
-        : { $pull: { rooms: { _id: objectIdOrStringSchema.parse(room._id) } } };
+    if (!householdId || !room || !action) {
+      throw new Error(
+        'Invalid arguments: householdId, room, and action are required.',
+      );
+    }
 
-    return this.collection.findOneAndUpdate(
-      { _id: new ObjectId(householdId) },
-      update,
-      { returnDocument: 'after' },
+    if (action === 'add') {
+      return this.addRoom(householdId, [room]);
+    }
+
+    if (action === 'edit') {
+      const household = await this.getHouseholdById(householdId);
+      if (!household)
+        throw new Error(`Household with ID ${householdId} not found.`);
+
+      // Validate room data
+      if (!room.type || !room.name || typeof room.floor !== 'number') {
+        throw new Error(
+          'Invalid room data: type, name, and floor are required',
+        );
+      }
+
+      // Find the room to edit
+      const roomIndex = household.rooms.findIndex(
+        (r) => r._id.toString() === room._id.toString(),
+      );
+      if (roomIndex === -1) {
+        throw new Error(
+          `Room with ID ${room._id} not found in household ${householdId}.`,
+        );
+      }
+
+      // Check if another room with the same name exists (excluding the current room)
+      const duplicateRoom = household.rooms.find(
+        (r) => r.name === room.name && r._id.toString() !== room._id.toString(),
+      );
+      if (duplicateRoom) {
+        throw new Error(`A room with name "${room.name}" already exists`);
+      }
+
+      const updateQuery = {
+        $set: {
+          [`rooms.${roomIndex}`]: {
+            _id: room._id,
+            type: room.type,
+            name: room.name,
+            floor: room.floor,
+          },
+        },
+      };
+
+      try {
+        const result = await this.collection.findOneAndUpdate(
+          { _id: new ObjectId(householdId) },
+          updateQuery,
+          { returnDocument: 'after' },
+        );
+
+        if (!result) {
+          throw new Error('Failed to update room');
+        }
+
+        console.log('Updated household room:', result);
+        return result;
+      } catch (error) {
+        console.error('Error updating room:', error);
+        throw error;
+      }
+    }
+
+    if (action === 'remove') {
+      return this.removeRoom(householdId, room._id.toString());
+    }
+
+    throw new Error(
+      `Invalid action: ${action}. Allowed actions: 'add', 'edit', 'remove'.`,
     );
   }
 
@@ -211,9 +435,16 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     householdId: string,
     roomId: string,
   ): Promise<HouseholdDoc | null> {
+    const household = await this.getHouseholdById(householdId);
+    if (!household) throw new Error('Household not found');
+
+    if (household.rooms.length <= 1) {
+      throw new Error('Cannot remove the only room in a household');
+    }
+
     const result = await this.collection.findOneAndUpdate(
       { _id: new ObjectId(householdId) },
-      { $pull: { rooms: { _id: objectIdOrStringSchema.parse(roomId) } } },
+      { $pull: { rooms: { _id: roomId.toString() } } },
       { returnDocument: 'after' },
     );
     console.log('household update removed room:', result);
@@ -266,12 +497,15 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
   public async getUserInvites(userId: ObjectIdOrString): Promise<Invite[]> {
     const parsedUserId = objectIdOrStringSchema.parse(userId);
+    console.log('Fetching invites for user:', parsedUserId);
     const households = await this.collection
       .find(
         { 'invites.userId': parsedUserId },
         { projection: { invites: 1, _id: 1 } },
       )
       .toArray();
+
+    console.log('Households with invites:', households);
 
     const userInvites = households.flatMap(
       (h) =>
@@ -280,9 +514,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
         ) ?? [],
     );
 
+    console.log('Filtered invites:', userInvites);
+
     return userInvites.map((invite) => ({
-      householdId: invite._id,
-      inviteId: invite._id,
+      _id: invite._id,
       userId: invite.userId,
       role: invite.role,
       permissions: invite.permissions,
@@ -294,48 +529,73 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    * @param inviteId - The ID of the invite.
    * @param response - The user's response (true for accept, false for decline).
    * @param userId - The ID of the user responding to the invite.
+   * @param householdId - The ID of the household.
    * @returns The updated household document after processing the response.
    */
   public async processInviteResponse(
     inviteId: ObjectIdOrString,
     response: boolean,
     userId: ObjectIdOrString,
+    householdId: ObjectIdOrString,
   ): Promise<Household | null> {
-    const parsedInviteId = objectIdOrStringSchema.parse(inviteId);
-    const parsedUserId = objectIdOrStringSchema.parse(userId);
+    try {
+      if (!ObjectId.isValid(userId)) {
+        throw new Error(`Invalid ObjectId: ${userId}`);
+      }
+      if (!ObjectId.isValid(householdId)) {
+        throw new Error(`Invalid ObjectId: ${householdId}`);
+      }
+      if (!ObjectId.isValid(inviteId)) {
+        throw new Error(`Invalid ObjectId: ${inviteId}`);
+      }
+      const parsedInviteId = new ObjectId(inviteId);
+      const parsedHouseholdId = new ObjectId(householdId);
+      const parsedUserId = new ObjectId(userId);
 
-    if (response) {
-      return this.collection.findOneAndUpdate(
-        {
-          'invites._id': parsedInviteId,
-          'invites.userId': parsedUserId,
-        },
-        {
-          $pull: { invites: { _id: parsedInviteId } },
-          $addToSet: {
-            members: {
-              id: parsedUserId,
-              role: 'dweller',
-              permissions: {
-                appliances: false,
-                health: false,
-                security: false,
-                energy: false,
+      // First, check if the household exists with the given invite
+      const household = await this.collection.findOne({
+        _id: parsedHouseholdId,
+        invites: { $elemMatch: { _id: parsedInviteId, userId: parsedUserId } }, // Ensure userId is an ObjectId
+      });
+
+      if (!household) {
+        throw new Error(
+          `Invite not found: Household ${householdId.toString()}, Invite ${inviteId.toString()}, User ${userId.toString()}`,
+        );
+      }
+
+      const updateQuery = response
+        ? {
+            $pull: { invites: { _id: parsedInviteId } },
+            $push: {
+              members: {
+                id: parsedUserId,
+                role: 'dweller',
+                permissions: {
+                  appliances: false,
+                  health: false,
+                  security: false,
+                  energy: false,
+                },
               },
             },
-          },
-        },
+          }
+        : {
+            $pull: { invites: { _id: parsedInviteId } },
+          };
+
+      const updatedHousehold = await this.collection.findOneAndUpdate(
+        { _id: parsedHouseholdId },
+        updateQuery as UpdateFilter<HouseholdDoc>,
         { returnDocument: 'after' },
       );
-    } else {
-      return this.collection.findOneAndUpdate(
-        {
-          'invites._id': parsedInviteId,
-          'invites.userId': parsedUserId,
-        },
-        { $pull: { invites: { _id: parsedInviteId } } },
-        { returnDocument: 'after' },
+
+      return updatedHousehold;
+    } catch (error) {
+      console.error(
+        `Error in processInviteResponse: ${(error as Error).message}`,
       );
+      throw error;
     }
   }
 }

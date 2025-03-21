@@ -97,9 +97,15 @@ export const householdRoomTypeSchema = z.enum([
 
 /** Household room schema */
 export const householdRoomSchema = z.object({
-  _id: objectIdOrStringSchema,
+  _id: z.string(),
   /** Room name */
-  name: z.string(),
+  name: z
+    .string()
+    .min(1, { message: 'Room name cannot be empty' }) // Prevent empty strings
+    .trim()
+    .regex(/^[a-zA-Z0-9\s]+$/, {
+      message: 'Room name must contain only letters, numbers, and spaces',
+    }),
   /** Room type */
   type: householdRoomTypeSchema,
   /** Room floor */
@@ -134,7 +140,7 @@ export const householdCreateRequestDataSchema = z.object({
 
 export const inviteSchema = z
   .object({
-    _id: objectIdOrStringSchema.optional(),
+    _id: objectIdOrStringSchema,
     userId: objectIdOrStringSchema,
     role: memberRoleSchema,
     permissions: memberPermissionsSchema.optional(),
@@ -163,10 +169,12 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
   invites: z.array(inviteSchema).optional(),
-  rooms: z.array(householdRoomSchema).nonempty(),
+  rooms: z.array(householdRoomSchema).default([]),
   roomAdjacencyList: z
-    .record(objectIdOrStringSchema, z.array(objectIdOrStringSchema))
+    .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
     .optional(),
+  floors: z.number().int().min(1).max(500),
+  floorsOffset: z.number().int().optional(),
 });
 
 export type Household = z.infer<typeof householdSchema>;
@@ -185,6 +193,7 @@ export const inviteMemberSchema = z
     role: memberRoleSchema,
     permissions: memberPermissionsSchema.optional(),
   })
+  .strict()
   .refine(
     ({ role, permissions }) => {
       if (role === 'dweller' && !permissions) {
