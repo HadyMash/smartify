@@ -12,6 +12,8 @@ export const basicCapabilityTypesSchema = z.enum([
   'range', // number with min/max bounds
   'number', // number with optional single bound
   'mode', // enumerated string values
+  'date', // date as a string
+  'image', // image as bytes
 ]);
 
 /** All capability types a device can have, extending basic types with multi-variants and actions */
@@ -91,6 +93,11 @@ export const basicCapabilitySchema = z
     baseCapabilitySchema
       .extend({
         type: z.literal(basicCapabilityTypesSchema.enum.value),
+      })
+      .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.date),
       })
       .strict(),
   ])
@@ -340,6 +347,17 @@ export const deviceCapabilitySchema = z
         lockedFields: z.array(z.string()).nonempty(),
       })
       .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.date),
+      })
+      .strict(),
+    baseCapabilitySchema
+      .extend({
+        type: z.literal(basicCapabilityTypesSchema.enum.image),
+        bytes: z.array(z.number()).nonempty(),
+      })
+      .strict(),
   ])
   .refine(
     (capability) => {
@@ -502,7 +520,6 @@ export const deviceCapabilitySchema = z
           // if needed in the future
           return true;
         }
-
         default:
           return true;
       }
@@ -638,6 +655,21 @@ export const deviceWithStateSchema = deviceSchema
             return true;
           case 'mode':
             return capability.modes.includes(String(value));
+          case 'date':
+            try {
+              console.log('trying date: ', value, 'type:', typeof value);
+              if (typeof value !== 'number') {
+                console.log('returning false:', value);
+
+                return false;
+              }
+              console.log('value', value);
+              const d = new Date(value);
+
+              return !isNaN(d.getTime());
+            } catch (_) {
+              return false;
+            }
           case 'multiswitch':
             return (
               Array.isArray(value) &&
@@ -822,6 +854,21 @@ export const deviceWithPartialStateSchema = deviceSchema
             return true;
           case 'mode':
             return capability.modes.includes(String(value));
+          case 'date':
+            try {
+              console.log('trying date: ', value, 'type:', typeof value);
+              if (typeof value !== 'number') {
+                console.log('returning false:', value);
+
+                return false;
+              }
+              console.log('value', value);
+              const d = new Date(value);
+
+              return !isNaN(d.getTime());
+            } catch (_) {
+              return false;
+            }
           case 'multiswitch':
             return (
               Array.isArray(value) &&

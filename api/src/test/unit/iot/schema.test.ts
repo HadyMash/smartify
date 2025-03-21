@@ -1767,6 +1767,130 @@ describe('IoT Device Schema Tests', () => {
       });
     });
 
+    // Date capability tests
+    describe('date capability', () => {
+      test('valid date capability should parse', () => {
+        const capability = {
+          type: 'date' as const,
+          id: 'scheduleDate',
+        };
+        expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('valid date capability with name should parse', () => {
+        const capability = {
+          type: 'date' as const,
+          id: 'scheduleDate',
+          name: 'Schedule Date',
+        };
+        expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('valid date capability with readonly should parse', () => {
+        const capability = {
+          type: 'date' as const,
+          id: 'scheduleDate',
+          readonly: true,
+        };
+        expect(() => deviceCapabilitySchema.parse(capability)).not.toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(true);
+      });
+
+      test('invalid date capability with extra properties should not parse', () => {
+        const capability = {
+          type: 'date' as const,
+          id: 'scheduleDate',
+          format: 'ISO', // Extra property not allowed
+        };
+        expect(() => deviceCapabilitySchema.parse(capability)).toThrow();
+        expect(deviceCapabilitySchema.safeParse(capability).success).toBe(
+          false,
+        );
+      });
+    });
+
+    describe('date capability state tests', () => {
+      test('valid date state should parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'date',
+              id: 'scheduleDate',
+            },
+          ],
+          state: {
+            scheduleDate: Date.now(),
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(true);
+      });
+
+      test('invalid date state (boolean) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'date',
+              id: 'scheduleDate',
+            },
+          ],
+          state: {
+            scheduleDate: true,
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('invalid date state (string) should not parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'date',
+              id: 'scheduleDate',
+            },
+          ],
+          state: {
+            scheduleDate: new Date().toISOString(),
+          },
+        };
+
+        expect(() => deviceWithStateSchema.parse(device)).toThrow();
+        expect(deviceWithStateSchema.safeParse(device).success).toBe(false);
+      });
+
+      test('date state with partial state schema should parse', () => {
+        const device = {
+          id: 'device-1',
+          source: 'acme',
+          capabilities: [
+            {
+              type: 'date',
+              id: 'scheduleDate',
+            },
+          ],
+          state: {
+            scheduleDate: Date.now(),
+          },
+        };
+
+        expect(() => deviceWithPartialStateSchema.parse(device)).not.toThrow();
+        expect(deviceWithPartialStateSchema.safeParse(device).success).toBe(
+          true,
+        );
+      });
+    });
+
     // Multiple capabilities state tests
     test('valid multiple capabilities states parse', () => {
       const device = {
