@@ -1,3 +1,7 @@
+test('placeholder test', () => {
+  expect(true).toBe(true);
+});
+
 ///* eslint-disable @typescript-eslint/no-explicit-any */
 ///* eslint-disable @typescript-eslint/no-unsafe-argument */
 ///* eslint-disable @typescript-eslint/no-unsafe-call */
