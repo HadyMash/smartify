@@ -200,6 +200,15 @@ export class HouseholdController {
           data.response,
         );
         res.status(200).send(updatedHousehold);
+        // update invited member's token
+        if (data.response) {
+          try {
+            const ts = new TokenService();
+            await ts.revokeAccessTokens(req.user!._id);
+          } catch (e) {
+            console.error("Failed to revoke invited mmeber's tokens:", e);
+          }
+        }
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
