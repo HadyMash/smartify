@@ -50,7 +50,7 @@ export class TokenRepository {
   private readonly collection: Collection<TokenGenIdDoc>;
   private readonly redis: RedisClientType;
 
-  private static readonly BLACKLIST_REDIS_KEY = 'token-blacklist' as const;
+  private static readonly BLACKLIST_REDIS_KEY = 'token-blacklist';
 
   /**
    * @param db - The database to use
