@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
+import { emailSchema } from './auth/auth';
 
 /**
  * Coordinates using longitude and latitude
@@ -213,14 +214,18 @@ export const roomRequestDataSchema = z.object({
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
-export const inviteMemberSchema = z
-  .object({
-    householdId: objectIdOrStringSchema,
-    memberId: objectIdOrStringSchema,
-    role: memberRoleSchema,
-    permissions: memberPermissionsSchema.optional(),
+const _invMemberSchema = z.object({
+  householdId: objectIdOrStringSchema,
+  memberId: objectIdOrStringSchema,
+  email: emailSchema,
+  role: memberRoleSchema,
+  permissions: memberPermissionsSchema.optional(),
+});
+
+export const inviteMemberSchema = _invMemberSchema
+  .omit({
+    memberId: true,
   })
-  .strict()
   .refine(
     ({ role, permissions }) => {
       if (role === 'dweller' && !permissions) {
@@ -234,6 +239,25 @@ export const inviteMemberSchema = z
     },
   );
 export type InviteMember = z.infer<typeof inviteMemberSchema>;
+
+export const modifyMemberSchema = _invMemberSchema
+  .omit({
+    email: true,
+  })
+  .refine(
+    ({ role, permissions }) => {
+      if (role === 'dweller' && !permissions) {
+        return false;
+      }
+      return true;
+    },
+    {
+      path: ['permissions'],
+      message: 'Permissions are required for dweller role',
+    },
+  );
+
+export type ModifyMember = z.infer<typeof modifyMemberSchema>;
 
 export const respondToInviteDataSchema = z.object({
   inviteId: objectIdOrStringSchema,

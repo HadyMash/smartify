@@ -11,6 +11,7 @@ import {
   AlreadyMemberError,
   AlreadyInvitedError,
   MissingPermissionsError,
+  modifyMemberSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -117,11 +118,14 @@ export class HouseholdController {
         // TODO: check user is a owner/admin
 
         const hs = new HouseholdService();
-        const updatedHousehold = await hs.inviteMember(data.householdId, {
-          id: data.memberId,
-          role: data.role,
-          permissions: data.permissions,
-        });
+        const updatedHousehold = await hs.inviteMember(
+          data.householdId,
+          {
+            role: data.role,
+            permissions: data.permissions,
+          },
+          data.email,
+        );
         res.status(200).send(householdSchema.parse(updatedHousehold));
         return;
       },
@@ -136,8 +140,15 @@ export class HouseholdController {
           }
         }
         if (e instanceof InvalidUserError) {
-          res.status(400).send({ error: 'Invalid user id' });
-          return true;
+          if (e.type === InvalidUserType.DOES_NOT_EXIST) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            console.log('Faking invite sent to:', req.body.email);
+            res.status(200).send();
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid request' });
+            return true;
+          }
         }
         if (e instanceof AlreadyMemberError) {
           res.status(409).send({ error: 'User is already a member' });
@@ -390,7 +401,7 @@ export class HouseholdController {
     tryAPIController(
       res,
       async () => {
-        const data = validateSchema(res, inviteMemberSchema, req.body);
+        const data = validateSchema(res, modifyMemberSchema, req.body);
 
         if (!data) {
           return;

@@ -1,3 +1,4 @@
+import { Email } from '../schemas/auth/auth';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import {
   Household,
@@ -208,28 +209,36 @@ export class HouseholdService {
    */
   public async inviteMember(
     householdId: ObjectIdOrString,
-    invitee: HouseholdMember,
+    invitee: Omit<HouseholdMember, 'id'>,
+    email: Email,
   ): Promise<HouseholdInvite> {
     await this.db.connect();
+
+    // get invitee's id
+    const user = await this.db.userRepository.getUserByEmail(email);
+
     // check if the household exists and if the invitee is already a member
     const h = await this.getHousehold(householdId);
     if (!h) {
       throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
     }
 
-    if (h.members.find((m) => m.id.toString() === invitee.id.toString())) {
+    if (h.members.find((m) => m.id.toString() === user._id.toString())) {
       throw new AlreadyMemberError();
     }
 
     // check if user is already invited
     if (h.invites) {
-      const invite = h.invites.find((i) => i.id.toString() === invitee.id);
+      const invite = h.invites.find((i) => i.id.toString() === user._id);
       if (invite) {
         throw new AlreadyInvitedError();
       }
     }
 
-    return this.db.householdRepository.inviteMember(householdId, invitee);
+    return this.db.householdRepository.inviteMember(householdId, {
+      ...invitee,
+      id: user._id,
+    });
   }
 
   /**
