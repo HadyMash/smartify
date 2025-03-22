@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'del_cookie.dart';
 
 class MFASetupCompleteScreen extends StatelessWidget {
   const MFASetupCompleteScreen({super.key});
@@ -48,7 +49,12 @@ class MFASetupCompleteScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   // Navigate to the home screen or any other screen
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SignOutScreen()
+                                  ),
+                                  );
                 },
                 child: const Text(
                   'Finish',

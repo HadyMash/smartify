@@ -18,7 +18,20 @@ class AuthService {
   final Uri _apiBaseUrl;
 
   AuthState _currentAuthState;
-  
+
+
+  // Clear cookies for a specific URL
+  Future<void> clearCookiesForUrlTemporarily(Uri url) async {
+    await _cookieJar.delete(url);
+  }
+
+  // Clear all cookies
+  Future<void> clearAllCookiesTemporarily() async {
+    await _cookieJar.deleteAll();
+  }
+
+ 
+
   final StreamController<AuthEvent> _eventStream =
       StreamController<AuthEvent>.broadcast();
   Stream<AuthEvent> get authEventStream => _eventStream.stream;
@@ -62,6 +75,7 @@ class AuthService {
   Future<List<Cookie>> getCookies() {
     return _cookieJar.loadForRequest(_apiBaseUrl);
   }
+
 
  Future<MFAFormattedKey?> register(String email, String password,
       {DateTime? dob, String? sex}) async {
@@ -220,6 +234,7 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await _dio.get('/auth/logout');
+      
     } catch (e) {
       await _cookieJar.deleteAll();
     } finally {
@@ -228,6 +243,8 @@ class AuthService {
     }
   }
 }
+
+
 
 /// Client SRP methods
 class _SRP {
