@@ -14,6 +14,7 @@ To run the app, you will need to have the following installed:
 - Go
 - Python
 - MongoDB
+- Redis
 
 Please refer to each's respective documentation for installation instructions.
 

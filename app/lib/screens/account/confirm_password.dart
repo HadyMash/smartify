@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:smartify/screens/account/sign_in_screen.dart';
 
 class PasswordChangedScreen extends StatelessWidget {
   const PasswordChangedScreen({super.key});

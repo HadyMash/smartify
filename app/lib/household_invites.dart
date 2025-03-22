@@ -3,7 +3,7 @@ import 'package:smartify/widgets/back_button.dart';
 
 class HouseholdInvitesScreen extends StatelessWidget {
   final bool hasInvites;
-  
+
   const HouseholdInvitesScreen({
     super.key,
     this.hasInvites = false,
@@ -32,7 +32,7 @@ class HouseholdInvitesScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 48),
-              
+
               // House Icon
               Center(
                 child: Container(
@@ -50,7 +50,7 @@ class HouseholdInvitesScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Description Text
               Center(
                 child: Text(
@@ -60,7 +60,7 @@ class HouseholdInvitesScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Invites Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -82,7 +82,7 @@ class HouseholdInvitesScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               if (hasInvites)
                 // Invite Card
                 Card(
@@ -113,7 +113,8 @@ class HouseholdInvitesScreen extends StatelessWidget {
                               Text(
                                 'Wayne Manor',
                                 style: textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
                                 ),
                               ),
                             ],

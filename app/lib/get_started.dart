@@ -28,7 +28,7 @@ class GetStartedScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 48),
-              
+
               // House Icon
               Center(
                 child: Container(
@@ -46,7 +46,7 @@ class GetStartedScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Description Text
               Center(
                 child: Text(
@@ -56,7 +56,7 @@ class GetStartedScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Create Household Button
               Card(
                 elevation: 2,
@@ -85,7 +85,7 @@ class GetStartedScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Join Household Button
               Card(
                 elevation: 2,

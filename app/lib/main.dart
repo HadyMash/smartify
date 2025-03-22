@@ -1,17 +1,12 @@
-// ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:smartify/get_started.dart';
-import 'screens/account/sign_in_screen.dart';
-import 'screens/account/del_cookie.dart';
 import 'services/auth_wrapper.dart';
 import 'services/auth.dart'; // Import AuthService
 
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
-   final authService = await AuthService.create(); //  Initialize AuthService
+  final authService = await AuthService.create(); //  Initialize AuthService
 
   runApp(MyApp(authService: authService)); // Pass it to MyApp
 }
@@ -24,8 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
-      debugShowCheckedModeBanner: false,
+      title: 'Smartify',
       theme: ThemeData(
         useMaterial3: true,
         textTheme: const TextTheme(
@@ -113,34 +107,9 @@ class MyApp extends StatelessWidget {
           headerHelpStyle: TextStyle(color: Colors.white),
         ),
       ),
-      home: AuthWrapper(authService: authService), // Pass AuthService to AuthWrapper
+      home: AuthWrapper(
+        authService: authService,
+      ), // Pass AuthService to AuthWrapper
     );
   }
 }
-
-
-// import 'package:flutter/material.dart';
-// import 'package:smartify/screens/account/del_cookie.dart';
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-
-// Future<void> main() async {
-//   await dotenv.load(fileName: '.env');
-
-//  //  Initialize AuthService
-
-//   runApp(MyApp()); // Pass it to MyApp
-// }
-
-// class MyApp extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Sign Out Example',
-//       theme: ThemeData(
-//         primarySwatch: Colors.blue,
-//       ),
-//       home: SignOutScreen(), // Set the home screen to SignOutScreen
-//     );
-//   }
-// }

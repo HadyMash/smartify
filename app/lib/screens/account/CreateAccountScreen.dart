@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:email_validator/email_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/gestures.dart';
+import 'package:smartify/utils/validators.dart';
 import 'qr_setup_screen.dart';
 import 'package:smartify/widgets/back_button.dart';
 import 'package:smartify/services/auth.dart';
@@ -98,7 +98,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           MaterialPageRoute(
             builder: (context) => QRSetupScreen(
               mfaSecret: mfa.formattedKey,
-              mfaQRUri: mfa.qrCodeUri, authService: _authService,
+              mfaQRUri: mfa.qrCodeUri,
+              authService: _authService,
             ),
           ),
         );
@@ -153,15 +154,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!EmailValidator.validate(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
+                  validator: validateEmail,
                 ),
                 const SizedBox(height: 24),
 
@@ -191,22 +184,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       },
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-                    if (!value.contains(RegExp(r'[0-9]'))) {
-                      return 'Password must contain at least one number';
-                    }
-                    if (!value.contains(RegExp(r'[A-Z]')) ||
-                        !value.contains(RegExp(r'[a-z]'))) {
-                      return 'Password must contain upper and lower case letters';
-                    }
-                    return null;
-                  },
+                  validator: validatePassword,
                 ),
                 const SizedBox(height: 8),
                 // Password requirements
