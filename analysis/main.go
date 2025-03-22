@@ -5,20 +5,21 @@ import (
     "log"
     "net/http"
     "os"
-
     "smart-home-analysis/handlers"
+    "smart-home-analysis/scheduler"
     "smart-home-analysis/services"
     "smart-home-analysis/utils"
 
     "github.com/joho/godotenv"
 )
 
-// App holds the services and handlers
+// App holds the services, handlers, and scheduler
 type App struct {
-    AnalysisHandler   *handlers.AnalysisHandler
-    SecurityHandler   *handlers.SecurityHandler
+    AnalysisHandler    *handlers.AnalysisHandler
+    SecurityHandler    *handlers.SecurityHandler
     DeviceUsageHandler *handlers.DeviceUsageHandler
     LeaderboardHandler *handlers.LeaderboardHandler
+    SchedulerService   *scheduler.Scheduler
 }
 
 // Initialize application services and handlers
@@ -45,6 +46,9 @@ func (app *App) Initialize() {
     app.SecurityHandler = handlers.NewSecurityHandler(securityService)
     app.DeviceUsageHandler = handlers.NewDeviceUsageHandler(deviceUsageService)
     app.LeaderboardHandler = handlers.NewLeaderboardHandler(leaderboardService)
+
+    // Initialize the scheduler
+    app.SchedulerService = scheduler.NewScheduler()
 }
 
 // Register API routes
@@ -59,6 +63,9 @@ func (app *App) RegisterRoutes() {
 
 // Run the server only if webhooks are needed
 func (app *App) Run() {
+    // Start the scheduler in parallel (non-blocking)
+    go app.SchedulerService.Start()
+
     if os.Getenv("ENABLE_WEBHOOKS") == "true" {
         fmt.Println("Webhook server running on port 8080...")
         log.Fatal(http.ListenAndServe(":8080", nil))
