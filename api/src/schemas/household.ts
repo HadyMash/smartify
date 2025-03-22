@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
+import { randomUUID } from 'crypto';
 
 /**
  * Coordinates using longitude and latitude
@@ -57,32 +58,32 @@ export const memberPermissionsSchema = z
 /** A household dweller's permissions */
 export type MemberPermissions = z.infer<typeof memberPermissionsSchema>;
 
+const _memberSchema = z.object({
+  /** Member's User ID */
+  id: objectIdOrStringSchema,
+  /** Member's role */
+  role: memberRoleSchema,
+  /**
+   * Member's permissions.
+   *
+   * This is only required if the user is a dweller
+   */
+  permissions: memberPermissionsSchema.optional(),
+});
+
 /** Household member schema */
-export const memberSchema = z
-  .object({
-    /** Member's User ID */
-    id: objectIdOrStringSchema.optional(),
-    /** Member's role */
-    role: memberRoleSchema,
-    /**
-     * Member's permissions.
-     *
-     * This is only required if the user is a dweller
-     */
-    permissions: memberPermissionsSchema.optional(),
-  })
-  .refine(
-    ({ role, permissions }) => {
-      if (role === 'dweller') {
-        return !!permissions;
-      }
-      return true;
-    },
-    {
-      path: ['permissions'],
-      message: 'Permissions are required for dwellers',
-    },
-  );
+export const memberSchema = _memberSchema.refine(
+  ({ role, permissions }) => {
+    if (role === 'dweller') {
+      return !!permissions;
+    }
+    return true;
+  },
+  {
+    path: ['permissions'],
+    message: 'Permissions are required for dwellers',
+  },
+);
 
 export type Member = z.infer<typeof memberSchema>;
 
@@ -97,7 +98,7 @@ export const householdRoomTypeSchema = z.enum([
 
 /** Household room schema */
 export const householdRoomSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   /** Room name */
   name: z
     .string()
@@ -132,18 +133,13 @@ export const householdCreateRequestDataSchema = z.object({
    * or if the first floor is above ground and so on.
    */
   floorsOffset: z.number().int().optional(),
-  // TODO: add rooms
-
   /** Household's rooms */
-  //rooms: z.array(householdRoomSchema),
+  rooms: z.array(householdRoomSchema).min(1),
 });
 
-export const inviteSchema = z
-  .object({
-    _id: objectIdOrStringSchema,
-    userId: objectIdOrStringSchema,
-    role: memberRoleSchema,
-    permissions: memberPermissionsSchema.optional(),
+export const householdInviteSchema = _memberSchema
+  .extend({
+    inviteId: objectIdOrStringSchema,
   })
   .refine(
     ({ role, permissions }) => {
@@ -158,18 +154,25 @@ export const inviteSchema = z
     },
   );
 
-export type Invite = z.infer<typeof inviteSchema>;
+export type HouseholdInvite = z.infer<typeof householdInviteSchema>;
 
 export type HouseholdRequestData = z.infer<
   typeof householdCreateRequestDataSchema
 >;
 
+const defaultRoom: HouseholdRoom = {
+  id: randomUUID(),
+  type: 'living',
+  floor: 0,
+  name: 'Living Room',
+};
+
 export const householdSchema = householdCreateRequestDataSchema.extend({
   _id: objectIdOrStringSchema.optional(),
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
-  invites: z.array(inviteSchema).optional(),
-  rooms: z.array(householdRoomSchema).default([]),
+  invites: z.array(householdInviteSchema),
+  rooms: z.array(householdRoomSchema).default([defaultRoom]),
   roomAdjacencyList: z
     .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
     .optional(),
@@ -180,9 +183,8 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
 export type Household = z.infer<typeof householdSchema>;
 
 export const roomRequestDataSchema = z.object({
-  type: householdRoomTypeSchema,
-  name: z.string(),
-  floor: z.number(),
+  rooms: z.array(householdRoomSchema).min(1),
+  householdId: objectIdOrStringSchema,
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
@@ -207,3 +209,59 @@ export const inviteMemberSchema = z
     },
   );
 export type InviteMember = z.infer<typeof inviteMemberSchema>;
+
+export const respondToInviteDataSchema = z.object({
+  inviteId: objectIdOrStringSchema,
+  response: z.boolean(),
+});
+
+/* Error types */
+
+export enum InvalidHouseholdType {
+  DOES_NOT_EXIST,
+  INVALID_ID,
+}
+
+export class InvalidHouseholdError extends Error {
+  public readonly type: InvalidHouseholdType;
+  constructor(type: InvalidHouseholdType, message?: string) {
+    super(
+      `Invalid Household${message ? `: ${message}` : type === InvalidHouseholdType.INVALID_ID ? 'Invalid household Id' : 'Household does not exist'}`,
+    );
+    this.name = 'InvalidHouseholdError';
+    this.type = type;
+    Object.setPrototypeOf(this, InvalidHouseholdError.prototype);
+  }
+}
+
+export class MissingPermissionsError extends Error {
+  constructor() {
+    super('Household member permissions are missing');
+    this.name = 'MissingPermissionsError';
+    Object.setPrototypeOf(this, MissingPermissionsError.prototype);
+  }
+}
+
+export class AlreadyMemberError extends Error {
+  constructor() {
+    super('User is already a member of the household');
+    this.name = 'AlreadyMemberError';
+    Object.setPrototypeOf(this, AlreadyMemberError.prototype);
+  }
+}
+
+export class AlreadyInvitedError extends Error {
+  constructor() {
+    super('User is already invited to the household');
+    this.name = 'AlreadyInvitedError';
+    Object.setPrototypeOf(this, AlreadyInvitedError.prototype);
+  }
+}
+
+export class InvalidInvite extends Error {
+  constructor() {
+    super('Invalid invite');
+    this.name = 'InvalidInvite';
+    Object.setPrototypeOf(this, InvalidInvite.prototype);
+  }
+}

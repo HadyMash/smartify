@@ -1,9 +1,21 @@
+import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import {
   Household,
   HouseholdMember,
   HouseholdRoom,
-  Invite,
+  InvalidHouseholdError,
+  InvalidHouseholdType,
+  HouseholdInvite,
+  MemberPermissions,
+  MemberRole,
+  MissingPermissionsError,
+  householdSchema,
+  AlreadyMemberError,
+  InvalidInvite,
+  memberSchema,
+  AlreadyInvitedError,
 } from '../schemas/household';
+import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {
@@ -35,23 +47,21 @@ export class HouseholdService {
   /**
    * Get a household by its ID
    * @param id - The household's ID
-   * @returns
+   * @returns The household if it exists
    */
-  public async getHousehold(id: string): Promise<Household | null> {
+  public async getHousehold(id: ObjectIdOrString): Promise<Household | null> {
     await this.db.connect();
-    return this.db.householdRepository.getHouseholdById(id);
+    const household = await this.db.householdRepository.getHouseholdById(id);
+    if (household) {
+      return householdSchema.parse(household);
+    } else {
+      return null;
+    }
   }
-  public async addMember(
-    householdId: string,
-    memberId: string,
-    ownerId: string,
-  ): Promise<Household | null> {
+
+  public async householdExists(id: ObjectIdOrString): Promise<boolean> {
     await this.db.connect();
-    return this.db.householdRepository.addMember(
-      householdId,
-      memberId,
-      ownerId,
-    );
+    return this.db.householdRepository.householdExists(id);
   }
 
   /**
@@ -59,80 +69,50 @@ export class HouseholdService {
    * @param householdId - The ID of the household.
    * @param memberId - The ID of the member to be removed.
    * @returns The updated household document or null if the operation fails.
+   * @throws An {@link InvalidHouseholdError} if the household does not exist or
+   * has an invalid id.
    */
   public async removeMember(
-    householdId: string,
-    memberId: string,
+    householdId: ObjectIdOrString,
+    memberId: ObjectIdOrString,
   ): Promise<Household | null> {
     await this.db.connect();
-    return this.db.householdRepository.removeMember(
-      householdId,
-      memberId,
-      ownerId,
-    );
-  }
-
-  /**
-   * Responds to an invite to join a household
-   * @param inviteId - The invite's id
-   * @param response - The user's response (accepting/declining the invite)
-   * @param userId - The user's id
-   * @returns
-   */
-  public async respondToInvite(
-    inviteId: string,
-    response: boolean,
-    userId: string,
-  ): Promise<Household | null> {
-    await this.db.connect();
-    return this.db.householdRepository.processInviteResponse(
-      inviteId,
-      response,
-      userId,
-    );
+    return this.db.householdRepository.removeMember(householdId, memberId);
   }
 
   /**
    * Deletes a household.
-   * @param householdId - The ID of the household to delete.
+   * @param id - The ID of the household to delete.
    */
-  public async deleteHousehold(
-    householdId: string,
-    ownerId: string,
-  ): Promise<void> {
+  public async deleteHousehold(id: ObjectIdOrString): Promise<void> {
     await this.db.connect();
-    await this.db.householdRepository.deleteHousehold(householdId, ownerId);
+    // check if the household exists
+    if (!(await this.db.householdRepository.householdExists(id))) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    await this.db.householdRepository.deleteHousehold(id);
   }
 
-  /**
-   * Adds a new room to a household.
-   * @param householdId - The ID of the household.
-   * @param roomData - The details of the room to be added.
-   * @returns The updated household document or null if the operation fails.
-   */
-  public async addRoom(
-    householdId: string,
-    roomData: HouseholdRoom[],
-    ownerId: string,
+  public async updateRooms(
+    id: ObjectIdOrString,
+    rooms: HouseholdRoom[],
   ): Promise<Household | null> {
     await this.db.connect();
-    return this.db.householdRepository.addRoom(householdId, roomData, ownerId);
+
+    // check household exists first and rooms are different
+    const household = await this.db.householdRepository.getHouseholdById(id);
+
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    await this.db.householdRepository.updateRooms(id, rooms);
+
+    // return updated household
+    return await this.db.householdRepository.getHouseholdById(id);
   }
 
-  /**
-   * Removes a room from a household.
-   * @param householdId - The ID of the household.
-   * @param roomId - The ID of the room to be removed.
-   * @returns The updated household document or null if the operation fails.
-   */
-  public async removeRoom(
-    householdId: string,
-    roomId: string,
-    ownerId: string,
-  ): Promise<Household | null> {
-    await this.db.connect();
-    return this.db.householdRepository.removeRoom(householdId, roomId, ownerId);
-  }
   /**
    * Changes a household member's role.
    * @param householdId - The ID of the household.
@@ -142,53 +122,36 @@ export class HouseholdService {
    * @returns The updated household document or null if the operation fails.
    */
   public async changeUserRole(
-    householdId: string,
-    memberId: string,
-    newRole: HouseholdMember,
-    ownerId: string,
-    permissions?: {
-      appliances: boolean;
-      health: boolean;
-      security: boolean;
-      energy: boolean;
-    },
+    householdId: ObjectIdOrString,
+    memberId: ObjectIdOrString,
+    role: MemberRole,
+    permissions?: MemberPermissions,
   ): Promise<Household | null> {
-    if (newRole.role === 'dweller' && !permissions) {
-      throw new Error(
-        'Permissions must be provided when setting a member as dweller.',
-      );
+    if (role === 'dweller' && !permissions) {
+      throw new MissingPermissionsError();
     }
+
     await this.db.connect();
+    // check household exists first and the member exists as well
+    const household =
+      await this.db.householdRepository.getHouseholdById(householdId);
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    if (
+      !household.members.find((m) => m.id.toString() === memberId.toString())
+    ) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+
     return this.db.householdRepository.changeUserRole(
       householdId,
       memberId,
-      newRole,
-      ownerId,
+      role,
       permissions,
     );
   }
-  /**
-   * Manages rooms in a household (add or remove).
-   * @param householdId - The ID of the household.
-   * @param roomId - The ID of the room.
-   * @param action - The action to perform ('add' or 'remove').
-   * @returns The updated household document or null if the operation fails.
-   */
-  public async manageRooms(
-    householdId: string,
-    roomId: string,
-    action: 'add' | 'remove',
-    ownerId: string,
-  ): Promise<Household | null> {
-    await this.db.connect();
-    return this.db.householdRepository.manageRooms(
-      householdId,
-      roomId,
-      action,
-      ownerId,
-    );
-  }
-  //TODO: public async userPermissions(){}
 
   /**
    * Sends an invite to a user to join a household.
@@ -197,34 +160,60 @@ export class HouseholdService {
    * @param userId - The ID of the user to invite.
    * @param role - The role to assign to the invited user (default is 'dweller').
    * @param permissions - (Optional) The permissions to assign to the user (default is { appliances: false, health: false, security: false, energy: false }).
-   * @returns {Promise<Household | null>} - The updated household document or null if the operation fails.
+   * @returns The invite
+   * @throws An {@link InvalidHouseholdError} error if the household does not exist.
+   * @throws An {@link AlreadyMemberError} error if the user does not exist.
    */
   public async inviteMember(
-    householdId: string,
-    userId: string,
-    role: HouseholdMember['role'] = 'dweller',
-    permissions = {
-      appliances: false,
-      health: false,
-      security: false,
-      energy: false,
-    },
-  ): Promise<Household | null> {
-    return this.db.householdRepository.inviteMember(
-      householdId,
-      userId,
-      role,
-      permissions,
-    );
+    householdId: ObjectIdOrString,
+    invitee: HouseholdMember,
+  ): Promise<HouseholdInvite> {
+    await this.db.connect();
+    // check if the household exists and if the invitee is already a member
+    const h = await this.getHousehold(householdId);
+    if (!h) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    if (h.members.find((m) => m.id.toString() === invitee.id.toString())) {
+      throw new AlreadyMemberError();
+    }
+
+    // check if user is already invited
+    if (h.invites) {
+      const invite = h.invites.find((i) => i.id.toString() === invitee.id);
+      if (invite) {
+        throw new AlreadyInvitedError();
+      }
+    }
+
+    return this.db.householdRepository.inviteMember(householdId, invitee);
   }
+
   /**
    * Retrieves the pending invites for a user.
    *
    * @param userId - The ID of the user.
-   * @returns {Promise<Invite[]>} - An array of invites for the user.
+   * @returns {Promise<HouseholdInvite[]>} - An array of invites for the user.
    */
-  public async getUserInvites(userId: string): Promise<Invite[]> {
+  public async getUserInvites(
+    userId: ObjectIdOrString,
+  ): Promise<HouseholdInvite[]> {
+    await this.db.connect();
+
+    // check user exists
+    if (!(await this.db.userRepository.userExists(userId))) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+
     return this.db.householdRepository.getUserInvites(userId);
+  }
+
+  public async getInvite(
+    inviteId: ObjectIdOrString,
+  ): Promise<HouseholdInvite | null> {
+    await this.db.connect();
+    return this.db.householdRepository.getInvite(inviteId);
   }
 
   /**
@@ -234,18 +223,80 @@ export class HouseholdService {
    * @param response - The user's response to the invite (true for accept, false for decline).
    * @param userId - The ID of the user responding to the invite.
    * @returns {Promise<Household | null>} - The updated household document or null if the operation fails.
+   * @throws A {@link InvalidInvite} error if the invite is invalid.
+   * @throws A {@link InvalidUserError} error if the user invited does not exist.
+   * @throws An {@link AlreadyMemberError} error if the user is already a member of the household.
    */
   public async respondToInvite(
-    inviteId: string,
+    inviteId: ObjectIdOrString,
     response: boolean,
-    userId: string,
-    householdId: string,
   ): Promise<Household | null> {
-    return this.db.householdRepository.processInviteResponse(
-      inviteId,
-      response,
-      userId,
-      householdId,
-    );
+    await this.db.connect();
+
+    // get the invite
+    const h = await this.db.householdRepository.getHouseholdByInvite(inviteId);
+
+    if (!h) {
+      throw new InvalidInvite();
+    }
+
+    // check if the user exists
+    if (!(await this.db.userRepository.userExists(h.owner))) {
+      // remove the invite if the user does not exist
+      try {
+        await this.db.householdRepository.revokeInvite(inviteId);
+      } catch (e) {
+        console.error('error removing invite:', e);
+      }
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+
+    // check if the user is already a member
+    if (h.members.find((m) => m.id.toString() === h.owner.toString())) {
+      // remove the invite if the user is already a member
+      try {
+        await this.db.householdRepository.revokeInvite(inviteId);
+      } catch (e) {
+        console.error('error removing invite:', e);
+      }
+      throw new AlreadyMemberError();
+    }
+
+    if (response) {
+      // accept the invite
+      // first get it and revoke it
+      const household =
+        await this.db.householdRepository.getHouseholdByInvite(inviteId);
+      if (!household || !household.invites) {
+        return null;
+      }
+
+      // revoke invite
+      const rS = await this.db.householdRepository.revokeInvite(inviteId);
+
+      if (!rS) return null;
+
+      const inv = household.invites.find(
+        (i) => i.id.toString() === inviteId.toString(),
+      );
+      if (!inv) return null;
+
+      // add the user to the household
+      const newH = await this.db.householdRepository.addMember(
+        household._id!,
+        memberSchema.parse(inv),
+      );
+
+      if (!newH) return null;
+      return householdSchema.parse(newH);
+    } else {
+      // decline the invite
+      const s = await this.db.householdRepository.revokeInvite(inviteId);
+      if (s) {
+        return await this.db.householdRepository.getHouseholdById(h._id!);
+      } else {
+        return null;
+      }
+    }
   }
 }
