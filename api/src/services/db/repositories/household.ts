@@ -19,10 +19,8 @@ import {
 type HouseholdDoc = Household;
 
 export class HouseholdRepository extends DatabaseRepository<Household> {
-  private db: Db;
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, 'households', redis);
-    this.db = db;
   }
 
   public async configureCollection(): Promise<void> {

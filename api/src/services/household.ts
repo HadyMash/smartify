@@ -28,6 +28,7 @@ export class HouseholdService {
   public async createHousehold(
     data: Omit<Household, '_id'>,
   ): Promise<Household> {
+    await this.db.connect();
     return this.db.householdRepository.createHousehold(data);
   }
 
@@ -37,7 +38,20 @@ export class HouseholdService {
    * @returns
    */
   public async getHousehold(id: string): Promise<Household | null> {
+    await this.db.connect();
     return this.db.householdRepository.getHouseholdById(id);
+  }
+  public async addMember(
+    householdId: string,
+    memberId: string,
+    ownerId: string,
+  ): Promise<Household | null> {
+    await this.db.connect();
+    return this.db.householdRepository.addMember(
+      householdId,
+      memberId,
+      ownerId,
+    );
   }
 
   /**
@@ -50,16 +64,46 @@ export class HouseholdService {
     householdId: string,
     memberId: string,
   ): Promise<Household | null> {
-    return this.db.householdRepository.removeMember(householdId, memberId);
+    await this.db.connect();
+    return this.db.householdRepository.removeMember(
+      householdId,
+      memberId,
+      ownerId,
+    );
+  }
+
+  /**
+   * Responds to an invite to join a household
+   * @param inviteId - The invite's id
+   * @param response - The user's response (accepting/declining the invite)
+   * @param userId - The user's id
+   * @returns
+   */
+  public async respondToInvite(
+    inviteId: string,
+    response: boolean,
+    userId: string,
+  ): Promise<Household | null> {
+    await this.db.connect();
+    return this.db.householdRepository.processInviteResponse(
+      inviteId,
+      response,
+      userId,
+    );
   }
 
   /**
    * Deletes a household.
    * @param householdId - The ID of the household to delete.
    */
-  public async deleteHousehold(householdId: string): Promise<void> {
-    await this.db.householdRepository.deleteHousehold(householdId);
+  public async deleteHousehold(
+    householdId: string,
+    ownerId: string,
+  ): Promise<void> {
+    await this.db.connect();
+    await this.db.householdRepository.deleteHousehold(householdId, ownerId);
   }
+
   /**
    * Adds a new room to a household.
    * @param householdId - The ID of the household.
@@ -69,9 +113,12 @@ export class HouseholdService {
   public async addRoom(
     householdId: string,
     roomData: HouseholdRoom[],
+    ownerId: string,
   ): Promise<Household | null> {
-    return this.db.householdRepository.addRoom(householdId, roomData);
+    await this.db.connect();
+    return this.db.householdRepository.addRoom(householdId, roomData, ownerId);
   }
+
   /**
    * Removes a room from a household.
    * @param householdId - The ID of the household.
@@ -81,8 +128,10 @@ export class HouseholdService {
   public async removeRoom(
     householdId: string,
     roomId: string,
+    ownerId: string,
   ): Promise<Household | null> {
-    return this.db.householdRepository.removeRoom(householdId, roomId);
+    await this.db.connect();
+    return this.db.householdRepository.removeRoom(householdId, roomId, ownerId);
   }
   /**
    * Changes a household member's role.
@@ -109,6 +158,7 @@ export class HouseholdService {
         'Permissions must be provided when setting a member as dweller.',
       );
     }
+    await this.db.connect();
     return this.db.householdRepository.changeUserRole(
       householdId,
       memberId,
@@ -126,10 +176,17 @@ export class HouseholdService {
    */
   public async manageRooms(
     householdId: string,
-    room: HouseholdRoom,
-    action: 'add' | 'edit' | 'remove',
+    roomId: string,
+    action: 'add' | 'remove',
+    ownerId: string,
   ): Promise<Household | null> {
-    return this.db.householdRepository.manageRooms(householdId, room, action);
+    await this.db.connect();
+    return this.db.householdRepository.manageRooms(
+      householdId,
+      roomId,
+      action,
+      ownerId,
+    );
   }
   //TODO: public async userPermissions(){}
 

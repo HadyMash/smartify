@@ -1,31 +1,36 @@
-import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
-import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
+import * as jwt from 'jsonwebtoken';
+import { compactDecrypt, CompactEncrypt, importJWK } from 'jose';
+import { DatabaseService } from '../db/db';
 import {
-  InvalidUserError,
-  InvalidUseType,
-  type User,
-  userSchema,
-} from '../schemas/auth/user';
-import {
-  type AccessTokenPayload,
+  AccessTokenPayload,
   accessTokenPayloadSchema,
-  type IDTokenPayload,
+  accessTokenUserSchema,
+  CommonTokenInfo,
+  IDTokenPayload,
   idTokenPayloadSchema,
   InvalidTokenError,
-  type JWTSecret,
-  type RefreshTokenPayload,
+  JWTSecret,
+  MFATokenPayload,
+  mfaTokenPayloadSchema,
+  mfaTokenTypeSchema,
+  RefreshTokenPayload,
   refreshTokenPayloadSchema,
-  TokenPayload,
   tokenTypeSchema,
-} from '../schemas/auth/tokens';
-import { DatabaseService } from './db/db';
-
-//const algorithm = 'RS256';
+} from '../../schemas/auth/tokens';
+import {
+  InvalidUserError,
+  InvalidUserType,
+  User as UserWithId,
+  userSchema,
+} from '../../schemas/auth/user';
+import { randomUUID } from 'crypto';
+import { ObjectIdOrString } from '../../schemas/obj-id';
+import { MFAFormattedKey } from '../../schemas/auth/auth';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
   private static _REFRESH_TOKEN_LIFESPAN_SECONDS: number;
+  private static _MFA_TOKEN_LIFESPAN_SECONDS: number;
 
   public static get ACCESS_TOKEN_LIFESPAN_SECONDS(): number {
     if (this._ACCESS_TOKEN_LIFESPAN_SECONDS === undefined) {
@@ -56,6 +61,21 @@ export class TokenService {
     }
 
     return this._REFRESH_TOKEN_LIFESPAN_SECONDS;
+  }
+
+  public static get MFA_TOKEN_LIFESPAN_SECONDS(): number {
+    if (this._MFA_TOKEN_LIFESPAN_SECONDS === undefined) {
+      this._MFA_TOKEN_LIFESPAN_SECONDS = parseInt(
+        process.env.AUTH_TOKEN_MFA_EXPIRY_SECONDS!,
+      );
+    }
+
+    if (isNaN(this._MFA_TOKEN_LIFESPAN_SECONDS)) {
+      throw new Error(
+        `Invalid MFA token expiry time: ${process.env.AUTH_TOKEN_MFA_EXPIRY_SECONDS}`,
+      );
+    }
+    return this._MFA_TOKEN_LIFESPAN_SECONDS;
   }
 
   private readonly db: DatabaseService;
@@ -101,8 +121,8 @@ export class TokenService {
    * @param encrypt - Whether to encrypt the token
    * @returns The generated JWT
    */
-  private async generateToken(
-    payload: Omit<TokenPayload, 'exp'>,
+  private async generateToken<T extends CommonTokenInfo>(
+    payload: Omit<T, 'exp'>,
     secret: JWTSecret,
     lifetime: number,
     encrypt: boolean,
@@ -190,34 +210,42 @@ export class TokenService {
    * @param deviceId - The device ID to generate the tokens for
    * @returns The generated tokens
    */
-  public async generateAllTokens(user: User, deviceId: string) {
+  public async generateAllTokens(userId: ObjectIdOrString, deviceId: string) {
     const secret: JWTSecret = {
       secret: process.env.JWT_SECRET!, // TODO: generate random one
       secretId: '1', // TODO: rotate keys and store in DB
     };
 
+    await this.db.connect();
     // check user exists
-    const userExists = await this.db.userRepository.userExists(user._id);
+    const userExists = await this.db.userRepository.userExists(userId);
 
     if (!userExists) {
-      throw new InvalidUserError({ type: InvalidUseType.DOES_NOT_EXIST });
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
 
     //  user._id,
     //  true
 
-    const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
-      user._id.toString(),
-      deviceId,
-      true,
-    );
+    // change the generation id to invalidate all previous tokens for this
+    // device
+    const generationId =
+      await this.db.tokenRepository.changeUserTokenGenerationId(
+        userId,
+        deviceId,
+      );
+
+    // get the user
+    const userInfo = await this.db.userRepository.getUserById(userId);
+    // TODO: get resources user can access
+    const user = accessTokenUserSchema.parse(userInfo);
 
     const created = new Date();
     // convert created to a number of seconds
     const createdSeconds = Math.floor(created.getTime() / 1000);
 
     const refreshTokenPayload: Omit<RefreshTokenPayload, 'exp'> = {
-      userId: user._id,
+      userId: userId.toString(),
       iat: createdSeconds,
       type: tokenTypeSchema.enum.REFRESH,
       jti: randomUUID(),
@@ -225,8 +253,8 @@ export class TokenService {
     };
 
     const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
-      userId: user._id,
-      email: user.email,
+      userId: userId.toString(),
+      user,
       iat: createdSeconds,
       type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
@@ -235,8 +263,8 @@ export class TokenService {
     };
 
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
-      userId: user._id,
-      email: user.email,
+      userId: userId.toString(),
+      user,
       type: tokenTypeSchema.enum.ID,
       generationId,
       iat: createdSeconds,
@@ -328,7 +356,7 @@ export class TokenService {
    * @returns The token's payload
    * @throws An error if the token is invalid or is not a valid token type
    */
-  private decodeToken(
+  private async decodeToken(
     token: string,
   ): Promise<AccessTokenPayload | RefreshTokenPayload | IDTokenPayload> {
     // Decrypt the token first
@@ -375,13 +403,25 @@ export class TokenService {
 
       const payload = this.parseToken(result);
 
-      // check token isn't blacklisted
+      await this.db.connect();
+      // check token generation ID isn't blacklisted
       const blacklisted =
         await this.db.tokenRepository.isTokenGenerationIdBlacklisted(
           payload.generationId,
         );
       if (blacklisted) {
         return { valid: false };
+      }
+
+      // For access tokens, also check if the specific token is blacklisted
+      if (payload.type === tokenTypeSchema.enum.ACCESS) {
+        const tokenBlacklisted =
+          await this.db.accessBlacklistRepository.isAccessTokenBlacklisted(
+            payload.jti,
+          );
+        if (tokenBlacklisted) {
+          return { valid: false };
+        }
       }
 
       return { valid: true, payload };
@@ -439,11 +479,12 @@ export class TokenService {
     // TODO: replace with user service call
     //
     // get user's email
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
+    await this.db.connect();
     const userDoc = await this.db.userRepository.getUserById(
       oldRefreshPayload.userId,
     );
-    let user: User;
+    let user: UserWithId;
     try {
       user = userSchema.parse(userDoc);
     } catch (e) {
@@ -452,6 +493,8 @@ export class TokenService {
     }
 
     // TODO: get user household access and roles
+
+    const accessUser = accessTokenUserSchema.parse(user);
 
     const created = new Date();
     // convert created to a number of seconds
@@ -467,7 +510,7 @@ export class TokenService {
 
     const accessTokenPayload: Omit<AccessTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
-      email: user.email,
+      user: accessUser,
       iat: createdSeconds,
       type: tokenTypeSchema.enum.ACCESS,
       jti: randomUUID(),
@@ -477,7 +520,7 @@ export class TokenService {
 
     const idTokenPayload: Omit<IDTokenPayload, 'exp'> = {
       userId: oldRefreshPayload.userId,
-      email: user.email,
+      user: accessUser,
       type: tokenTypeSchema.enum.ID,
       generationId: oldRefreshPayload.generationId,
       iat: createdSeconds,
@@ -526,7 +569,11 @@ export class TokenService {
    * @param deviceId - The device ID to revoke tokens for
    * @returns the user's new token generation ID
    */
-  public async revokeDeviceRefreshTokens(userId: string, deviceId: string) {
+  public async revokeDeviceRefreshTokens(
+    userId: ObjectIdOrString,
+    deviceId: string,
+  ) {
+    await this.db.connect();
     return await this.db.tokenRepository.changeUserTokenGenerationId(
       userId,
       deviceId,
@@ -545,8 +592,163 @@ export class TokenService {
    *
    * @param userId - The user for whom to revoke all tokens
    */
-  public async revokeAllTokensImmediately(userId: string) {
+  public async revokeAllTokensImmediately(userId: ObjectIdOrString) {
+    await this.db.connect();
     // add to blacklist
     await this.db.tokenRepository.blacklistTokenGenerationIds(userId);
+  }
+
+  /**
+   * Blacklist a specific access token. This will prevent the token from being used
+   * for any future requests, but won't affect other tokens generated with the same
+   * refresh token.
+   *
+   * This is useful for scenarios where you want to revoke a single access token
+   * without affecting other sessions, such as when a user logs out of a specific device.
+   *
+   * @param accessToken - The access token to blacklist
+   * @returns Promise that resolves when the token has been blacklisted
+   * @throws InvalidTokenError if the token is invalid or not an access token
+   */
+  public async blacklistAccessToken(accessToken: string): Promise<void> {
+    // Verify and decode the token
+    const { valid, payload } = await this.verifyToken(accessToken, true);
+
+    if (!valid || !payload) {
+      throw new InvalidTokenError('Invalid access token');
+    }
+
+    // Ensure it's an access token
+    if (payload.type !== tokenTypeSchema.enum.ACCESS) {
+      throw new InvalidTokenError('Token is not an access token');
+    }
+
+    // Get expiry time from the payload
+    const exp = (payload as jwt.JwtPayload).exp;
+    if (!exp) {
+      throw new InvalidTokenError('Token has no expiry time');
+    }
+    await this.db.connect();
+
+    // Blacklist the token
+    await this.db.accessBlacklistRepository.blacklistAccessToken(
+      payload.jti,
+      exp,
+    );
+  }
+
+  /**
+   * Creates a new MFA token with the provided payload
+   * @param payload - The MFA token payload to include in the JWT
+   * @param secret - The secret to sign the JWT with
+   * @returns The generated MFA token
+   */
+  private async generateMFAToken(
+    payload: Omit<MFATokenPayload, 'exp'>,
+    secret: JWTSecret,
+  ): Promise<string> {
+    return await this.generateToken(
+      payload,
+      secret,
+      TokenService.MFA_TOKEN_LIFESPAN_SECONDS,
+      true, // Always encrypt MFA tokens
+    );
+  }
+
+  /**
+   * Creates a new MFA token for a user
+   * @param userId - The user's ID to create the token for
+   * @param deviceId - The device ID to create the token for
+   * @param formattedKey - The user's mfa formatted key
+   * @returns The generated MFA token
+   */
+  public async createMFAToken(
+    userId: ObjectIdOrString,
+    deviceId: string,
+    formattedKey?: MFAFormattedKey,
+  ): Promise<string> {
+    const created = new Date();
+    const createdSeconds = Math.floor(created.getTime() / 1000);
+
+    const mfaTokenPayload: Omit<MFATokenPayload, 'exp'> = {
+      type: 'MFA',
+      userId: userId.toString(),
+      deviceId,
+      iat: createdSeconds,
+      jti: randomUUID(),
+      formattedKey,
+    };
+
+    const secret: JWTSecret = {
+      secret: process.env.JWT_SECRET!, // TODO: generate random one
+      secretId: '1', // TODO: rotate keys and store in DB
+    };
+
+    return await this.generateMFAToken(mfaTokenPayload, secret);
+  }
+
+  /**
+   * Verify and decode an MFA token. This method will automatically blacklist
+   * the MFA token if it's valid so that it can't be used again
+   * @param token - The MFA token to verify
+   * @returns The decoded token payload if valid
+   * @throws InvalidTokenError if the token is invalid or has been blacklisted
+   */
+  public async verifyMFAToken(token: string): Promise<MFATokenPayload> {
+    // Decrypt the token first
+    const decryptedToken = await this.decryptToken(token);
+
+    // Verify the decrypted token
+    const result = await new Promise<string | jwt.JwtPayload | null>(
+      (resolve, reject) => {
+        jwt.verify(
+          decryptedToken,
+          process.env.JWT_SECRET!,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (err: Error | null, decoded: any) => {
+            if (err) reject(err);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            else resolve(decoded);
+          },
+        );
+      },
+    );
+
+    const { success, data } = mfaTokenPayloadSchema.safeParse(result);
+
+    if (!success) {
+      throw new InvalidTokenError('Invalid MFA token');
+    }
+
+    if (data.type !== mfaTokenTypeSchema.value) {
+      throw new InvalidTokenError('Token is not an MFA token');
+    }
+
+    await this.db.connect();
+    // check token generation ID isn't blacklisted
+    const blacklisted =
+      await this.db.mfaBlacklistRepository.isMFATokenBlacklisted(data.jti);
+    if (blacklisted) {
+      throw new InvalidTokenError('MFA token has been blacklisted');
+    }
+
+    // valid, blacklist so it can't be used again
+    await this.blacklistMFAToken(data);
+
+    return data;
+  }
+
+  /**
+   * Blacklist an MFA token to prevent it from being used again
+   * @param token - The MFA token to blacklist
+   */
+  private async blacklistMFAToken(token: MFATokenPayload): Promise<void> {
+    const exp = token.exp;
+    if (!exp) {
+      throw new InvalidTokenError('Token has no expiry time');
+    }
+    await this.db.connect();
+
+    await this.db.mfaBlacklistRepository.blacklistMFA(token.jti, exp);
   }
 }

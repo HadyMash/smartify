@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../schemas/auth/user';
 import {
   Household,
   HouseholdRequestData,
@@ -14,8 +13,9 @@ import {
   HouseholdRoom,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
-import { TokenService } from '../services/token';
+import { TokenService } from '../services/auth/token';
 import { objectIdOrStringSchema } from '../schemas/obj-id';
+import { AuthenticatedRequest } from '../schemas/auth/auth';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {

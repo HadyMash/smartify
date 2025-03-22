@@ -1,17 +1,49 @@
-import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Db, MongoClient, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
-import { TokenService } from '../../token';
 import { DatabaseRepository } from '../repo';
+import { TokenService } from '../../auth/token';
+import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 
 /**
- * Token generation id document. There may be multiple toke
+ * Document representing a blacklisted access token in the database
+ */
+interface BlacklistedAccessTokenDoc {
+  /**
+   * The JWT ID of the access token
+   */
+  jti: string;
+  /**
+   * When the token was blacklisted
+   */
+  created: Date;
+  /**
+   * When the token expires
+   */
+  expiry: Date;
+}
+
+/**
+ * Document representing a blacklisted MFA token in the database
+ */
+interface BlacklistedMFAToken {
+  /**
+   * The JWT ID of the MFA token
+   */
+  jti: string;
+  /**
+   * When the token expires
+   */
+  expiry: Date;
+}
+
+/**
+ * Token generation ID document. There may be multiple tokens per user/device.
  *
- * The current one will have blacklisted as false and no expiry
- * The previous ones will have an expiry set
- *
- * The blacklisted ones will have blacklisted as true and an expiry
+ * States:
+ * - Current token: blacklisted=false, no expiry
+ * - Previous tokens: blacklisted=false, has expiry
+ * - Blacklisted tokens: blacklisted=true, has expiry
  */
 interface TokenGenIdDoc {
   /**
@@ -40,24 +72,78 @@ interface TokenGenIdDoc {
   blacklisted: boolean;
 }
 
+const TOKENS_COLLECTION_NAME = 'tokens';
+const ACCESS_BLACKLIST_COLLECTION_NAME = 'blacklisted_access_tokens';
+const MFA_BLACKLIST_COLLECTION_NAME = 'mfa_token_blacklist';
+
 // TODO: integrate with token service to remove lifespan parameter
 
 /* revoked access tokens are stored in redis (some sort of version
  * included in payload so if server crashes it invalidates all access tokens
  * that way no revoked access tokens get unrevoked) */
 export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
-  protected static readonly BLACKLIST_REDIS_KEY = 'token-blacklist';
+  protected static readonly GENERATION_IDS_BLACKLIST_REDIS_KEY =
+    'token-blacklist';
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
-    super(client, db, 'tokens', redis);
+    super(client, db, TOKENS_COLLECTION_NAME, redis);
   }
 
-  // TODO: implement configure collection
+  /**
+   * Configures the token collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
   public async configureCollection(): Promise<void> {
-    // create collection
-    //
-    // configure indices
-    //
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: TOKENS_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(TOKENS_COLLECTION_NAME);
+      }
+
+      // Configure indices for TokenGenIdDoc collection
+      await Promise.all([
+        // Index for querying by userId and deviceId (used in getUserTokenGenerationId)
+        this.collection.createIndex({ userId: 1, deviceId: 1 }),
+
+        // Index for querying by tokenGenerationId (used in isTokenGenerationIdBlacklisted)
+        this.collection.createIndex({ tokenGenerationId: 1 }),
+
+        // Compound index for the frequent query pattern including blacklisted status
+        this.collection.createIndex({
+          userId: 1,
+          deviceId: 1,
+          blacklisted: 1,
+        }),
+
+        // Index to filter by blacklisted status and expiry
+        this.collection.createIndex({ blacklisted: 1, expiry: 1 }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+            partialFilterExpression: { expiry: { $exists: true } },
+          },
+        ),
+
+        // Index for sorting by created date (used in getUserTokenGenerationId with sort)
+        this.collection.createIndex({ created: 1 }),
+      ]);
+
+      console.log(
+        `Configured ${TOKENS_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${TOKENS_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -75,7 +161,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
   ): Promise<string | undefined>;
 
@@ -87,7 +173,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert: false,
   ): Promise<string | undefined>;
@@ -99,7 +185,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID
    * */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert: true,
   ): Promise<string>;
@@ -111,16 +197,14 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns The user's token generation ID or null if it doesn't exist and upsert is false
    */
   public async getUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
     upsert?: boolean,
   ): Promise<string | undefined> {
-    assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-
     // always get the latest token generation id
     const doc = await this.collection.findOne(
       {
-        userId: new ObjectId(userId),
+        userId: objectIdSchema.parse(userId),
         deviceId,
         blacklisted: false,
         $or: [{ expiry: { $exists: false } }, { expiry: undefined }],
@@ -145,17 +229,15 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
    * @returns the new token generation ID
    */
   public async changeUserTokenGenerationId(
-    userId: string,
+    userId: ObjectIdOrString,
     deviceId: string,
   ): Promise<string> {
-    assert(ObjectId.isValid(userId), 'userId must be a valid ObjectId');
-
     const expiry = this.tokenExpiry();
 
     // update the latest document
     await this.collection.updateMany(
       {
-        userId: new ObjectId(userId),
+        userId: objectIdSchema.parse(userId),
         $or: [{ expiry: { $exists: false } }, { expiry: undefined }],
       },
       { $set: { expiry } },
@@ -165,7 +247,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     const genId = this.generateTokenGenerationId();
 
     const doc: TokenGenIdDoc = {
-      userId: new ObjectId(userId),
+      userId: objectIdSchema.parse(userId),
       tokenGenerationId: genId,
       deviceId,
       created: new Date(),
@@ -182,10 +264,10 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
   }
 
   /**
-   * Adds the token genearation IDs provided in docs to the blacklist cache
-   * @param docs - The documents to cache
+   * Adds the token generation IDs provided in docs to the Redis blacklist cache
+   * @param docs - Array of documents containing tokenGenerationId and expiry to cache
    */
-  private async cacheBlacklist(
+  private async cacheGenIDBlacklist(
     docs: Pick<TokenGenIdDoc, 'tokenGenerationId' | 'expiry'>[],
   ) {
     console.log('adding blacklisted genids to cache');
@@ -203,7 +285,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
         }
 
         // key format: token-blacklist:<tokenGenerationId>
-        const key = `${TokenRepository.BLACKLIST_REDIS_KEY}:${doc.tokenGenerationId}`;
+        const key = `${TokenRepository.GENERATION_IDS_BLACKLIST_REDIS_KEY}:${doc.tokenGenerationId}`;
 
         // add to redis with TTL using SET
         // use '1' as the key since we don't care about the value we just want
@@ -217,23 +299,27 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     return;
   }
 
+  /**
+   * Calculate the expiry date for a token based on the current time and token lifespan
+   * @returns The calculated expiry date
+   */
   private tokenExpiry = (): Date =>
     new Date(Date.now() + TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS * 1000);
 
   /**
-   * Blacklist all a user's token generation ID to prevent all tokens from being
-   * used including access tokens. This method will also change the user's token
-   * generation ID.
-   *
-   * @param genId - The token generation ID to blacklist
+   * Blacklist all a user's token generation IDs to prevent all tokens from being
+   * used including access tokens.
+   * @param userId - The ID of the user whose tokens should be blacklisted
    */
-  public async blacklistTokenGenerationIds(userId: string): Promise<void> {
+  public async blacklistTokenGenerationIds(
+    userId: ObjectIdOrString,
+  ): Promise<void> {
     const expiry = this.tokenExpiry();
 
     // begin blacklisting all tokens in the db but don't wait
     const dbPromise = this.collection
       .updateMany(
-        { userId: new ObjectId(userId), blacklisted: false },
+        { userId: objectIdSchema.parse(userId), blacklisted: false },
         [
           {
             $set: {
@@ -263,19 +349,24 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     // get all of them as well to blacklist in redis
     const docs = await this.collection
       .find(
-        { userId: new ObjectId(userId) },
+        { userId: objectIdSchema.parse(userId) },
         { projection: { tokenGenerationId: 1, expiry: 1 } },
       )
       .toArray();
 
-    await Promise.all([this.cacheBlacklist(docs), dbPromise]);
+    await Promise.all([this.cacheGenIDBlacklist(docs), dbPromise]);
   }
 
+  /**
+   * Check if a token generation ID is blacklisted in the Redis cache
+   * @param genId - The token generation ID to check
+   * @returns True if the token generation ID is blacklisted in cache, false otherwise
+   */
   private async isTokenGenerationIdBlacklistedCache(
     genId: string,
   ): Promise<boolean> {
     const result = await this.redis.get(
-      `${TokenRepository.BLACKLIST_REDIS_KEY}:${genId}`,
+      `${TokenRepository.GENERATION_IDS_BLACKLIST_REDIS_KEY}:${genId}`,
     );
 
     return result !== null;
@@ -313,11 +404,311 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     // add to redis cache to avoid another cache miss
     // this should be non blocking so don't await
 
-    this.cacheBlacklist([doc]).catch((e) =>
-      console.error('error caching blacklist', e),
+    this.cacheGenIDBlacklist([doc]).catch((e) =>
+      console.warn('Error blacklisting gen id:', e),
     );
 
     // and return
     return true;
+  }
+}
+
+export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAccessTokenDoc> {
+  protected static readonly ACCESS_BLACKLIST_REDIS_KEY =
+    'access-token-blacklist';
+
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, ACCESS_BLACKLIST_COLLECTION_NAME, redis);
+  }
+
+  /**
+   * Load all non-expired blacklisted access tokens from MongoDB into Redis cache
+   * This should be called on application startup to ensure Redis has all blacklisted tokens
+   */
+  public async loadBlacklistToCache(): Promise<void> {
+    const now = new Date();
+    const docs = await this.collection
+      .find({
+        expiry: { $gt: now },
+      })
+      .toArray();
+
+    console.log(
+      `Loading ${docs.length} access tokens to Redis blacklist cache`,
+    );
+
+    const promises = docs.map((doc) => {
+      return this.cacheAccessBlacklist(
+        doc.jti,
+        Math.floor(doc.expiry.getTime() / 1000),
+      );
+    });
+
+    await Promise.all(promises);
+  }
+
+  /**
+   * Configures the access token blacklist collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
+  public async configureCollection(): Promise<void> {
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: ACCESS_BLACKLIST_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(ACCESS_BLACKLIST_COLLECTION_NAME);
+      }
+
+      // Configure indices
+      await Promise.all([
+        // Unique index for querying by JTI (used in isAccessTokenBlacklisted)
+        this.collection.createIndex({ jti: 1 }, { unique: true }),
+
+        // Index on created date for potential analytics or cleanup operations
+        this.collection.createIndex({ created: 1 }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+          },
+        ),
+      ]);
+
+      console.log(
+        `Configured ${ACCESS_BLACKLIST_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${ACCESS_BLACKLIST_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Blacklist a specific access token by its JTI. This will add the token to both
+   * the database and Redis cache.
+   * @param jti - The JWT ID of the access token to blacklist
+   * @param expirySeconds - When the token expires in seconds since epoch
+   */
+  public async blacklistAccessToken(
+    jti: string,
+    expirySeconds: number,
+  ): Promise<void> {
+    const ttlSeconds = expirySeconds - Math.floor(Date.now() / 1000);
+
+    // Don't blacklist if already expired
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    const expiry = new Date(expirySeconds * 1000);
+
+    // Add to MongoDB
+    const doc: BlacklistedAccessTokenDoc = {
+      jti,
+      created: new Date(),
+      expiry,
+    };
+
+    const [dbResult] = await Promise.all([
+      // Add to MongoDB
+      this.collection.insertOne(doc),
+      // Add to Redis cache
+      this.cacheAccessBlacklist(jti, expirySeconds),
+    ]);
+
+    if (!dbResult.acknowledged) {
+      throw new Error('Failed to blacklist access token in database');
+    }
+  }
+
+  /**
+   * Add an access token to the Redis blacklist cache
+   * @param jti - The JWT ID of the access token to blacklist
+   * @param expirySeconds - When the token expires in seconds since epoch
+   */
+  private async cacheAccessBlacklist(
+    jti: string,
+    expirySeconds: number,
+  ): Promise<void> {
+    const ttlSeconds = expirySeconds - Math.floor(Date.now() / 1000);
+
+    // Don't blacklist if already expired
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    const key = `${AccessBlacklistRepository.ACCESS_BLACKLIST_REDIS_KEY}:${jti}`;
+    await this.redis.set(key, '1', {
+      EX: ttlSeconds,
+    });
+  }
+
+  /**
+   * Check if an access token is blacklisted by checking both Redis cache and MongoDB
+   * @param jti - The JWT ID to check
+   * @returns True if the token is blacklisted, false otherwise
+   */
+  public async isAccessTokenBlacklisted(jti: string): Promise<boolean> {
+    try {
+      // Only check Redis cache
+      return await this.isAccessTokenBlacklistedCache(jti);
+    } catch (e) {
+      console.error('Error checking redis cache for access token blacklist', e);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an access token is blacklisted by its JTI
+   * @param jti - The JWT ID to check
+   * @returns True if the token is blacklisted, false otherwise
+   */
+  private async isAccessTokenBlacklistedCache(jti: string): Promise<boolean> {
+    const key = `${AccessBlacklistRepository.ACCESS_BLACKLIST_REDIS_KEY}:${jti}`;
+    const result = await this.redis.get(key);
+    return result !== null;
+  }
+}
+
+export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFAToken> {
+  protected static readonly MFA_BLACKLIST_KEY = MFA_BLACKLIST_COLLECTION_NAME;
+
+  constructor(client: MongoClient, db: Db, redis: RedisClientType) {
+    super(client, db, MFA_BLACKLIST_COLLECTION_NAME, redis);
+  }
+
+  /**
+   * Load all non-expired blacklisted MFA tokens from MongoDB into Redis cache
+   * This should be called on application startup to ensure Redis has all blacklisted tokens
+   */
+  public async loadBlacklistToCache(): Promise<void> {
+    const now = new Date();
+    const docs = await this.collection
+      .find({
+        expiry: { $gt: now },
+      })
+      .toArray();
+
+    console.log(`Loading ${docs.length} MFA tokens to Redis blacklist cache`);
+
+    const promises = docs.map((doc) => {
+      const ttlSeconds = Math.ceil((doc.expiry.getTime() - Date.now()) / 1000);
+      if (ttlSeconds <= 0) return Promise.resolve();
+
+      const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${doc.jti}`;
+      return this.redis.set(key, '1', {
+        EX: ttlSeconds,
+      });
+    });
+
+    await Promise.all(promises);
+  }
+
+  /**
+   * Configures the MFA token blacklist collection by creating necessary indices.
+   * This method should be called during application initialization.
+   */
+  public async configureCollection(): Promise<void> {
+    try {
+      // Check if collection exists, if not MongoDB will create it automatically
+      const collections = await this.db
+        .listCollections({ name: MFA_BLACKLIST_COLLECTION_NAME })
+        .toArray();
+      if (collections.length === 0) {
+        await this.db.createCollection(MFA_BLACKLIST_COLLECTION_NAME);
+      }
+
+      // Configure indices
+      await Promise.all([
+        // Unique index for querying by JTI (used in isMFATokenBlacklisted)
+        this.collection.createIndex({ jti: 1 }, { unique: true }),
+
+        // TTL index to automatically remove expired tokens
+        this.collection.createIndex(
+          { expiry: 1 },
+          {
+            expireAfterSeconds: 0,
+          },
+        ),
+      ]);
+
+      console.log(
+        `Configured ${MFA_BLACKLIST_COLLECTION_NAME} collection with required indices`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to configure ${MFA_BLACKLIST_COLLECTION_NAME} collection:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Blacklist an MFA token by adding it to both Redis cache and MongoDB storage
+   * @param jti - The JWT ID of the MFA token to blacklist
+   * @param expirySeconds - When the token expires in seconds since epoch
+   * @throws {Error} If the token fails to be blacklisted in the database
+   */
+  public async blacklistMFA(jti: string, expirySeconds: number): Promise<void> {
+    const expiry = new Date(expirySeconds * 1000);
+    // calculate TTL
+    const ttlSeconds = Math.ceil(
+      ((expiry ?? TokenService.MFA_TOKEN_LIFESPAN_SECONDS).getTime() -
+        Date.now()) /
+        1000,
+    );
+
+    // don't add it if it's already expired
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    const doc: BlacklistedMFAToken = {
+      jti,
+      expiry,
+    };
+
+    // cache in Redis
+    const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${jti}`;
+    const redisPromise = this.redis
+      .set(key, '1', {
+        EX: ttlSeconds,
+      })
+      .catch((e) => console.warn('Error caching MFA token blacklist', e));
+
+    // add to db in case Redis fails
+    const dbPromise = this.collection.insertOne(doc).then((result) => {
+      return result.acknowledged;
+    });
+
+    const [dbResult] = await Promise.all([dbPromise, redisPromise]);
+
+    if (!dbResult) {
+      throw new Error('Failed to blacklist MFA token in database');
+    }
+  }
+
+  /**
+   * Check if an MFA token is blacklisted by its JTI
+   * @param jti - The JWT ID to check
+   * @returns True if the token is blacklisted, false otherwise
+   */
+  public async isMFATokenBlacklisted(jti: string): Promise<boolean> {
+    try {
+      const key = `${MFABlacklistRepository.MFA_BLACKLIST_KEY}:${jti}`;
+      const existsInCache = await this.redis.get(key);
+      return existsInCache !== null;
+    } catch (e) {
+      console.error('Error checking redis cache for MFA token blacklist', e);
+      return false;
+    }
   }
 }

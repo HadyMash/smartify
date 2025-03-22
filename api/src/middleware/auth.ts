@@ -1,7 +1,105 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest, userSchema } from '../schemas/auth/user';
+import { AuthenticatedRequest } from '../schemas/auth/auth';
+import { TokenService } from '../services/auth/token';
+import { AccessTokenPayload, tokenTypeSchema } from '../schemas/auth/tokens';
+import { AuthController } from '../controllers/auth';
 
-// TODO: implement requireAuth middleware
+// TODO: auto refresh tokens if access is about to expire
+// TODO: finish implementation and testing
+export const parseAuth = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    // check for device id
+    const deviceId = req.headers['x-device-id'] as string | undefined;
+    if (deviceId) {
+      req.deviceId = deviceId;
+    }
+
+    const ts = new TokenService();
+
+    // get access token from authorization header
+    const authHeader = req.headers.authorization;
+    let accessTokenPayload: AccessTokenPayload | undefined = undefined;
+    if (authHeader) {
+      const prefix = 'Bearer ';
+      if (authHeader.startsWith(prefix)) {
+        const accessToken = authHeader.substring(prefix.length);
+
+        const { valid, payload } = await ts.verifyToken(accessToken, true);
+
+        if (valid) {
+          if (payload!.type === tokenTypeSchema.enum.ACCESS) {
+            accessTokenPayload = payload as AccessTokenPayload;
+            req.accessTokenPayload = accessTokenPayload;
+            req.user = (payload as AccessTokenPayload).user;
+          }
+        }
+      }
+    } else {
+      // check cookies for access
+      const accessToken: string | undefined = req.cookies['access-token'] as
+        | string
+        | undefined;
+      if (accessToken) {
+        const { valid, payload } = await ts.verifyToken(accessToken, true);
+        if (valid) {
+          if (payload!.type === tokenTypeSchema.enum.ACCESS) {
+            accessTokenPayload = payload as AccessTokenPayload;
+            req.accessTokenPayload = accessTokenPayload;
+            req.user = (payload as AccessTokenPayload).user;
+          }
+        }
+      }
+    }
+
+    // check if refresh token exists
+    const refreshToken: string | undefined = req.cookies['refresh-token'] as
+      | string
+      | undefined;
+
+    if (refreshToken) {
+      const ts = new TokenService();
+      const { valid, payload } = await ts.verifyToken(refreshToken, true);
+
+      if (valid && payload!.type === tokenTypeSchema.enum.REFRESH) {
+        req.refreshToken = refreshToken;
+      }
+    }
+
+    // auto refresh
+    // if access token is invalid (possibly expired) or expiring soon (within 5 minutes)
+    if (
+      (!req.accessTokenPayload ||
+        req.accessTokenPayload.exp - Date.now() / 1000 < 300) &&
+      req.refreshToken !== undefined &&
+      req.deviceId !== undefined
+    ) {
+      await AuthController.refresh(req, res);
+    }
+
+    next();
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ error: 'Internal Server Error' });
+    return;
+  }
+};
+
+export const requireDeviceId = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  if (!req.deviceId || req.deviceId.length === 0) {
+    res.status(400).send({ error: 'Device ID required' });
+    return;
+  }
+  next();
+};
+
 /**
  * A middleware for routes which require the user to be logged in. If the user
  * is found and valid, they will be added to the request object. If not found or
@@ -12,50 +110,10 @@ export const requireAuth = (
   res: Response,
   next: NextFunction,
 ) => {
-  // TODO: check for cookies/auth header
-  const user = (req.body as { user?: unknown }).user;
-
-  if (!user) {
-    console.log('no user found');
-
-    res.status(401).json({ message: 'Unauthorized' });
+  if (!req.user) {
+    res.status(401).send('Unauthorized');
     return;
   }
-
-  const parseUserResult = userSchema.safeParse(user);
-
-  if (!parseUserResult.success) {
-    console.log('invalid user found');
-
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
-  }
-
-  req.user = parseUserResult.data;
-
-  // check cookies for auth tokens
-  return next();
-};
-
-/**
- * A middleware for routes which may use authentication information if available
- * but the user isn't required to be logged in. If found, the user will be added
- * to the request object. If not found or not valid, it will be undefined.
- */
-export const optionalAuth = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction,
-) => {
-  // TODO: check for cookies/auth header
-  const user = (req.body as { user?: unknown }).user;
-
-  const parseUserResult = userSchema.safeParse(user);
-
-  if (parseUserResult.success) {
-    req.user = parseUserResult.data;
-  }
-
-  // check cookies for auth tokens
-  return next();
+  next();
+  return;
 };
