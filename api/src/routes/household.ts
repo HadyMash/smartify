@@ -37,3 +37,18 @@ householdRouter.get('/:id/info', (req, res) =>
 householdRouter.post('/:id/change-permissions', (req, res) =>
   HouseholdController.changeUserPermissions(req, res),
 );
+
+householdRouter.post('/invite/:id', (req, res) =>
+  HouseholdController.respondToInvite(req, res),
+);
+
+householdRouter.get('/invites', (req, res) =>
+  HouseholdController.getUserInvites(req, res),
+);
+
+householdRouter.get('/households', requireAuth, (req, res) =>
+  HouseholdController.getUserHouseholds(req, res),
+);
+
+// TODO: add leave household
+//householdRouter.post('/:id/leave', (req, res) =>

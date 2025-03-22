@@ -22,6 +22,7 @@ import {
 import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { tryAPIController, validateSchema } from '../util';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
+import { AuthController } from './auth';
 
 // TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {
@@ -199,16 +200,25 @@ export class HouseholdController {
           data.inviteId,
           data.response,
         );
-        res.status(200).send(updatedHousehold);
-        // update invited member's token
-        if (data.response) {
-          try {
-            const ts = new TokenService();
-            await ts.revokeAccessTokens(req.user!._id);
-          } catch (e) {
-            console.error("Failed to revoke invited mmeber's tokens:", e);
-          }
+
+        // update the user's tokens
+        try {
+          const ts = new TokenService();
+          const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+            req.refreshToken!,
+            req.deviceId!,
+          );
+          AuthController.writeAuthCookies(
+            res,
+            accessToken,
+            refreshToken,
+            idToken,
+          );
+        } catch (e) {
+          console.error('Failed to revoke tokens:', e);
         }
+
+        res.status(200).send(updatedHousehold);
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
