@@ -12,6 +12,8 @@ import {
   AlreadyInvitedError,
   MissingPermissionsError,
   modifyMemberSchema,
+  memberRoleSchema,
+  InvalidInviteError,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -24,7 +26,6 @@ import { tryAPIController, validateSchema } from '../util';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
 
-// TODO: proper error handling (maybe implement custom error classes)
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
     tryAPIController(res, async () => {
@@ -73,13 +74,23 @@ export class HouseholdController {
       res,
       async () => {
         // validate id
-        const id = validateSchema(res, objectIdOrStringSchema, req.params.id);
+        const id = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
 
         if (!id) {
           return;
         }
 
-        // TODO: check user has permissions to get household
+        // check user is a household member
+        if (!(id.toString() in req.user!.households)) {
+          res
+            .status(403)
+            .send({ error: "You don't have access to this household" });
+          return;
+        }
 
         // get household
         const hs = new HouseholdService();
@@ -116,7 +127,20 @@ export class HouseholdController {
           return;
         }
 
-        // TODO: check user is a owner/admin
+        // get perms
+        const perms = req.user!.households[data.householdId.toString()];
+        // check user is an owner or admin
+        if (
+          !(
+            [
+              memberRoleSchema.enum.owner,
+              memberRoleSchema.enum.admin,
+            ] as string[]
+          ).includes(perms.role as string)
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
 
         const hs = new HouseholdService();
         const updatedHousehold = await hs.inviteMember(
@@ -239,6 +263,10 @@ export class HouseholdController {
           res.status(500).send({ error: 'Internal Server Error' });
           return true;
         }
+        if (e instanceof InvalidInviteError) {
+          res.status(400).send({ error: 'Invalid invite' });
+          return true;
+        }
         return false;
       },
     );
@@ -258,8 +286,6 @@ export class HouseholdController {
           return;
         }
 
-        // TODO: check user is a owner/admin and if the can remove the other user
-
         const householdId = validateSchema(
           res,
           objectIdStringSchema,
@@ -267,6 +293,20 @@ export class HouseholdController {
           req.body.householdId,
         );
         if (!householdId) {
+          return;
+        }
+
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        const perms = req.user!.households[householdId.toString()];
+        if (
+          perms.role !== memberRoleSchema.enum.owner &&
+          perms.role !== memberRoleSchema.enum.admin
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
           return;
         }
 
@@ -311,6 +351,11 @@ export class HouseholdController {
           return;
         }
 
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
         const hs = new HouseholdService();
         const household = await hs.getHousehold(householdId);
 
@@ -319,13 +364,37 @@ export class HouseholdController {
           return;
         }
 
-        // TODO: check user is the owner of the household and can delete it
+        // check user is the owner of the household and can delete it
+        if (household.owner.toString() !== req.user!._id.toString()) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
 
         await hs.deleteHousehold(householdId);
-        res.status(200).json({ message: 'Household deleted.' });
+
+        const ts = new TokenService();
+        // update this user's tokens
+        try {
+          await ts.revokeAccessTokens(req.user!._id);
+          // generate new tokens
+          const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+            req.refreshToken!,
+            req.deviceId!,
+          );
+
+          AuthController.writeAuthCookies(
+            res,
+            accessToken,
+            refreshToken,
+            idToken,
+          );
+        } catch (e) {
+          console.error('Failed to revoke tokens:', e);
+        }
+
+        res.status(200).json({ message: 'Household deleted' });
 
         try {
-          const ts = new TokenService();
           const promises = [];
 
           for (const user of household.members) {
@@ -449,6 +518,91 @@ export class HouseholdController {
             return true;
           }
         }
+        if (e instanceof InvalidUserError) {
+          if (e.type === InvalidUserType.INVALID_ID) {
+            console.error('invalid system generated user id:', e);
+            res.status(500).send({ error: 'Internal Server Error' });
+            return true;
+          } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
+            res.status(400).send({ error: 'User does not exist' });
+            return true;
+          } else if (e.type === InvalidUserType.INVALID_EMAIL) {
+            res.status(400).send({ error: 'Invalid email address' });
+            return true;
+          }
+        }
+        return false;
+      },
+    );
+  }
+
+  public static leaveHousehold(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        const hs = new HouseholdService();
+
+        // check if user is already a member
+        const household = await hs.getHousehold(householdId);
+        if (!household) {
+          res.status(404).send({ error: 'Household not found' });
+          return;
+        }
+
+        if (!household.members.find((m) => m.id === req.user!._id)) {
+          res
+            .status(400)
+            .send({ error: 'User is not a member of the household' });
+          return;
+        }
+
+        await hs.removeMember(householdId, req.user!._id);
+
+        // update tokens
+        try {
+          const ts = new TokenService();
+          await ts.revokeAccessTokens(req.user!._id);
+
+          // update the user's tokens
+          const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+            req.refreshToken!,
+            req.deviceId!,
+          );
+
+          AuthController.writeAuthCookies(
+            res,
+            accessToken,
+            refreshToken,
+            idToken,
+          );
+        } catch (e) {
+          console.error('Failed to revoke tokens:', e);
+        }
+
+        res.status(200).send({ message: 'Left household' });
+      },
+
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.INVALID_ID) {
             console.error('invalid system generated user id:', e);

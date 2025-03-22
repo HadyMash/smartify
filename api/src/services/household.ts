@@ -12,12 +12,12 @@ import {
   MissingPermissionsError,
   householdSchema,
   AlreadyMemberError,
-  InvalidInvite,
   memberSchema,
   AlreadyInvitedError,
   HouseholdInfo,
   householdInfoSchema,
   householdToInfo,
+  InvalidInviteError,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
@@ -223,7 +223,10 @@ export class HouseholdService {
       throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
     }
 
-    if (h.members.find((m) => m.id.toString() === user._id.toString())) {
+    if (
+      user._id.toString() === h.owner.toString() ||
+      h.members.find((m) => m.id.toString() === user._id.toString())
+    ) {
       throw new AlreadyMemberError();
     }
 
@@ -269,7 +272,7 @@ export class HouseholdService {
    * @param response - The user's response to the invite (true for accept, false for decline).
    * @param userId - The ID of the user responding to the invite.
    * @returns {Promise<Household | null>} - The updated household document or null if the operation fails.
-   * @throws A {@link InvalidInvite} error if the invite is invalid.
+   * @throws A {@link InvalidInviteError} error if the invite is invalid.
    * @throws A {@link InvalidUserError} error if the user invited does not exist.
    * @throws An {@link AlreadyMemberError} error if the user is already a member of the household.
    */
@@ -283,7 +286,7 @@ export class HouseholdService {
     const h = await this.db.householdRepository.getHouseholdByInvite(inviteId);
 
     if (!h) {
-      throw new InvalidInvite();
+      throw new InvalidInviteError();
     }
 
     // check if the user exists
@@ -297,8 +300,19 @@ export class HouseholdService {
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
 
+    const invite = h.invites.find(
+      (i) => i.id.toString() === inviteId.toString(),
+    );
+
+    if (!invite) {
+      throw new InvalidInviteError();
+    }
+
     // check if the user is already a member
-    if (h.members.find((m) => m.id.toString() === h.owner.toString())) {
+    if (
+      h.owner.toString() === invite.id ||
+      h.members.find((m) => m.id.toString() === invite.id.toString())
+    ) {
       // remove the invite if the user is already a member
       try {
         await this.db.householdRepository.revokeInvite(inviteId);

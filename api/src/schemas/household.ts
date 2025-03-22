@@ -307,10 +307,10 @@ export class AlreadyInvitedError extends Error {
   }
 }
 
-export class InvalidInvite extends Error {
+export class InvalidInviteError extends Error {
   constructor() {
     super('Invalid invite');
     this.name = 'InvalidInvite';
-    Object.setPrototypeOf(this, InvalidInvite.prototype);
+    Object.setPrototypeOf(this, InvalidInviteError.prototype);
   }
 }

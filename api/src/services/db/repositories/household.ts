@@ -88,7 +88,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   ): Promise<Household[]> {
     return await this.collection
       .find({
-        'members.id': objectIdOrStringSchema.parse(userId),
+        $or: [
+          { 'members.id': objectIdOrStringSchema.parse(userId) },
+          { owner: objectIdOrStringSchema.parse(userId) },
+        ],
       })
       .toArray();
   }
@@ -271,6 +274,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     const doc = await this.collection.findOneAndUpdate(
       {
         _id: objectIdSchema.parse(householdId),
+        owner: { $ne: objectIdSchema.parse(invitee.id) },
         members: {
           $not: { $elemMatch: { id: objectIdSchema.parse(invitee.id) } },
         },

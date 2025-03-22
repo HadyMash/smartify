@@ -10,35 +10,35 @@ householdRouter.post('/new', (req, res) =>
   HouseholdController.createHousehold(req, res),
 );
 
-householdRouter.get('/:id', (req, res) =>
+householdRouter.get('/:householdId', (req, res) =>
   HouseholdController.getHousehold(req, res),
 );
 
-householdRouter.post('/:id/invite', (req, res) =>
+householdRouter.post('/:householdId/invite', (req, res) =>
   HouseholdController.inviteMember(req, res),
 );
 
-householdRouter.post('/:id/remove-member', (req, res) =>
+householdRouter.post('/:householdId/remove-member', (req, res) =>
   HouseholdController.removeMember(req, res),
 );
 
-householdRouter.delete('/:id', (req, res) =>
+householdRouter.delete('/:householdId', (req, res) =>
   HouseholdController.deleteHousehold(req, res),
 );
 
-householdRouter.patch('/:id/rooms', (req, res) =>
+householdRouter.put('/:householdId/rooms', (req, res) =>
   HouseholdController.updateRooms(req, res),
 );
 
-householdRouter.get('/:id/info', (req, res) =>
+householdRouter.get('/:householdId/info', (req, res) =>
   HouseholdController.getHouseholdInfo(req, res),
 );
 
-householdRouter.post('/:id/change-permissions', (req, res) =>
+householdRouter.patch('/:householdId/change-permissions', (req, res) =>
   HouseholdController.changeUserPermissions(req, res),
 );
 
-householdRouter.post('/invite/:id', (req, res) =>
+householdRouter.post('/invite/respond', (req, res) =>
   HouseholdController.respondToInvite(req, res),
 );
 
@@ -46,9 +46,10 @@ householdRouter.get('/invites', (req, res) =>
   HouseholdController.getUserInvites(req, res),
 );
 
-householdRouter.get('/households', requireAuth, (req, res) =>
+householdRouter.get('/households', (req, res) =>
   HouseholdController.getUserHouseholds(req, res),
 );
 
-// TODO: add leave household
-//householdRouter.post('/:id/leave', (req, res) =>
+householdRouter.post('/:householdId/leave', (req, res) =>
+  HouseholdController.leaveHousehold(req, res),
+);

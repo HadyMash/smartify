@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { userWithIdSchema } from './user';
 import { mfaFormattedKeySchema } from './auth';
-import { objectIdOrStringSchema } from '../obj-id';
 import { memberSchema } from '../household';
 
 export const jwtSecretSchema = z.object({
@@ -56,7 +55,7 @@ export const accessTokenUserSchema = userWithIdSchema.extend({
   /** The households the user is a member of and their access permissions
    * The key is the household id and entry is their access permissions
    */
-  households: z.record(objectIdOrStringSchema, memberSchema),
+  households: z.record(memberSchema),
 });
 export type AccessTokenUser = z.infer<typeof accessTokenUserSchema>;
 
