@@ -454,7 +454,8 @@ export class TokenService {
       if (payload.type === tokenTypeSchema.enum.ACCESS) {
         const tokenBlacklisted =
           await this.db.accessBlacklistRepository.isAccessTokenBlacklisted(
-            payload.jti,
+            payload.userId,
+            payload.iat,
           );
         if (tokenBlacklisted) {
           return { valid: false };
@@ -631,31 +632,10 @@ export class TokenService {
    * @returns Promise that resolves when the token has been blacklisted
    * @throws InvalidTokenError if the token is invalid or not an access token
    */
-  public async blacklistAccessToken(accessToken: string): Promise<void> {
-    // Verify and decode the token
-    const { valid, payload } = await this.verifyToken(accessToken, true);
-
-    if (!valid || !payload) {
-      throw new InvalidTokenError('Invalid access token');
-    }
-
-    // Ensure it's an access token
-    if (payload.type !== tokenTypeSchema.enum.ACCESS) {
-      throw new InvalidTokenError('Token is not an access token');
-    }
-
-    // Get expiry time from the payload
-    const exp = (payload as jwt.JwtPayload).exp;
-    if (!exp) {
-      throw new InvalidTokenError('Token has no expiry time');
-    }
+  public async revokeAccessTokens(userId: ObjectIdOrString): Promise<void> {
     await this.db.connect();
-
     // Blacklist the token
-    await this.db.accessBlacklistRepository.blacklistAccessToken(
-      payload.jti,
-      exp,
-    );
+    await this.db.accessBlacklistRepository.blacklistAccessTokens(userId);
   }
 
   /**

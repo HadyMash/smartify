@@ -257,8 +257,8 @@ export class HouseholdController {
         res.status(200).send(household);
 
         try {
-          const blacklist = new TokenService();
-          await blacklist.revokeAllTokensImmediately(userId);
+          const ts = new TokenService();
+          await ts.revokeAccessTokens(userId);
         } catch (e) {
           console.error('Failed to revoke tokens:', e);
         }
@@ -310,7 +310,7 @@ export class HouseholdController {
           const promises = [];
 
           for (const user of household.members) {
-            promises.push(ts.revokeAllTokensImmediately(user.id));
+            promises.push(ts.revokeAccessTokens(user.id));
           }
 
           await Promise.all(promises);

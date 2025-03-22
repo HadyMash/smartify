@@ -10,13 +10,14 @@ import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
  */
 interface BlacklistedAccessTokenDoc {
   /**
-   * The JWT ID of the access token
+   * The user ID this revocation applies to
    */
-  jti: string;
+  _id: ObjectId;
   /**
-   * When the token was blacklisted
+   * When the access tokens were revoked. Any token generated before this time
+   * would be considered invalid
    */
-  created: Date;
+  revocationTime: Date;
   /**
    * When the token expires
    */
@@ -416,14 +417,17 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
 export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAccessTokenDoc> {
   protected static readonly ACCESS_BLACKLIST_REDIS_KEY =
     'access-token-blacklist';
+  protected static readonly REVOCATION_TIME_KEY =
+    'access-token-revocation-time';
+  protected static readonly ACCESS_TOKEN_JTI_KEY = 'access-token-jti';
 
   constructor(client: MongoClient, db: Db, redis: RedisClientType) {
     super(client, db, ACCESS_BLACKLIST_COLLECTION_NAME, redis);
   }
 
   /**
-   * Load all non-expired blacklisted access tokens from MongoDB into Redis cache
-   * This should be called on application startup to ensure Redis has all blacklisted tokens
+   * Load all non-expired blacklisted access token revocation times from MongoDB into Redis cache
+   * This should be called on application startup to ensure Redis has the latest revocation times
    */
   public async loadBlacklistToCache(): Promise<void> {
     const now = new Date();
@@ -433,18 +437,19 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
       })
       .toArray();
 
-    console.log(
-      `Loading ${docs.length} access tokens to Redis blacklist cache`,
-    );
-
-    const promises = docs.map((doc) => {
-      return this.cacheAccessBlacklist(
-        doc.jti,
-        Math.floor(doc.expiry.getTime() / 1000),
+    if (docs.length > 0) {
+      console.log(
+        `Loading ${docs.length} access token revocation times to Redis cache`,
       );
-    });
 
-    await Promise.all(promises);
+      const promises = docs.map((doc) =>
+        this.cacheRevocationTime(doc._id, doc.revocationTime, doc.expiry),
+      );
+
+      await Promise.all(promises);
+    } else {
+      console.log('No access token revocation times to load into cache');
+    }
   }
 
   /**
@@ -463,13 +468,10 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
 
       // Configure indices
       await Promise.all([
-        // Unique index for querying by JTI (used in isAccessTokenBlacklisted)
-        this.collection.createIndex({ jti: 1 }, { unique: true }),
+        // Compound index on user ID and revocation time for efficient querying
+        this.collection.createIndex({ _id: 1, revocationTime: -1 }),
 
-        // Index on created date for potential analytics or cleanup operations
-        this.collection.createIndex({ created: 1 }),
-
-        // TTL index to automatically remove expired tokens
+        // TTL index to automatically remove expired revocation times
         this.collection.createIndex(
           { expiry: 1 },
           {
@@ -491,89 +493,120 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
   }
 
   /**
-   * Blacklist a specific access token by its JTI. This will add the token to both
-   * the database and Redis cache.
-   * @param jti - The JWT ID of the access token to blacklist
-   * @param expirySeconds - When the token expires in seconds since epoch
+   * Blacklist all access tokens for a specific user generated before the current time.
+   * This creates a new revocation time entry in both the database and Redis cache.
+   * @param userId - The user ID whose tokens should be blacklisted
+   * @param expirySeconds - When the revocation time entry expires in seconds since epoch
    */
-  public async blacklistAccessToken(
-    jti: string,
-    expirySeconds: number,
-  ): Promise<void> {
-    const ttlSeconds = expirySeconds - Math.floor(Date.now() / 1000);
-
-    // Don't blacklist if already expired
-    if (ttlSeconds <= 0) {
-      return;
-    }
-
-    const expiry = new Date(expirySeconds * 1000);
+  public async blacklistAccessTokens(userId: ObjectIdOrString): Promise<void> {
+    // 5 minutes after the access token lifespan
+    const expiry = new Date(
+      Date.now() +
+        TokenService.ACCESS_TOKEN_LIFESPAN_SECONDS * 1000 +
+        5 * 60 * 1000,
+    );
+    // Time for tokens to be created for them to have expired 5 minutes ago
+    const revocationTime = new Date();
+    const userObjectId = objectIdSchema.parse(userId);
 
     // Add to MongoDB
     const doc: BlacklistedAccessTokenDoc = {
-      jti,
-      created: new Date(),
+      _id: userObjectId,
+      revocationTime,
       expiry,
     };
 
     const [dbResult] = await Promise.all([
-      // Add to MongoDB
-      this.collection.insertOne(doc),
+      // Add to MongoDB - use upsert to ensure only one document per user
+      this.collection.updateOne(
+        { _id: userObjectId },
+        { $set: doc },
+        { upsert: true },
+      ),
       // Add to Redis cache
-      this.cacheAccessBlacklist(jti, expirySeconds),
+      this.cacheRevocationTime(userObjectId, revocationTime, expiry),
     ]);
 
     if (!dbResult.acknowledged) {
-      throw new Error('Failed to blacklist access token in database');
+      throw new Error(
+        'Failed to create access token revocation time in database',
+      );
     }
   }
 
   /**
-   * Add an access token to the Redis blacklist cache
-   * @param jti - The JWT ID of the access token to blacklist
-   * @param expirySeconds - When the token expires in seconds since epoch
+   * Add a revocation time to the Redis cache
+   * @param userId - The user ID this revocation applies to
+   * @param revocationTime - The time before which all tokens are considered revoked
+   * @param expiry - When this revocation time entry expires
    */
-  private async cacheAccessBlacklist(
-    jti: string,
-    expirySeconds: number,
+  private async cacheRevocationTime(
+    userId: ObjectId,
+    revocationTime: Date,
+    expiry: Date,
   ): Promise<void> {
-    const ttlSeconds = expirySeconds - Math.floor(Date.now() / 1000);
+    const ttlSeconds = Math.ceil((expiry.getTime() - Date.now()) / 1000);
 
-    // Don't blacklist if already expired
+    // Don't cache if already expired
     if (ttlSeconds <= 0) {
       return;
     }
 
-    const key = `${AccessBlacklistRepository.ACCESS_BLACKLIST_REDIS_KEY}:${jti}`;
-    await this.redis.set(key, '1', {
+    // Store the revocation time timestamp in Redis with user-specific key
+    const key = `${AccessBlacklistRepository.REVOCATION_TIME_KEY}:${userId.toString()}`;
+    await this.redis.set(key, revocationTime.getTime().toString(), {
       EX: ttlSeconds,
     });
   }
 
   /**
-   * Check if an access token is blacklisted by checking both Redis cache and MongoDB
-   * @param jti - The JWT ID to check
-   * @returns True if the token is blacklisted, false otherwise
+   * Check if an access token is blacklisted by checking if it was created before the latest revocation time
+   * @param userId - The user ID the token belongs to
+   * @param tokenCreatedAt - The timestamp when the token was created
+   * @returns True if the token is blacklisted (created before revocation time), false otherwise
    */
-  public async isAccessTokenBlacklisted(jti: string): Promise<boolean> {
+  public async isAccessTokenBlacklisted(
+    userId: ObjectIdOrString,
+    tokenCreatedAtSeconds: number,
+  ): Promise<boolean> {
     try {
-      // Only check Redis cache
-      return await this.isAccessTokenBlacklistedCache(jti);
+      // only check redis
+      // Check Redis cache for the user-specific revocation time
+      return await this.isTokenCreatedBeforeRevocationTime(
+        userId,
+        new Date(tokenCreatedAtSeconds * 1000),
+      );
     } catch (e) {
-      console.error('Error checking redis cache for access token blacklist', e);
+      console.error(
+        'Error checking redis cache for access token revocation time',
+        e,
+      );
+
       return false;
     }
   }
 
   /**
-   * Check if an access token is blacklisted by its JTI
-   * @param jti - The JWT ID to check
-   * @returns True if the token is blacklisted, false otherwise
+   * Check if a token was created before the latest revocation time in Redis
+   * @param userId - The user ID the token belongs to
+   * @param tokenCreatedAt - The timestamp when the token was created
+   * @returns True if the token is blacklisted (created before revocation time), false otherwise
    */
-  private async isAccessTokenBlacklistedCache(jti: string): Promise<boolean> {
-    const key = `${AccessBlacklistRepository.ACCESS_BLACKLIST_REDIS_KEY}:${jti}`;
+  private async isTokenCreatedBeforeRevocationTime(
+    userId: ObjectIdOrString,
+    tokenCreatedAt: Date,
+  ): Promise<boolean> {
+    const userObjectId = objectIdSchema.parse(userId);
+    const key = `${AccessBlacklistRepository.REVOCATION_TIME_KEY}:${userObjectId.toString()}`;
     const result = await this.redis.get(key);
-    return result !== null;
+
+    if (result === null) {
+      return false; // No revocation time set for this user
+    }
+
+    const revocationTime = new Date(parseInt(result, 10));
+
+    return tokenCreatedAt.getTime() < revocationTime.getTime();
   }
 }
 
