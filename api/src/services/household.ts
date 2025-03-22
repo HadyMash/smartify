@@ -14,6 +14,9 @@ import {
   InvalidInvite,
   memberSchema,
   AlreadyInvitedError,
+  HouseholdInfo,
+  householdInfoSchema,
+  householdToInfo,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
@@ -41,7 +44,9 @@ export class HouseholdService {
     data: Omit<Household, '_id'>,
   ): Promise<Household> {
     await this.db.connect();
-    return this.db.householdRepository.createHousehold(data);
+    return this.db.householdRepository.createHousehold(
+      householdSchema.parse(data),
+    );
   }
 
   /**
@@ -57,6 +62,43 @@ export class HouseholdService {
     } else {
       return null;
     }
+  }
+
+  /**
+   * Get a household's information
+   * @param id - The household's ID
+   * @returns The household if it exists, null otherwise
+   */
+  public async getHouseholdInfo(
+    id: ObjectIdOrString,
+  ): Promise<HouseholdInfo | null> {
+    await this.db.connect();
+    const h = await this.db.householdRepository.getHouseholdById(id);
+
+    if (!h) {
+      return null;
+    }
+
+    const info: HouseholdInfo = {
+      _id: h._id,
+      floors: h.floors,
+      name: h.name,
+      members: h.members.length,
+      owner: h.owner,
+    };
+
+    return householdInfoSchema.parse(info);
+  }
+
+  public async getUserHouseholds(
+    userId: ObjectIdOrString,
+  ): Promise<HouseholdInfo[]> {
+    await this.db.connect();
+
+    const households =
+      await this.db.householdRepository.getUserHouseholds(userId);
+
+    return households.map(householdToInfo);
   }
 
   public async householdExists(id: ObjectIdOrString): Promise<boolean> {
@@ -200,11 +242,6 @@ export class HouseholdService {
     userId: ObjectIdOrString,
   ): Promise<HouseholdInvite[]> {
     await this.db.connect();
-
-    // check user exists
-    if (!(await this.db.userRepository.userExists(userId))) {
-      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
-    }
 
     return this.db.householdRepository.getUserInvites(userId);
   }

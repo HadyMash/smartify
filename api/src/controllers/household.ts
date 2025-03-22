@@ -364,7 +364,7 @@ export class HouseholdController {
       }
 
       const hs = new HouseholdService();
-      const household = await hs.getHousehold(householdId);
+      const household = await hs.getHouseholdInfo(householdId);
 
       if (!household) {
         res.status(404).send({ error: 'Household not found' });
@@ -372,6 +372,14 @@ export class HouseholdController {
       }
 
       res.status(200).send(household);
+    });
+  }
+
+  public static getUserHouseholds(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      const hs = new HouseholdService();
+      const households = await hs.getUserHouseholds(req.user!._id);
+      res.status(200).send(households);
     });
   }
 

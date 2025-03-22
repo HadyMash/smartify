@@ -26,8 +26,8 @@ householdRouter.delete('/:id', (req, res) =>
   HouseholdController.deleteHousehold(req, res),
 );
 
-householdRouter.post('/:id/rooms', (req, res) =>
-  HouseholdController.addRoom(req, res),
+householdRouter.patch('/:id/rooms', (req, res) =>
+  HouseholdController.updateRooms(req, res),
 );
 
 householdRouter.get('/:id/info', (req, res) =>
@@ -36,12 +36,4 @@ householdRouter.get('/:id/info', (req, res) =>
 
 householdRouter.post('/:id/change-permissions', (req, res) =>
   HouseholdController.changeUserPermissions(req, res),
-);
-
-householdRouter.post('/:id/manage-rooms', (req, res) =>
-  HouseholdController.manageRooms(req, res),
-);
-
-householdRouter.post('/:id/remove-room', (req, res) =>
-  HouseholdController.removeRoom(req, res),
 );

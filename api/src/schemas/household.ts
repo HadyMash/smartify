@@ -103,10 +103,7 @@ export const householdRoomSchema = z.object({
   name: z
     .string()
     .min(1, { message: 'Room name cannot be empty' }) // Prevent empty strings
-    .trim()
-    .regex(/^[a-zA-Z0-9\s]+$/, {
-      message: 'Room name must contain only letters, numbers, and spaces',
-    }),
+    .trim(),
   /** Room type */
   type: householdRoomTypeSchema,
   /** Room floor */
@@ -132,7 +129,7 @@ export const householdCreateRequestDataSchema = z.object({
    * -1. If there are multiple basements then the offset would be -2, etc.
    * or if the first floor is above ground and so on.
    */
-  floorsOffset: z.number().int().optional(),
+  floorsOffset: z.number().int().default(0),
   /** Household's rooms */
   rooms: z.array(householdRoomSchema).min(1),
 });
@@ -173,14 +170,42 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   members: z.array(memberSchema),
   invites: z.array(householdInviteSchema),
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
-  roomAdjacencyList: z
-    .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
-    .optional(),
+  // TODO: add adjacency list for rooms
+  //roomAdjacencyList: z
+  //  .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
+  //  .optional(),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
 });
 
 export type Household = z.infer<typeof householdSchema>;
+
+export const householdInfoSchema = householdSchema
+  .pick({
+    _id: true,
+    name: true,
+    owner: true,
+    floors: true,
+    coordinates: true,
+  })
+  .extend({
+    /** The number of members in the household */
+    members: z.number().int(),
+  });
+
+export type HouseholdInfo = z.infer<typeof householdInfoSchema>;
+
+export function householdToInfo(h: Household) {
+  const x: HouseholdInfo = {
+    _id: h._id,
+    name: h.name,
+    owner: h.owner,
+    floors: h.floors,
+    members: h.members.length,
+  };
+
+  return householdInfoSchema.parse({ x });
+}
 
 export const roomRequestDataSchema = z.object({
   rooms: z.array(householdRoomSchema).min(1),

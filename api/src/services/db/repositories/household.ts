@@ -53,8 +53,6 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   /**
    * Creates a new household.
    * @param ownerId - The ID of the user creating the household.
-   * @param name - The name of the household.
-   * @param coordinates - The coordinates of the household.
    * @returns The created household.
    */
   public async createHousehold(data: Household): Promise<Household> {
@@ -83,6 +81,16 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   ): Promise<Household | null> {
     const household = await this.collection.findOne({ _id: new ObjectId(id) });
     return household ? household : null;
+  }
+
+  public async getUserHouseholds(
+    userId: ObjectIdOrString,
+  ): Promise<Household[]> {
+    return await this.collection
+      .find({
+        'members.id': objectIdOrStringSchema.parse(userId),
+      })
+      .toArray();
   }
 
   /**
