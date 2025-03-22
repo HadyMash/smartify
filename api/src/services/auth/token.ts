@@ -227,11 +227,13 @@ export class TokenService {
     //  user._id,
     //  true
 
-    const generationId = await this.db.tokenRepository.getUserTokenGenerationId(
-      userId,
-      deviceId,
-      true,
-    );
+    // change the generation id to invalidate all previous tokens for this
+    // device
+    const generationId =
+      await this.db.tokenRepository.changeUserTokenGenerationId(
+        userId,
+        deviceId,
+      );
 
     // get the user
     const userInfo = await this.db.userRepository.getUserById(userId);

@@ -2,6 +2,8 @@ import { Response } from 'express';
 import {
   AuthenticatedRequest,
   AuthSessionError,
+  Email,
+  emailSchema,
   IncorrectPasswordError,
   MFACode,
   mfaCodeSchema,
@@ -11,12 +13,13 @@ import {
 import { TokenService } from '../services/auth/token';
 import { tryAPIController, validateSchema } from '../util';
 import {
-  Email,
-  emailSchema,
+  changePasswordDataSchema,
   InvalidUserError,
   InvalidUserType,
   loginDataSchema,
   registerDataSchema,
+  resetPasswordDataSchema,
+  userWithIdSchema,
 } from '../schemas/auth/user';
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
@@ -524,5 +527,79 @@ export class AuthController {
 
       res.status(200).send();
     });
+  }
+
+  //public static srpCredentials(req: AuthenticatedRequest, res: Response) {
+  //  tryAPIController(res, async () => {
+  //    const userId = req.user!._id;
+  //    const as = new AuthService();
+  //    const srp = await as.getUserSRPCredentials(userId);
+  //    res.status(200).send(srp);
+  //  });
+  //}
+
+  public static userData(req: AuthenticatedRequest, res: Response) {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    tryAPIController(res, async () => {
+      res.status(200).send(userWithIdSchema.parse(req.user));
+    });
+  }
+
+  public static changePassword(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      const userId = req.user!._id;
+      const data = validateSchema(res, changePasswordDataSchema, req.body);
+      if (!data) {
+        return;
+      }
+
+      const as = new AuthService();
+      const success = await as.changeUserSRPCredentials(
+        userId,
+        data.salt,
+        data.verifier,
+      );
+      if (success) {
+        res.status(200).send();
+        return;
+      } else {
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+  }
+
+  public static resetPassword(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        if (req.user) {
+          res.status(400).send({ error: 'Already logged in' });
+          return;
+        }
+
+        const data = validateSchema(res, resetPasswordDataSchema, req.body);
+        if (!data) {
+          res.status(400).send({ error: 'Invalid request' });
+          return;
+        }
+
+        const as = new AuthService();
+        await as.resetPassword(data);
+        res.status(200).send({ message: 'Password reset successfully' });
+        return;
+      },
+      (e: unknown) => {
+        if (e instanceof InvalidUserError) {
+          // don't tell the client the user doesn't exist, just return ok status
+          res.status(200).send();
+          return true;
+        }
+        if (e instanceof MFAError && e.type == MFAErrorType.INCORRECT_CODE) {
+          res.status(400).send({ error: 'MFA code incorrect or missing' });
+          return true;
+        }
+        return false;
+      },
+    );
   }
 }

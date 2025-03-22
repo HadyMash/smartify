@@ -2,7 +2,6 @@ import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
 import { Db, MongoClient, ObjectId } from 'mongodb';
 import {
-  Email,
   InvalidUserError,
   InvalidUserType,
   RegisterData,
@@ -12,6 +11,7 @@ import {
 } from '../../../schemas/auth/user';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import {
+  Email,
   MFA,
   MFAFormattedKey,
   SRPJSONSession,
@@ -99,14 +99,14 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
   }
 
   /**
-   * Get the user's SRP credentials
+   * Get the user's SRP credentials by email
    * @param email - The user's email
    * @returns the user's salt and verifier
    * @throws An InvalidUserError if the user does not exist
    */
-  public async getUserSRPCredentials(
+  public async getUserSRPCredentialsByEmail(
     email: Email,
-  ): Promise<{ userId: ObjectId; salt: string; verifier: string }> {
+  ): Promise<{ userId: ObjectIdOrString; salt: string; verifier: string }> {
     const result = await this.collection.findOne(
       {
         email,
@@ -117,6 +117,46 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
     return { userId: result._id, salt: result.salt, verifier: result.verifier };
+  }
+
+  /**
+   * Get the user's SRP credentials by id
+   * @param userId - The user's id
+   * @returns the user's salt and verifier
+   * @throws An InvalidUserError if the user does not exist
+   */
+  public async getUserSRPCredentialsById(
+    userId: ObjectIdOrString,
+  ): Promise<{ salt: string; verifier: string }> {
+    const result = await this.collection.findOne(
+      {
+        _id: objectIdSchema.parse(userId),
+      },
+      { projection: { _id: 1, salt: 1, verifier: 1 } },
+    );
+    if (!result) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return { salt: result.salt, verifier: result.verifier };
+  }
+
+  /**
+   * Change the user's SRP credentials
+   * @param userId - The user's id
+   * @param salt - The new salt
+   * @param verifier - The new verifier
+   * @returns a boolean indicating successful
+   */
+  public async changeUserSRPCredentials(
+    userId: ObjectIdOrString,
+    salt: string,
+    verifier: string,
+  ) {
+    const result = await this.collection.updateOne(
+      { _id: objectIdSchema.parse(userId) },
+      { $set: { salt, verifier } },
+    );
+    return result.acknowledged && result.matchedCount === 1;
   }
 
   /**
@@ -139,7 +179,7 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
    * Get's a user by their email
    * @param email - The email of the user to get
    * @returns The user with the given id
-   * @throws Error if the user does not exist
+   * @throws An {@link InvalidUserError} if the user does not exist
    */
   public async getUserByEmail(email: Email): Promise<UserWithId> {
     const user = await this.collection.findOne({
@@ -210,6 +250,25 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
     const user = await this.collection.findOne(
       {
         _id: objectIdSchema.parse(userId),
+      },
+      { projection: { mfaFormattedKey: 1, mfaConfirmed: 1 } },
+    );
+    if (!user) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return { formattedKey: user.mfaFormattedKey, confirmed: user.mfaConfirmed };
+  }
+
+  /**
+   * Get's the user's MFA formatted key
+   * @param userId - The id of the user
+   * @returns The user's MFA formatted key
+   * @throws Error if the user does not exist
+   */
+  public async getUserMFAByEmail(email: Email): Promise<MFA> {
+    const user = await this.collection.findOne(
+      {
+        email,
       },
       { projection: { mfaFormattedKey: 1, mfaConfirmed: 1 } },
     );

@@ -25,6 +25,22 @@ authRouter.get('/refresh', requireAuth, (req, res) =>
   AuthController.refreshTokens(req, res),
 );
 
+authRouter.get('/user', requireAuth, (req, res) =>
+  AuthController.userData(req, res),
+);
+
+//authRouter.get('/srp-credentials', requireAuth, (req, res) =>
+//  AuthController.srpCredentials(req, res),
+//);
+
+authRouter.patch('/password/change', requireAuth, (req, res) =>
+  AuthController.changePassword(req, res),
+);
+
+authRouter.patch('/password/reset', (req, res) =>
+  AuthController.resetPassword(req, res),
+);
+
 authRouter.get('/logout', requireAuth, (req, res) =>
   AuthController.logout(req, res),
 );

@@ -432,6 +432,8 @@ class _SignInScreenState extends State<SignInScreen> {
                               const SnackBar(
                                   content: Text(
                                       'Sign-in failed. Please try again.')),
+                                  content: Text(
+                                      'Sign-in failed. Please try again.')),
                             );
                           }
                         } catch (e) {
@@ -498,3 +500,4 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+

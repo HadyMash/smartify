@@ -231,12 +231,21 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
 
   Future<void> _verifyCode() async {
     String code = _controllers.map((controller) => controller.text).join();
+    String code = _controllers.map((controller) => controller.text).join();
 
     if (code.length != 6) {
       setState(() => _isError = true);
       return;
     }
+    if (code.length != 6) {
+      setState(() => _isError = true);
+      return;
+    }
 
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+    });
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -368,3 +377,4 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
     );
   }
 }
+

@@ -197,6 +197,8 @@ class QRSetupScreen extends StatelessWidget {
                     width: 40, // Fixed width for the back button
                     child:
                         CustomBackButton(), // Use the custom back button widget
+                    child:
+                        CustomBackButton(), // Use the custom back button widget
                   ),
                 ],
               ),
@@ -244,6 +246,8 @@ class QRSetupScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 32),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -299,3 +303,4 @@ class QRSetupScreen extends StatelessWidget {
     );
   }
 }
+

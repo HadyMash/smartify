@@ -1,6 +1,5 @@
 import * as authenticator from 'authenticator';
-import { Email } from '../../schemas/auth/user';
-import { MFAFormattedKey, MFACode } from '../../schemas/auth/auth';
+import { MFAFormattedKey, MFACode, Email } from '../../schemas/auth/auth';
 
 export class MFAService {
   constructor() {}

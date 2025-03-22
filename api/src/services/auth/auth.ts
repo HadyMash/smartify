@@ -10,13 +10,14 @@ import {
   MFAFormattedKey,
   SRPJSONSession,
   AuthSessionError,
+  Email,
 } from '../../schemas/auth/auth';
 import {
-  Email,
   InvalidUserError,
   InvalidUserType,
   LoginData,
   RegisterData,
+  ResetPasswordData,
   UserWithId,
   userWithIdSchema,
 } from '../../schemas/auth/user';
@@ -74,7 +75,7 @@ export class AuthService {
       userId,
       salt,
       verifier: verifierString,
-    } = await this.db.userRepository.getUserSRPCredentials(email);
+    } = await this.db.userRepository.getUserSRPCredentialsByEmail(email);
 
     // generate the server keys
     const verifier = BigInt(verifierString);
@@ -234,6 +235,72 @@ export class AuthService {
     const ms = new MFAService();
     const result = ms.verifyCode(mfa.formattedKey, code);
     return result;
+  }
+
+  ///**
+  // * Get a user's SRP auth credentials
+  // * @param userId - The user's id
+  // * @returns The user's SRP credentials
+  // */
+  //public async getUserSRPCredentials(
+  //  userId: ObjectIdOrString,
+  //): Promise<{ salt: string; verifier: bigint }> {
+  //  await this.db.connect();
+  //  const { salt, verifier } =
+  //    await this.db.userRepository.getUserSRPCredentialsById(userId);
+  //  return { salt: salt, verifier: BigInt(verifier) };
+  //}
+
+  /**
+   * Change the user's password (by changing SRP credentials)
+   * @param userId - The user's id
+   * @param salt - The new salt
+   * @param verifier - The new verifier
+   * @returns a boolean indicating success
+   */
+  public async changeUserSRPCredentials(
+    userId: ObjectIdOrString,
+    salt: string,
+    verifier: bigint,
+  ): Promise<boolean> {
+    await this.db.connect();
+    return await this.db.userRepository.changeUserSRPCredentials(
+      userId,
+      salt,
+      `0x${verifier.toString(16)}`,
+    );
+  }
+  public async resetPassword(data: ResetPasswordData) {
+    await this.db.connect();
+    // get user by email
+    const user = await this.db.userRepository.getUserDocByEmail(data.email);
+
+    // check if mfa is confirmed
+    if (user.mfaConfirmed) {
+      if (!data.code) {
+        console.log('code missing');
+
+        throw new MFAError(MFAErrorType.INCORRECT_CODE);
+      }
+      // validate the mfa code and reset password if correct
+      const ms = new MFAService();
+      if (ms.verifyCode(user.mfaFormattedKey, data.code)) {
+        await this.db.userRepository.changeUserSRPCredentials(
+          user._id!,
+          data.salt,
+          `0x${data.verifier.toString(16)}`,
+        );
+      } else {
+        throw new MFAError(MFAErrorType.INCORRECT_CODE);
+      }
+    } else {
+      // mfa not confirmed, reset password
+      await this.db.userRepository.changeUserSRPCredentials(
+        user._id!,
+        data.salt,
+        `0x${data.verifier.toString(16)}`,
+      );
+    }
   }
 }
 
