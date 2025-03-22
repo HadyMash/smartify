@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:smartify/services/auth.dart'; // Import your AuthService
 
 class SignOutScreen extends StatelessWidget {
-  final Future<AuthService> _authService = AuthService.create(); // Use the factory method
+  final Future<AuthService> _authService =
+      AuthService.create(); // Use the factory method
 
   SignOutScreen({super.key});
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'del_cookie.dart';
+import 'package:smartify/get_started.dart';
+
 
 class MFASetupCompleteScreen extends StatelessWidget {
   const MFASetupCompleteScreen({super.key});
@@ -50,11 +52,10 @@ class MFASetupCompleteScreen extends StatelessWidget {
                 onPressed: () {
                   // Navigate to the home screen or any other screen
                   Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignOutScreen()
-                                  ),
-                                  );
+                    context,
+                    // MaterialPageRoute(builder: (context) => SignOutScreen()),
+                    MaterialPageRoute(builder: (context) => const GetStartedScreen()),
+                  );
                 },
                 child: const Text(
                   'Finish',

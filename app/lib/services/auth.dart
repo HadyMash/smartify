@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:http/http.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:smartify/models/mfa.dart';
 import 'package:smartify/utils/device_id.dart';
@@ -16,9 +17,9 @@ class AuthService {
   final Dio _dio;
   final CookieJar _cookieJar;
   final Uri _apiBaseUrl;
+   MFAFormattedKey? _mfaKey; 
 
   AuthState _currentAuthState;
-
 
   // Clear cookies for a specific URL
   Future<void> clearCookiesForUrlTemporarily(Uri url) async {
@@ -29,8 +30,6 @@ class AuthService {
   Future<void> clearAllCookiesTemporarily() async {
     await _cookieJar.deleteAll();
   }
-
- 
 
   final StreamController<AuthEvent> _eventStream =
       StreamController<AuthEvent>.broadcast();
@@ -76,8 +75,7 @@ class AuthService {
     return _cookieJar.loadForRequest(_apiBaseUrl);
   }
 
-
- Future<MFAFormattedKey?> register(String email, String password,
+  Future<MFAFormattedKey?> register(String email, String password,
       {DateTime? dob, String? sex}) async {
     try {
       if (state != AuthState.signedOut) {
@@ -143,8 +141,6 @@ class AuthService {
     return null;
   }
 
-
-
   Future<({String salt, BigInt B})?> _initiateAuthSession(String email) async {
     try {
       if (state == AuthState.signedInMFAVerify ||
@@ -163,45 +159,141 @@ class AuthService {
 
       return (salt: salt, B: B);
     } on DioError catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Failed to initiate session');
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to initiate session');
     } catch (e) {
       throw Exception('Failed to initiate session: $e');
     }
   }
 
-  Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
-      String email, String password) async {
-    try {
-      if (state != AuthState.signedOut) {
-        throw Exception('User is already signed in');
+  // Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
+  //     String email, String password) async {
+  //   try {
+  //     if (state != AuthState.signedOut) {
+  //       throw Exception('User is already signed in');
+  //     }
+
+  //     final session = await _initiateAuthSession(email);
+  //     if (session == null) throw Exception('Failed to initiate session');
+
+  //     final a = _SRP.generatePrivateKey();
+  //     final proof = _SRP.respondToAuthChallenge(
+  //         email, password, session.salt, a, session.B);
+
+  //     final response = await _dio.post('/auth/login', data: {
+  //       'email': email,
+  //       'A': '0x${proof.A.toRadixString(16)}',
+  //       'Mc': '0x${proof.M.toRadixString(16)}',
+  //     });
+
+  //     print(response.statusCode);
+
+
+
+  //     final responseBody = response.data as Map<String, dynamic>;
+
+  //     final mfaConfirmed = responseBody['mfaConfirmed'] as bool? ?? true;
+
+  //   // Store MFA key if MFA is not confirmed
+  //   MFAFormattedKey? mfaKey;
+  //   if (!mfaConfirmed) {
+  //     mfaKey = MFAFormattedKey.fromJson(responseBody);
+  //     _mfaKey = mfaKey; // Store MFA key
+  //   }
+  //     // // final mfa = MFAFormattedKey.fromJson(responseBody);
+  //    // _mfaKey = MFAFormattedKey.fromJson(responseBody); // Store MFA key
+
+  //     _currentAuthState = mfaConfirmed ? AuthState.signedInMFAConfirm : AuthState.signedInMFAVerify;
+
+  //     _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+  //     print('ret');
+  //     return (success: true, error: null, mfa: _mfaKey);
+  //   } on DioError catch (e) {
+  //     return (
+  //       success: false,
+  //       error: e.response?.data['error'] as String?,
+  //       mfa: null
+  //     );
+  //   } catch (e) {
+  //     return (success: false, error: 'Sign-in failed', mfa: null);
+  //   }
+  // }
+  // MFAFormattedKey? get mfaKey => _mfaKey; 
+
+Future<({bool success, String? error, String? Ms, MFAFormattedKey? mfa})?> signIn(
+    String email, String password) async {
+  try {
+    if (state != AuthState.signedOut) {
+      throw Exception('User is already signed in');
+    }
+
+    final session = await _initiateAuthSession(email);
+    if (session == null) throw Exception('Failed to initiate session');
+
+    final a = _SRP.generatePrivateKey();
+    final proof = _SRP.respondToAuthChallenge(
+        email, password, session.salt, a, session.B);
+
+    final response = await _dio.post('/auth/login', data: {
+      'email': email,
+      'A': '0x${proof.A.toRadixString(16)}',
+      'Mc': '0x${proof.M.toRadixString(16)}',
+    });
+
+    print(response.statusCode);
+
+    final responseBody = response.data as Map<String, dynamic>;
+
+    // Extract the server proof (Ms) from the response
+    final Ms = responseBody['Ms'] as String?;
+
+    if (Ms == null) {
+      throw Exception('Server proof (Ms) not found in response');
+    }
+
+    // Check if MFA is confirmed
+    final mfaConfirmed = responseBody['mfaConfirmed'] as bool? ?? true;
+
+    // Store MFA key and QR URI if MFA is not confirmed
+    MFAFormattedKey? mfaKey;
+    if (!mfaConfirmed) {
+      final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
+      final mfaQRUri = responseBody['mfaQRUri'] as String?;
+
+      if (mfaFormattedKey == null || mfaQRUri == null) {
+        throw Exception('MFA key or QR URI not found in response');
       }
 
-      final session = await _initiateAuthSession(email);
-      if (session == null) throw Exception('Failed to initiate session');
-
-      final a = _SRP.generatePrivateKey();
-      final proof = _SRP.respondToAuthChallenge(
-          email, password, session.salt, a, session.B);
-
-      final response = await _dio.post('/auth/login', data: {
-        'email': email,
-        'A': '0x${proof.A.toRadixString(16)}',
-        'Mc': '0x${proof.M.toRadixString(16)}',
-      });
-
-      final responseBody = response.data as Map<String, dynamic>;
-      final mfa = MFAFormattedKey.fromJson(responseBody);
-
-      _currentAuthState = AuthState.signedInMFAVerify;
-      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-
-      return (success: true, error: null, mfa: mfa);
-    } on DioError catch (e) {
-      return (success: false, error: e.response?.data['message'] as String?, mfa: null);
-    } catch (e) {
-      return (success: false, error: 'Sign-in failed', mfa: null);
+      mfaKey = MFAFormattedKey(mfaFormattedKey, mfaQRUri);
+      _mfaKey = mfaKey; // Store MFA key
     }
+
+    // Update the authentication state
+    _currentAuthState = mfaConfirmed ? AuthState.signedInMFAVerify : AuthState.signedInMFAConfirm;
+    _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+
+    return (
+      success: true,
+      error: null,
+      Ms: Ms,
+      mfa: mfaKey,
+    );
+  } on DioError catch (e) {
+    return (
+      success: false,
+      error: e.response?.data['error'] as String?,
+      Ms: null,
+      mfa: null
+    );
+  } catch (e) {
+    return (success: false, error: 'Sign-in failed', Ms: null, mfa: null);
   }
+}
+
+MFAFormattedKey? get mfaKey => _mfaKey;
+
+
+
 
   Future<bool> verifyMFA(String code) async {
     try {
@@ -234,7 +326,6 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await _dio.get('/auth/logout');
-      
     } catch (e) {
       await _cookieJar.deleteAll();
     } finally {
@@ -243,8 +334,6 @@ class AuthService {
     }
   }
 }
-
-
 
 /// Client SRP methods
 class _SRP {

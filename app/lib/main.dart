@@ -2,20 +2,24 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smartify/get_started.dart';
 import 'screens/account/sign_in_screen.dart';
 import 'screens/account/del_cookie.dart';
-// import 'models/mfa.dart';
-// import 'models/user.dart';
-// import 'services/mfa.dart';
-// import 'widgets/mfa_code.dart';
+import 'services/auth_wrapper.dart';
+import 'services/auth.dart'; // Import AuthService
 
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
-  runApp(const MyApp());
+
+   final authService = await AuthService.create(); //  Initialize AuthService
+
+  runApp(MyApp(authService: authService)); // Pass it to MyApp
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthService authService; //  Add AuthService as a property
+
+  const MyApp({super.key, required this.authService}); // Constructor
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +113,34 @@ class MyApp extends StatelessWidget {
           headerHelpStyle: TextStyle(color: Colors.white),
         ),
       ),
-      home: const SignInScreen(),
+      home: AuthWrapper(authService: authService), // Pass AuthService to AuthWrapper
     );
   }
 }
+
+
+// import 'package:flutter/material.dart';
+// import 'package:smartify/screens/account/del_cookie.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+
+// Future<void> main() async {
+//   await dotenv.load(fileName: '.env');
+
+//  //  Initialize AuthService
+
+//   runApp(MyApp()); // Pass it to MyApp
+// }
+
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Sign Out Example',
+//       theme: ThemeData(
+//         primarySwatch: Colors.blue,
+//       ),
+//       home: SignOutScreen(), // Set the home screen to SignOutScreen
+//     );
+//   }
+// }

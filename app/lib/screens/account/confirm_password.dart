@@ -49,12 +49,12 @@ class PasswordChangedScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SignInScreen()),
-                      (route) => false,
-                    );
+                    // Navigator.pushAndRemoveUntil(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //       builder: (context) => SignInScreen(authService: AuthService())),
+                    //   (route) => false,
+                    // );
                   },
                   child: const Text(
                     'Back to Login',
