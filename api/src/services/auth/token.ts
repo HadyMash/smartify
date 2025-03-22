@@ -26,6 +26,7 @@ import {
 import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { MFAFormattedKey } from '../../schemas/auth/auth';
+import { HouseholdMember } from '../../schemas/household';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -236,9 +237,7 @@ export class TokenService {
       );
 
     // get the user
-    const userInfo = await this.db.userRepository.getUserById(userId);
-    // TODO: get resources user can access
-    const user = accessTokenUserSchema.parse(userInfo);
+    const user = await this.generateAccessUser(userId);
 
     const created = new Date();
     // convert created to a number of seconds
@@ -282,6 +281,44 @@ export class TokenService {
       accessToken,
       idToken,
     };
+  }
+
+  /**
+   * Get a user's information and their households/access permissions
+   * @param userId - The user's id
+   * @returns
+   */
+  private async generateAccessUser(userId: ObjectIdOrString) {
+    const [userDoc, households] = await Promise.all([
+      this.db.userRepository.getUserById(userId),
+      this.db.householdRepository.getUserHouseholds(userId),
+    ]);
+
+    let user: UserWithId;
+    try {
+      user = userSchema.parse(userDoc);
+    } catch (e) {
+      console.log('error parsing user:', e);
+      throw new InvalidUserError();
+    }
+
+    const accessUser = accessTokenUserSchema.parse({
+      ...user,
+      households: households
+        .filter((h) =>
+          h.members.some((m) => m.id.toString() === userId.toString()),
+        )
+        .reduce(
+          (acc, h) => {
+            acc[h._id!.toString()] = h.members.find(
+              (m) => m.id.toString() === userId.toString(),
+            )!;
+            return acc;
+          },
+          {} as Record<string, HouseholdMember>,
+        ),
+    });
+    return accessTokenUserSchema.parse(accessUser);
   }
 
   /**
@@ -476,25 +513,9 @@ export class TokenService {
       throw new InvalidTokenError();
     }
 
-    // TODO: replace with user service call
-    //
-    // get user's email
-
     await this.db.connect();
-    const userDoc = await this.db.userRepository.getUserById(
-      oldRefreshPayload.userId,
-    );
-    let user: UserWithId;
-    try {
-      user = userSchema.parse(userDoc);
-    } catch (e) {
-      console.log('error parsing user:', e);
-      throw new InvalidUserError();
-    }
 
-    // TODO: get user household access and roles
-
-    const accessUser = accessTokenUserSchema.parse(user);
+    const accessUser = await this.generateAccessUser(oldRefreshPayload.userId);
 
     const created = new Date();
     // convert created to a number of seconds

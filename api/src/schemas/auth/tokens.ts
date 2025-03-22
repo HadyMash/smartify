@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { userWithIdSchema } from './user';
 import { mfaFormattedKeySchema } from './auth';
+import { objectIdOrStringSchema } from '../obj-id';
+import { memberSchema } from '../household';
 
 export const jwtSecretSchema = z.object({
   /** The secret to sign the JWT with */
@@ -50,19 +52,21 @@ export const refreshTokenPayloadSchema = tokenPayloadSchema.extend({
 
 export type RefreshTokenPayload = z.infer<typeof refreshTokenPayloadSchema>;
 
-export const accessTokenUserSchema = userWithIdSchema.extend({});
+export const accessTokenUserSchema = userWithIdSchema.extend({
+  /** The households the user is a member of and their access permissions
+   * The key is the household id and entry is their access permissions
+   */
+  households: z.record(objectIdOrStringSchema, memberSchema),
+});
 export type AccessTokenUser = z.infer<typeof accessTokenUserSchema>;
 
 export const accessTokenPayloadSchema = refreshTokenPayloadSchema.extend({
-  ///** The email of the user the token is for */
-  //email: z.string(),
   /** The user */
   user: accessTokenUserSchema,
   /** The refresh token used to generate this access token's identifier */
   refreshJti: z.string().min(1),
   /** The type of the token */
   type: z.literal(tokenTypeSchema.enum.ACCESS),
-  // TODO: include household access and role
 });
 
 export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
