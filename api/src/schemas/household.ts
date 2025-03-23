@@ -190,28 +190,34 @@ const _householdSchema = householdCreateRequestDataSchema.extend({
   floorsOffset: z.number().int().optional(),
 });
 
-export const householdSchema = _householdSchema.refine(({ floors, rooms }) => {
-  // validate rooms
-  if (!validateRooms(rooms)) {
-    console.log('rooms are not valid in household schema');
+export const householdSchema = _householdSchema.refine(
+  ({ floors, rooms }) => {
+    // validate rooms
+    if (!validateRooms(rooms)) {
+      console.log('rooms are not valid in household schema');
 
-    return false;
-  }
-  const set = new Set();
-  for (const room of rooms) {
-    if (room.floor < 0 || room.floor >= floors) {
-      console.log('floors not within bounds');
       return false;
     }
-    set.add(room.floor);
-  }
-  if (set.size !== floors) {
-    console.log('set.size', set.size, 'floors', floors);
+    const set = new Set();
+    for (const room of rooms) {
+      if (room.floor < 0 || room.floor >= floors) {
+        console.log('floors not within bounds');
+        return false;
+      }
+      set.add(room.floor);
+    }
+    if (set.size !== floors) {
+      console.log('set.size', set.size, 'floors', floors);
 
-    return false;
-  }
-  return true;
-}, 'Invalid rooms');
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Invalid rooms',
+    path: ['rooms'],
+  },
+);
 
 export type Household = z.infer<typeof _householdSchema>;
 

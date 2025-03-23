@@ -1,8 +1,10 @@
 // ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'screens/account/sign_in_screen.dart';
+import 'package:smartify/services/auth.dart';
+import 'package:smartify/services/household.dart';
 
 // import 'models/mfa.dart';
 // import 'models/user.dart';
@@ -109,7 +111,113 @@ class MyApp extends StatelessWidget {
           headerHelpStyle: TextStyle(color: Colors.white),
         ),
       ),
-      home: const SignInScreen(),
+      home: const MyWidget(),
+    );
+  }
+}
+
+class MyWidget extends StatelessWidget {
+  const MyWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Widget'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Column(
+            children: [
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  print(
+                      'sign in result: ${await as.signIn('hady@gmail.com', 'Password1!')}');
+                },
+                child: const Text('Sign In'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  print(
+                      'sign up result: ${await as.register('hady@gmail.com', 'Password1!', name: 'Hady')}');
+                },
+                child: const Text('Sign Up'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  print('confirm mfa result: ${await as.confirmMFA('180327')}');
+                },
+                child: const Text('Confirm MFA'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  print('verify mfa result: ${await as.verifyMFA('123456')}');
+                },
+                child: const Text('Verify MFA'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  print('Cookies: ${await as.getCookies()}');
+                },
+                child: const Text('Print cookies'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final as = await AuthService.create();
+                  await as.signOut();
+                },
+                child: const Text('Sign out'),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                  onPressed: () async {
+                    final hs = await HouseholdService.create();
+                    await hs.createHousehold(
+                      'My House ${Random().nextInt(100)}',
+                      2,
+                      [
+                        const HouseholdRoom(
+                          id: '1',
+                          name: 'Living Room',
+                          type: 'living',
+                          floor: 0,
+                          connectedRooms: RoomConnections(right: '2'),
+                        ),
+                        const HouseholdRoom(
+                          id: '2',
+                          name: 'Kitchen',
+                          type: 'kitchen',
+                          floor: 0,
+                          connectedRooms: RoomConnections(left: '1'),
+                        ),
+                        const HouseholdRoom(
+                          id: '3',
+                          name: 'Bedroom',
+                          type: 'bedroom',
+                          floor: 1,
+                          connectedRooms: RoomConnections(),
+                        )
+                      ],
+                    );
+                  },
+                  child: const Text('Create Household')),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
