@@ -434,4 +434,22 @@ export class HouseholdService {
       }
     }
   }
+
+  public async transferOwnership(
+    householdId: ObjectIdOrString,
+    newOwner: ObjectIdOrString,
+  ): Promise<Household | null> {
+    await this.db.connect();
+    const household =
+      await this.db.householdRepository.getHouseholdById(householdId);
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+    if (
+      !household.members.find((m) => m.id.toString() === newOwner.toString())
+    ) {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
+    return this.db.householdRepository.transferOwnership(householdId, newOwner);
+  }
 }

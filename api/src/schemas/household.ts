@@ -286,6 +286,10 @@ export const respondToInviteDataSchema = z.object({
   response: z.boolean(),
 });
 
+export const transferSchema = z.object({
+  newOwnerId: objectIdOrStringSchema,
+});
+
 /* Error types */
 
 export enum InvalidHouseholdType {

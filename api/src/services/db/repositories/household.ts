@@ -391,4 +391,23 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
 
     return result;
   }
+
+  public async transferOwnership(
+    householdId: ObjectIdOrString,
+    to: ObjectIdOrString,
+  ) {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: objectIdSchema.parse(householdId) },
+      // pull new owner from members, add old owner to members, and update owner fieldj
+      {
+        $pull: { members: { id: objectIdSchema.parse(to) } },
+        $addToSet: { members: { id: objectIdSchema.parse(to), role: 'admin' } },
+        $set: { owner: objectIdSchema.parse(to) },
+      },
+      { returnDocument: 'after' },
+    );
+
+    console.log('Transferred ownership:', result);
+    return result;
+  }
 }

@@ -14,6 +14,7 @@ import {
   modifyMemberSchema,
   memberRoleSchema,
   InvalidInviteError,
+  transferSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -615,6 +616,119 @@ export class HouseholdController {
             return true;
           } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
             res.status(400).send({ error: 'User does not exist' });
+            return true;
+          } else if (e.type === InvalidUserType.INVALID_EMAIL) {
+            res.status(400).send({ error: 'Invalid email address' });
+            return true;
+          }
+        }
+        return false;
+      },
+    );
+  }
+
+  public static transferOwnership(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const data = validateSchema(res, transferSchema, req.body);
+
+        if (!data) {
+          return;
+        }
+
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        // check request is from owner
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+        if (
+          req.user!.households[householdId.toString()].role !==
+          memberRoleSchema.enum.owner
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        const hs = new HouseholdService();
+        // get the household
+        const h = await hs.getHousehold(householdId);
+
+        if (!h) {
+          res.status(404).send({ error: 'Household not found' });
+          return;
+        }
+
+        // check the new owner is a member
+        if (
+          !h.members.find((m) => m.id.toString() === data.newOwnerId.toString())
+        ) {
+          res.status(400).send({ error: 'New owner is not a member' });
+          return;
+        }
+
+        // transfer ownership
+        const updatedHousehold = await hs.transferOwnership(
+          householdId,
+          data.newOwnerId,
+        );
+
+        const ts = new TokenService();
+        // update current user's tokens, revoke the new owner's access tokens
+        try {
+          // revoke current user's tokens
+          await ts.revokeAccessTokens(req.user!._id);
+
+          // generate new tokens
+          const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+            req.refreshToken!,
+            req.deviceId!,
+          );
+          AuthController.writeAuthCookies(
+            res,
+            accessToken,
+            refreshToken,
+            idToken,
+          );
+        } catch (e) {
+          console.error('Failed to revoke tokens:', e);
+        }
+
+        res.status(200).send(updatedHousehold);
+
+        try {
+          await ts.revokeAccessTokens(data.newOwnerId);
+        } catch (e) {
+          console.error('Failed to revoke tokens:', e);
+        }
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+        if (e instanceof InvalidUserError) {
+          if (e.type === InvalidUserType.INVALID_ID) {
+            console.error('invalid system generated user id:', e);
+            res.status(500).send({ error: 'Internal Server Error' });
+            return true;
+          } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
+            res.status(400).send({ error: 'Not a household member' });
             return true;
           } else if (e.type === InvalidUserType.INVALID_EMAIL) {
             res.status(400).send({ error: 'Invalid email address' });
