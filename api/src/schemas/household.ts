@@ -159,6 +159,14 @@ export const householdInviteSchema = _memberSchema
 
 export type HouseholdInvite = z.infer<typeof householdInviteSchema>;
 
+export const uiHouseholdInvite = z.object({
+  inviteId: objectIdOrStringSchema,
+  householdName: z.string().optional(),
+  ownerName: z.string().optional(),
+});
+
+export type UIHouseholdInvite = z.infer<typeof uiHouseholdInvite>;
+
 export type HouseholdRequestData = z.infer<
   typeof householdCreateRequestDataSchema
 >;

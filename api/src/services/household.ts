@@ -23,6 +23,7 @@ import {
   uiHouseholdSchema,
   UIInvitedMember,
   InvalidRoomsError,
+  UIHouseholdInvite,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
@@ -604,10 +605,34 @@ export class HouseholdService {
    */
   public async getUserInvites(
     userId: ObjectIdOrString,
-  ): Promise<HouseholdInvite[]> {
+  ): Promise<UIHouseholdInvite[]> {
     await this.db.connect();
 
-    return this.db.householdRepository.getUserInvites(userId);
+    const invites = await this.db.householdRepository.getUserInvites(userId);
+
+    const results: (UIHouseholdInvite | null)[] = await Promise.all(
+      invites.map(async (i) => {
+        try {
+          const household =
+            await this.db.householdRepository.getHouseholdByInvite(i.inviteId);
+
+          const owner = household
+            ? await this.db.userRepository.getUserById(household.owner)
+            : null;
+
+          return {
+            inviteId: i.inviteId,
+            householdName: household?.name,
+            ownerName: owner?.name,
+          };
+        } catch (e) {
+          console.error('error getting invite:', e);
+          return null;
+        }
+      }),
+    );
+
+    return results.filter((r) => r !== null);
   }
 
   public async getInvite(
