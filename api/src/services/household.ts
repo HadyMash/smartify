@@ -18,6 +18,10 @@ import {
   householdInfoSchema,
   householdToInfo,
   InvalidInviteError,
+  UIHousehold,
+  UIMember,
+  uiHouseholdSchema,
+  UIInvitedMember,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
 import { DatabaseService } from './db/db';
@@ -63,6 +67,77 @@ export class HouseholdService {
     } else {
       return null;
     }
+  }
+
+  public async getUIHousehold(
+    id: ObjectIdOrString,
+    getMembers: boolean,
+  ): Promise<UIHousehold | null> {
+    await this.db.connect();
+    const household = await this.db.householdRepository.getHouseholdById(id);
+    if (!household) {
+      return null;
+    }
+
+    if (!getMembers) {
+      // return household without members
+      return uiHouseholdSchema.parse(household);
+    }
+
+    // get members and invites
+
+    const promises = household.members.map(async (m) => {
+      try {
+        const user = await this.db.userRepository.getUserById(m.id);
+        if (!user) {
+          return null;
+        }
+        const member: UIMember = {
+          id: user._id,
+          name: user.name,
+          role: m.role,
+          permissions: m.permissions,
+        };
+        return member;
+      } catch (_) {
+        return null;
+      }
+    });
+
+    const members: (UIMember | null)[] = await Promise.all(promises);
+
+    // filter out nulls
+    const filteredMembers = members.filter((m) => m !== null);
+
+    const invitePromises = household.invites?.map(async (i) => {
+      try {
+        const user = await this.db.userRepository.getUserById(i.id);
+        if (!user) {
+          return null;
+        }
+        const member: UIInvitedMember = {
+          id: user._id,
+          name: user.name,
+          role: i.role,
+          permissions: i.permissions,
+          inviteId: i.inviteId,
+        };
+        return member;
+      } catch (_) {
+        return null;
+      }
+    });
+
+    const invites = invitePromises ? await Promise.all(invitePromises) : [];
+
+    const filteredInvites = invites.filter((i) => i !== null);
+
+    // return household with members
+    return uiHouseholdSchema.parse({
+      ...household,
+      members: filteredMembers,
+      invites: filteredInvites,
+    });
   }
 
   /**

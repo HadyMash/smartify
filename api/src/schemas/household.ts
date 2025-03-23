@@ -196,6 +196,28 @@ export const householdInfoSchema = householdSchema
 
 export type HouseholdInfo = z.infer<typeof householdInfoSchema>;
 
+export const uiMemberSchema = z.object({
+  id: objectIdOrStringSchema,
+  name: z.string().nonempty(),
+  role: memberRoleSchema,
+  permissions: memberPermissionsSchema.optional(),
+});
+
+export type UIMember = z.infer<typeof uiMemberSchema>;
+
+export const uiInvitedMember = uiMemberSchema.extend({
+  inviteId: objectIdOrStringSchema,
+});
+
+export type UIInvitedMember = z.infer<typeof uiInvitedMember>;
+
+export const uiHouseholdSchema = householdSchema.extend({
+  members: z.array(uiMemberSchema).optional(),
+  invites: z.array(uiInvitedMember).optional(),
+});
+
+export type UIHousehold = z.infer<typeof uiHouseholdSchema>;
+
 export function householdToInfo(h: Household) {
   const x: HouseholdInfo = {
     _id: h._id,

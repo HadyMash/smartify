@@ -94,7 +94,12 @@ export class HouseholdController {
 
         // get household
         const hs = new HouseholdService();
-        const household = await hs.getHousehold(id);
+        const isPrivileged =
+          req.user!.households[id.toString()].role ===
+            memberRoleSchema.enum.admin ||
+          req.user!.households[id.toString()].role ===
+            memberRoleSchema.enum.owner;
+        const household = await hs.getUIHousehold(id, isPrivileged);
 
         if (!household) {
           res.status(404).send({ error: 'Not found' });
