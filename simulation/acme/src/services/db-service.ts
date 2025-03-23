@@ -1,4 +1,5 @@
 import { Config, DataError, JsonDB } from 'node-json-db';
+import fs from 'fs';
 import {
   Device,
   OnOffBulb,
@@ -20,26 +21,22 @@ import { DeviceCapability, deviceCapabilityMap } from '../schemas/capabilities';
 import { WebhookService } from './webhook-service';
 
 export class DBService {
-  private static _dbInstances: Map<string, JsonDB> = new Map();
+
   private static _db: JsonDB;
   private readonly db: JsonDB;
-  private readonly dbFileName: string;
+
 
   private static readonly DEVICE_DB_PATH = '/devices';
   private static readonly API_KEY_DB_PATH = '/apikeys';
 
   constructor(fileName?: string) {
-    // Generate a unique instance name using randomUUID
-    this.dbFileName = fileName || `data/sim_${randomUUID()}`;
-
-    if (!DBService._dbInstances.has(this.dbFileName)) {
-      const db = new JsonDB(new Config(this.dbFileName, true, true, '/'));
-      db.load();
-      DBService._dbInstances.set(this.dbFileName, db);
+   
+    if (!DBService._db) {
+       // Generate a unique instance name using randomUUID
+      // Create a new instance of JsonDB
+      DBService._db = new JsonDB(new Config(fileName || `data/sim_${randomUUID()}`, true, true, '/'));
     }
-
-    this.db = DBService._dbInstances.get(this.dbFileName)!;
-
+    this.db = DBService._db;
   }
 
   public async createDevice<T extends Device>(
@@ -321,4 +318,40 @@ export class DBService {
       capabilities: this.getDeviceCapabilities(device),
     };
   }
+  public async loadFile(filePath: string): Promise<void> {
+    try {
+      // Read and parse the JSON file
+      const fileContent = await fs.promises.readFile(filePath, 'utf-8');
+      const data = JSON.parse(fileContent);
+  
+      // Validate the data structure
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid file format: must contain a JSON object');
+      }
+  
+      // Load devices if present
+      if (data.devices && Array.isArray(data.devices)) {
+        for (const device of data.devices) {
+          await this.db.push(`${DBService.DEVICE_DB_PATH}/${device.id}`, device);
+        }
+        console.log(`Loaded ${data.devices.length} devices from file`);
+      }
+  
+      // Load API keys if present
+      if (data.apikeys && Array.isArray(data.apikeys)) {
+        for (const apiKey of data.apikeys) {
+          await this.db.push(`${DBService.API_KEY_DB_PATH}/${apiKey.key}`, apiKey);
+        }
+        console.log(`Loaded ${data.apikeys.length} API keys from file`);
+      }
+  
+      // Clean up by deleting the temporary file
+      await fs.promises.unlink(filePath);
+      console.log('Successfully loaded data from file');
+  
+    } catch (error) {
+      console.error('Error loading file:', error);
+      throw new Error(`Failed to load file: ${error}`);
+    }
+  }  
 }
