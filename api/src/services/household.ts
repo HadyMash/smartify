@@ -213,7 +213,7 @@ export class HouseholdService {
     await this.db.householdRepository.deleteHousehold(id);
   }
 
-  protected validateRooms(rooms: HouseholdRoom[]): boolean {
+  public static validateRooms(rooms: HouseholdRoom[]): boolean {
     /**
      * Validates if a list of rooms forms a correct grid structure
      * @param rooms List of household rooms to validate
@@ -263,6 +263,13 @@ export class HouseholdService {
               errors.push(
                 `Inconsistent connection: Room ${id} connects to ${connectedId} on ${direction}, ` +
                   `but room ${connectedId} doesn't connect back on ${oppositeDirection}`,
+              );
+            }
+
+            // check they are on the same floor
+            if (room.floor !== connectedRoom.floor) {
+              errors.push(
+                `Rooms ${id} and ${connectedId} are on different floors`,
               );
             }
           }
@@ -467,17 +474,6 @@ export class HouseholdService {
           );
         }
       }
-
-      // Check if the grid forms a rectangle (no irregular shapes)
-      // This is optional and depends on your requirements
-      const roomsInGrid = positions.size;
-      const expectedRooms = xValues.length * yValues.length;
-
-      if (roomsInGrid < expectedRooms) {
-        errors.push(
-          `Grid is not rectangular. Expected ${expectedRooms} rooms but found ${roomsInGrid}.`,
-        );
-      }
     }
 
     const result = validateRoomGrid(rooms);
@@ -502,7 +498,7 @@ export class HouseholdService {
     }
 
     // verify rooms valid
-    if (!this.validateRooms(rooms)) {
+    if (!HouseholdService.validateRooms(rooms)) {
       throw new InvalidRoomsError();
     }
 

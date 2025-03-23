@@ -168,6 +168,7 @@ const defaultRoom: HouseholdRoom = {
   type: 'living',
   floor: 0,
   name: 'Living Room',
+  connectedRooms: {},
 };
 
 export const householdSchema = householdCreateRequestDataSchema.extend({
