@@ -20,24 +20,26 @@ import { DeviceCapability, deviceCapabilityMap } from '../schemas/capabilities';
 import { WebhookService } from './webhook-service';
 
 export class DBService {
+  private static _dbInstances: Map<string, JsonDB> = new Map();
   private static _db: JsonDB;
   private readonly db: JsonDB;
+  private readonly dbFileName: string;
 
   private static readonly DEVICE_DB_PATH = '/devices';
   private static readonly API_KEY_DB_PATH = '/apikeys';
 
-  constructor() {
-    if (!DBService._db) {
-      const db = new JsonDB(
-        // TODO: change human readable to false
-        new Config('data/devices', true, true, '/'),
-      );
-      db.load();
+  constructor(fileName?: string) {
+    // Generate a unique instance name using randomUUID
+    this.dbFileName = fileName || `data/sim_${randomUUID()}`;
 
-      DBService._db = db;
+    if (!DBService._dbInstances.has(this.dbFileName)) {
+      const db = new JsonDB(new Config(this.dbFileName, true, true, '/'));
+      db.load();
+      DBService._dbInstances.set(this.dbFileName, db);
     }
 
-    this.db = DBService._db;
+    this.db = DBService._dbInstances.get(this.dbFileName)!;
+
   }
 
   public async createDevice<T extends Device>(

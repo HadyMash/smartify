@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../schemas/auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
@@ -24,10 +22,6 @@ export class IoTController {
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
 
       // TODO: update device state
-      const device = await adapter.getDevice(deviceId);
-      if (!device) {
-        return res.status(404).send({ message: 'Device not found' });
-      }
 
       const updatedDevice = await adapter.setDeviceState(deviceId, state);
       if (!updatedDevice) {
@@ -180,7 +174,7 @@ export class IoTController {
       res.status(500).send({ message: 'Internal Server Error' });
     }
   }
-  public static async startAction(req: AuthenticatedRequest, res: Response) {
+  /*public static async startAction(req: AuthenticatedRequest, res: Response) {
     try {
       const { deviceId, actionId, args } = req.body;
       if (!deviceId || !actionId || !args) {
@@ -228,5 +222,5 @@ export class IoTController {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
     }
-  }
+  }*/
 }

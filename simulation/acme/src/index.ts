@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { adminRouter } from './routes/admin';
 import { logMiddleware } from './middleware/log';
 import { externalAPIRouter } from './routes/external';
+import { DBService } from './services/db-service';
 
 const app: Express = express();
 //const port = process.env.PORT ?? 3000;
@@ -16,6 +17,7 @@ app.use('/', adminRouter);
 app.use('/api', externalAPIRouter);
 
 async function start() {
+  const dbService = new DBService();
   // Start the device simulator
   const { DeviceSimulator } = require('./services/device-simulation');
   const simulator = DeviceSimulator.getInstance();

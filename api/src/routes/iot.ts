@@ -53,7 +53,7 @@ iotRouter.delete(
   },
 );
 
-iotRouter.post(
+/*iotRouter.post(
   '/:deviceId/action',
   requireAuth,
   async (req: AuthenticatedRequest, res: Response) => {
@@ -67,4 +67,4 @@ iotRouter.post(
   async (req: AuthenticatedRequest, res: Response) => {
     await IoTController.startActions(req, res);
   },
-);
+);*/
