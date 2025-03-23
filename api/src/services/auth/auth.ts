@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   MFAError,
   MFACode,
-  MFA,
   MFAErrorType,
   IncorrectPasswordError,
   srpSessionSchema,
@@ -15,16 +13,14 @@ import {
 import {
   InvalidUserError,
   InvalidUserType,
-  LoginData,
   RegisterData,
   ResetPasswordData,
   UserWithId,
-  userWithIdSchema,
 } from '../../schemas/auth/user';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { DatabaseService } from '../db/db';
 import { MFAService } from './mfa';
-import crypto, { createHash, Hash } from 'crypto';
+import crypto from 'crypto';
 import { modPow } from './srp-utils';
 
 export class AuthService {

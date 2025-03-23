@@ -18,6 +18,8 @@ export const userSchema = z.object({
   _id: objectIdOrStringSchema.optional(),
   /** The user's email */
   email: z.string().email(),
+  /** The user's name */
+  name: z.string().nonempty(),
   /** The user's date of birth */
   dob: dobSchema.optional(),
   /** The user's sex/gender */
@@ -84,6 +86,7 @@ const bigIntTransformed = z
 
 export const registerDataSchema = z.object({
   email: emailSchema,
+  name: z.string().nonempty(),
   dob: dobSchema.optional(),
   sex: sexSchema.optional(),
   salt: z.string(),

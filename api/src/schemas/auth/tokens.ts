@@ -71,8 +71,6 @@ export const accessTokenPayloadSchema = refreshTokenPayloadSchema.extend({
 export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
 
 export const idTokenPayloadSchema = tokenPayloadSchema.extend({
-  /** The user's name */
-  name: z.string(),
   /** The user */
   user: accessTokenUserSchema,
   /** The type of the token */

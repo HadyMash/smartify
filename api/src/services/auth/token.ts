@@ -267,7 +267,6 @@ export class TokenService {
       type: tokenTypeSchema.enum.ID,
       generationId,
       iat: createdSeconds,
-      name: 'John Doe',
     };
 
     const [refreshToken, accessToken, idToken] = await Promise.all([
@@ -546,7 +545,6 @@ export class TokenService {
       type: tokenTypeSchema.enum.ID,
       generationId: oldRefreshPayload.generationId,
       iat: createdSeconds,
-      name: 'John Doe',
     };
 
     // ! temp

@@ -8,7 +8,9 @@ import {
   roomRequestDataSchema,
   inviteMemberSchema,
   modifyMemberSchema,
+  HouseholdRoom,
 } from '../../schemas/household';
+import { HouseholdService } from '../../services/household';
 
 describe('Coordinates Schema Validation', () => {
   test('should validate correct coordinates', () => {
@@ -157,6 +159,7 @@ describe('Household Schema Validation', () => {
             name: 'Living Room',
             type: 'living',
             floor: 1,
+            connectedRooms: {},
           },
         ],
       }),
@@ -207,6 +210,7 @@ describe('Room Schema Validation', () => {
         name: 'Master Bedroom',
         type: 'bedroom',
         floor: 2,
+        connectedRooms: {},
       }),
     ).not.toThrow();
   });
@@ -251,6 +255,7 @@ describe('Room Schema Validation', () => {
         name: 'Library',
         type: 'other',
         floor: 1,
+        connectedRooms: {},
       }),
     ).not.toThrow();
   });
@@ -441,5 +446,254 @@ describe('inviteMemberSchema Validation', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('Room adjacency test', () => {
+  test('should accept a single room', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '507f1f77bcf86cd799439011',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {},
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+  });
+
+  test('should accept two connected rooms', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '2',
+        },
+      },
+      {
+        id: '2',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          top: '1',
+        },
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+  });
+
+  test('should not accept connected rooms on different floors', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '2',
+        },
+      },
+      {
+        id: '2',
+        name: 'Living Room',
+        type: 'living',
+        floor: 2,
+        connectedRooms: {
+          top: '1',
+        },
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+  });
+
+  test('should accept multiple connected rooms', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: 'a',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          left: 'b',
+          right: 'c',
+        },
+      },
+      {
+        id: 'b',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 1,
+        connectedRooms: {
+          right: 'a',
+          top: 'd',
+        },
+      },
+      {
+        id: 'c',
+        name: 'Bedroom',
+        type: 'bedroom',
+        floor: 1,
+        connectedRooms: {
+          left: 'a',
+          top: 'e',
+        },
+      },
+      {
+        id: 'd',
+        name: 'Bathroom',
+        type: 'bathroom',
+        floor: 1,
+        connectedRooms: {
+          bottom: 'b',
+        },
+      },
+      {
+        id: 'e',
+        name: 'Office',
+        type: 'other',
+        floor: 1,
+        connectedRooms: {
+          bottom: 'c',
+        },
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+  });
+
+  test('should not accept multiple rooms connected to the same place', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '2',
+          right: '3',
+        },
+      },
+      {
+        id: '2',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 1,
+        connectedRooms: {
+          top: '1',
+        },
+      },
+      {
+        id: '3',
+        name: 'Bedroom',
+        type: 'bedroom',
+        floor: 1,
+        connectedRooms: {
+          left: '1',
+        },
+      },
+      {
+        id: '4',
+        name: 'Bathroom',
+        type: 'bathroom',
+        floor: 1,
+        connectedRooms: {
+          bottom: '3',
+        },
+      },
+      {
+        id: '5',
+        name: 'Office',
+        type: 'other',
+        floor: 1,
+        connectedRooms: {
+          right: '3',
+        },
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+  });
+
+  test('should not accept overlapping rooms', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          left: '2',
+          top: '5',
+        },
+      },
+      {
+        id: '2',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          right: '1',
+          top: '3',
+        },
+      },
+      {
+        id: '3',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '2',
+          right: '4',
+        },
+      },
+      {
+        id: '4',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          left: '3',
+        },
+      },
+      {
+        id: '5',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '1',
+        },
+      },
+    ];
+
+    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+  });
+
+  test('should not accept disconnected rooms', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {},
+      },
+      {
+        id: '2',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 1,
+        connectedRooms: {},
+      },
+    ];
+    expect(HouseholdService.validateRooms(rooms)).toBe(false);
   });
 });

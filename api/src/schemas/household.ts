@@ -112,7 +112,12 @@ export const householdRoomSchema = z.object({
   /**
    * Rooms connected to this room. This is used for laying out rooms in the app
    */
-  // connectedRooms:
+  connectedRooms: z.object({
+    top: z.string().optional(),
+    bottom: z.string().optional(),
+    left: z.string().optional(),
+    right: z.string().optional(),
+  }),
 });
 export type HouseholdRoom = z.infer<typeof householdRoomSchema>;
 
@@ -154,6 +159,14 @@ export const householdInviteSchema = _memberSchema
 
 export type HouseholdInvite = z.infer<typeof householdInviteSchema>;
 
+export const uiHouseholdInvite = z.object({
+  inviteId: objectIdOrStringSchema,
+  householdName: z.string().optional(),
+  ownerName: z.string().optional(),
+});
+
+export type UIHouseholdInvite = z.infer<typeof uiHouseholdInvite>;
+
 export type HouseholdRequestData = z.infer<
   typeof householdCreateRequestDataSchema
 >;
@@ -163,6 +176,7 @@ const defaultRoom: HouseholdRoom = {
   type: 'living',
   floor: 0,
   name: 'Living Room',
+  connectedRooms: {},
 };
 
 export const householdSchema = householdCreateRequestDataSchema.extend({
@@ -171,10 +185,6 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   members: z.array(memberSchema),
   invites: z.array(householdInviteSchema),
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
-  // TODO: add adjacency list for rooms
-  //roomAdjacencyList: z
-  //  .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
-  //  .optional(),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
 });
@@ -195,6 +205,28 @@ export const householdInfoSchema = householdSchema
   });
 
 export type HouseholdInfo = z.infer<typeof householdInfoSchema>;
+
+export const uiMemberSchema = z.object({
+  id: objectIdOrStringSchema,
+  name: z.string().nonempty(),
+  role: memberRoleSchema,
+  permissions: memberPermissionsSchema.optional(),
+});
+
+export type UIMember = z.infer<typeof uiMemberSchema>;
+
+export const uiInvitedMember = uiMemberSchema.extend({
+  inviteId: objectIdOrStringSchema,
+});
+
+export type UIInvitedMember = z.infer<typeof uiInvitedMember>;
+
+export const uiHouseholdSchema = householdSchema.extend({
+  members: z.array(uiMemberSchema).optional(),
+  invites: z.array(uiInvitedMember).optional(),
+});
+
+export type UIHousehold = z.infer<typeof uiHouseholdSchema>;
 
 export function householdToInfo(h: Household) {
   const x: HouseholdInfo = {
@@ -264,6 +296,10 @@ export const respondToInviteDataSchema = z.object({
   response: z.boolean(),
 });
 
+export const transferSchema = z.object({
+  newOwnerId: objectIdOrStringSchema,
+});
+
 /* Error types */
 
 export enum InvalidHouseholdType {
@@ -312,5 +348,13 @@ export class InvalidInviteError extends Error {
     super('Invalid invite');
     this.name = 'InvalidInvite';
     Object.setPrototypeOf(this, InvalidInviteError.prototype);
+  }
+}
+
+export class InvalidRoomsError extends Error {
+  constructor() {
+    super('Invalid rooms');
+    this.name = 'InvalidRoomsError';
+    Object.setPrototypeOf(this, InvalidRoomsError.prototype);
   }
 }
