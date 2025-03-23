@@ -10,7 +10,7 @@ import {
   modifyMemberSchema,
   HouseholdRoom,
 } from '../../schemas/household';
-import { HouseholdService } from '../../services/household';
+import { validateRooms } from '../../util/household';
 
 describe('Coordinates Schema Validation', () => {
   test('should validate correct coordinates', () => {
@@ -125,6 +125,107 @@ describe('Household Schema Validation', () => {
         _id: '507f1f77bcf86cd799439015',
         name: 'Main Residence',
         coordinates: { lat: 51.5074, long: -0.1278 },
+        floors: 1,
+        owner: '507f1f77bcf86cd799439016',
+        members: [
+          { id: '507f1f77bcf86cd799439017', role: 'admin' },
+          {
+            id: '507f1f77bcf86cd799439018',
+            role: 'dweller',
+            permissions: {
+              appliances: true,
+              health: false,
+              security: true,
+              energy: false,
+            },
+          },
+        ],
+        invites: [
+          {
+            inviteId: '507f1f77bcf86cd799439039',
+            id: '507f1f77bcf86cd799439040',
+            role: 'dweller',
+            permissions: {
+              appliances: false,
+              health: true,
+              security: false,
+              energy: true,
+            },
+          },
+        ],
+        rooms: [
+          {
+            id: '507f1f77bcf86cd799439050',
+            name: 'Living Room',
+            type: 'living',
+            floor: 0,
+            connectedRooms: {},
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  test('should accept a fully defined household with multiple floors', () => {
+    expect(() =>
+      householdSchema.parse({
+        _id: '507f1f77bcf86cd799439015',
+        name: 'Main Residence',
+        coordinates: { lat: 51.5074, long: -0.1278 },
+        floors: 2,
+        owner: '507f1f77bcf86cd799439016',
+        members: [
+          { id: '507f1f77bcf86cd799439017', role: 'admin' },
+          {
+            id: '507f1f77bcf86cd799439018',
+            role: 'dweller',
+            permissions: {
+              appliances: true,
+              health: false,
+              security: true,
+              energy: false,
+            },
+          },
+        ],
+        invites: [
+          {
+            inviteId: '507f1f77bcf86cd799439039',
+            id: '507f1f77bcf86cd799439040',
+            role: 'dweller',
+            permissions: {
+              appliances: false,
+              health: true,
+              security: false,
+              energy: true,
+            },
+          },
+        ],
+        rooms: [
+          {
+            id: '507f1f77bcf86cd799439050',
+            name: 'Living Room',
+            type: 'living',
+            floor: 0,
+            connectedRooms: {},
+          },
+          {
+            id: '1',
+            name: 'Kitchen',
+            type: 'kitchen',
+            floor: 1,
+            connectedRooms: {},
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  test('should reject a household with floors without rooms (top floor)', () => {
+    expect(() =>
+      householdSchema.parse({
+        _id: '507f1f77bcf86cd799439015',
+        name: 'Main Residence',
+        coordinates: { lat: 51.5074, long: -0.1278 },
         floors: 3,
         owner: '507f1f77bcf86cd799439016',
         members: [
@@ -161,9 +262,70 @@ describe('Household Schema Validation', () => {
             floor: 1,
             connectedRooms: {},
           },
+          {
+            id: '1',
+            name: 'Kitchen',
+            type: 'kitchen',
+            floor: 2,
+            connectedRooms: {},
+          },
         ],
       }),
-    ).not.toThrow();
+    ).toThrow();
+  });
+
+  test('should reject a household with floors without rooms (middle floor)', () => {
+    expect(() =>
+      householdSchema.parse({
+        _id: '507f1f77bcf86cd799439015',
+        name: 'Main Residence',
+        coordinates: { lat: 51.5074, long: -0.1278 },
+        floors: 3,
+        owner: '507f1f77bcf86cd799439016',
+        members: [
+          { id: '507f1f77bcf86cd799439017', role: 'admin' },
+          {
+            id: '507f1f77bcf86cd799439018',
+            role: 'dweller',
+            permissions: {
+              appliances: true,
+              health: false,
+              security: true,
+              energy: false,
+            },
+          },
+        ],
+        invites: [
+          {
+            inviteId: '507f1f77bcf86cd799439039',
+            id: '507f1f77bcf86cd799439040',
+            role: 'dweller',
+            permissions: {
+              appliances: false,
+              health: true,
+              security: false,
+              energy: true,
+            },
+          },
+        ],
+        rooms: [
+          {
+            id: '507f1f77bcf86cd799439050',
+            name: 'Living Room',
+            type: 'living',
+            floor: 1,
+            connectedRooms: {},
+          },
+          {
+            id: '1',
+            name: 'Kitchen',
+            type: 'kitchen',
+            floor: 3,
+            connectedRooms: {},
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   test('should reject a household without an owner', () => {
@@ -461,7 +623,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should accept two connected rooms', () => {
@@ -486,7 +648,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should not accept connected rooms on different floors', () => {
@@ -511,7 +673,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should accept multiple connected rooms', () => {
@@ -566,7 +728,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should not accept multiple rooms connected to the same place', () => {
@@ -619,7 +781,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should not accept overlapping rooms', () => {
@@ -674,7 +836,7 @@ describe('Room adjacency test', () => {
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should not accept disconnected rooms', () => {
@@ -694,6 +856,79 @@ describe('Room adjacency test', () => {
         connectedRooms: {},
       },
     ];
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
+  });
+
+  test('should accept disconnected rooms on separate floors (1 per floor)', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {},
+      },
+      {
+        id: '2',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 2,
+        connectedRooms: {},
+      },
+    ];
+    expect(validateRooms(rooms)).toBe(true);
+  });
+
+  test('should accept disconnected rooms on separate floors (multiple per floor)', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: { left: '2' },
+      },
+      {
+        id: '2',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 1,
+        connectedRooms: { right: '1' },
+      },
+    ];
+    expect(validateRooms(rooms)).toBe(true);
+  });
+
+  test('should not accept room connected to itself (1 room)', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: { top: '1' },
+      },
+    ];
+    expect(validateRooms(rooms)).toBe(false);
+  });
+
+  test('should not accept room connected to itself (multiple rooms)', () => {
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: { top: '2' },
+      },
+      {
+        id: '2',
+        name: 'Kitchen',
+        type: 'kitchen',
+        floor: 1,
+        connectedRooms: { bottom: '1', right: '2' },
+      },
+    ];
+    expect(validateRooms(rooms)).toBe(false);
   });
 });

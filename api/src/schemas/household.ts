@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
+import { validateRooms } from '../util/household';
 
 /**
  * Coordinates using longitude and latitude
@@ -179,7 +180,7 @@ const defaultRoom: HouseholdRoom = {
   connectedRooms: {},
 };
 
-export const householdSchema = householdCreateRequestDataSchema.extend({
+const _householdSchema = householdCreateRequestDataSchema.extend({
   _id: objectIdOrStringSchema.optional(),
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
@@ -189,9 +190,32 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   floorsOffset: z.number().int().optional(),
 });
 
-export type Household = z.infer<typeof householdSchema>;
+export const householdSchema = _householdSchema.refine(({ floors, rooms }) => {
+  // validate rooms
+  if (!validateRooms(rooms)) {
+    console.log('rooms are not valid in household schema');
 
-export const householdInfoSchema = householdSchema
+    return false;
+  }
+  const set = new Set();
+  for (const room of rooms) {
+    if (room.floor < 0 || room.floor >= floors) {
+      console.log('floors not within bounds');
+      return false;
+    }
+    set.add(room.floor);
+  }
+  if (set.size !== floors) {
+    console.log('set.size', set.size, 'floors', floors);
+
+    return false;
+  }
+  return true;
+}, 'Invalid rooms');
+
+export type Household = z.infer<typeof _householdSchema>;
+
+export const householdInfoSchema = _householdSchema
   .pick({
     _id: true,
     name: true,
@@ -221,7 +245,7 @@ export const uiInvitedMember = uiMemberSchema.extend({
 
 export type UIInvitedMember = z.infer<typeof uiInvitedMember>;
 
-export const uiHouseholdSchema = householdSchema.extend({
+export const uiHouseholdSchema = _householdSchema.extend({
   members: z.array(uiMemberSchema).optional(),
   invites: z.array(uiInvitedMember).optional(),
 });
