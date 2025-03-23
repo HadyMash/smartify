@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 /**
  * Validates the schema in a request, and returns the parsed object.
- * Will send a 400 response if the schema is invalid.
+ * Will send a 400 response if the schema is invalid with detailed error messages.
  * @returns The schema if valid, undefined if invalid
  */
 export function validateSchema<T extends z.ZodType>(
@@ -14,10 +14,26 @@ export function validateSchema<T extends z.ZodType>(
   try {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(data);
-  } catch (_) {
-    console.log(_);
+  } catch (error) {
+    console.log(error);
 
-    res.status(400).send({ error: 'Invalid Request' });
+    // Check if it's a Zod error to extract detailed information
+    if (error instanceof z.ZodError) {
+      // Format the error issues into a more readable structure
+      const formattedErrors = error.errors.map((err) => ({
+        path: err.path.join('.'),
+        message: err.message,
+      }));
+
+      res.status(400).send({
+        error: 'Invalid Request',
+        details: formattedErrors,
+      });
+    } else {
+      // For non-Zod errors, keep the generic message
+      res.status(400).send({ error: 'Invalid Request' });
+    }
+
     return undefined;
   }
 }
