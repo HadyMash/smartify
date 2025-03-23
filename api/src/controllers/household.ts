@@ -15,6 +15,7 @@ import {
   memberRoleSchema,
   InvalidInviteError,
   transferSchema,
+  InvalidRoomsError,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -451,6 +452,10 @@ export class HouseholdController {
             res.status(400).send({ error: 'Invalid household id' });
             return true;
           }
+        }
+        if (e instanceof InvalidRoomsError) {
+          res.status(400).send({ error: 'Invalid rooms' });
+          return true;
         }
         return false;
       },

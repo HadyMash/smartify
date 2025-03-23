@@ -112,7 +112,12 @@ export const householdRoomSchema = z.object({
   /**
    * Rooms connected to this room. This is used for laying out rooms in the app
    */
-  // connectedRooms:
+  connectedRooms: z.object({
+    top: z.string().optional(),
+    bottom: z.string().optional(),
+    left: z.string().optional(),
+    right: z.string().optional(),
+  }),
 });
 export type HouseholdRoom = z.infer<typeof householdRoomSchema>;
 
@@ -338,5 +343,13 @@ export class InvalidInviteError extends Error {
     super('Invalid invite');
     this.name = 'InvalidInvite';
     Object.setPrototypeOf(this, InvalidInviteError.prototype);
+  }
+}
+
+export class InvalidRoomsError extends Error {
+  constructor() {
+    super('Invalid rooms');
+    this.name = 'InvalidRoomsError';
+    Object.setPrototypeOf(this, InvalidRoomsError.prototype);
   }
 }
