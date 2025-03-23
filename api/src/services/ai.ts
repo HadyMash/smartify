@@ -2354,21 +2354,21 @@ RULES:
 4. CRITICAL: Do NOT invent new icons or modify the icons in any way. You must only use Flutter's Material icons.
 5. The device may sometimes include optional name and/or description fields. You may use these to help you select the most suitable icon, but they might not be included.
 6. You must consider what the icon looks like. For example, the ac_unit icon is a snowflake, which is suitable for an air conditioner or similar devices, but not a fan since it doesn't cool the room.
-7. Respond with the icon name ONLY. Provide no explanations and just return the icon name.
+7. Respond with reasoning for your choice followed by the icon name in between quotes. As in: reasoning for choice "icon_name".
 8. EXAMPLES: below are examples of inputs and possible icon choices:
 Example 1:
 INPUT:
 ${JSON.stringify(example1device)}
 
 OUTPUT:
-lightbulb_rounded
+The device seems to be a light bulb, and so it would be best represented by a lightbulb icon since it's the most suitable icon for a light bulb and is already avaiable, so we don't need to find a similar icon since the device is exactly represented by the icon. "lightbulb_rounded"
 
 Example 2:
 INPUT:
 ${JSON.stringify(example2device)}
 
 OUTPUT:
-air_rounded
+The device has fields in celcius and bounds within room temperatures, as well as controls for fan speeds and other air conditioning settings so it seems to be an air conditiner. The ac unit icon might be a good choice, but it looks like a snowflake, and so it might get confused with the cool mode. Since there is no icon that directly represents an air conditioning unit, something representative of air conditioning would be best suited. The fan icons are also not suitable since it might get confused with a fan or the ac fan speeds. The air symbol is the most suitable as it shows that it's air conditioning, and avoids confusion with ac controls or similar devices. "air_rounded"
 
 Bad Examples:
 INPUT:
