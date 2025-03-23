@@ -37,28 +37,35 @@ async function test() {
   const device: Device = {
     id: randomUUID(),
     source: 'acme',
+    name: 'ACME Fan',
     capabilities: [
+      //{
+      //  id: 'heartrate',
+      //  type: 'number',
+      //  name: 'Heart Rate',
+      //  unit: 'bpm',
+      //  readonly: true,
+      //},
+      //{
+      //  id: 'bloodpressure',
+      //  type: 'number',
+      //  unit: 'mmHg',
+      //  readonly: true,
+      //},
       {
-        id: 'heartrate',
-        type: 'number',
-        name: 'Heart Rate',
-        unit: 'bpm',
-        readonly: true,
+        id: 'on',
+        type: 'switch',
       },
-      //{
-      //  id: 'on',
-      //  type: 'switch',
-      //},
-      //{
-      //  id: 'speed',
-      //  type: 'mode',
-      //  modes: ['low', 'medium', 'high'],
-      //},
-      //{
-      //  id: 'swing',
-      //  type: 'switch',
-      //  name: 'Horizontal Swing',
-      //},
+      {
+        id: 'speed',
+        type: 'mode',
+        modes: ['low', 'medium', 'high'],
+      },
+      {
+        id: 'swing',
+        type: 'switch',
+        name: 'Horizontal Swing',
+      },
     ],
   };
   deviceSchema.parse(device);
