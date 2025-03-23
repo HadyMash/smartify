@@ -103,3 +103,7 @@ field until rotations are implemented.
 without a trailing slash (e.g https://website.com/api/v3)
 
 **`ACME_API_KEY`:** The Acme API Key
+
+**`INFERENCE_URL`:** The OpenAI like API url. This can be for llamaa.cpp, ollama, vllm, lm studio, etc.
+
+**`INFERENCE_API_KEY`:** The api key for the `INFERENCE_URL`
