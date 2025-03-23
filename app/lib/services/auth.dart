@@ -4,13 +4,9 @@ import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:convert/convert.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:smartify/models/mfa.dart';
-import 'package:smartify/utils/device_id.dart';
+import 'package:smartify/services/http/http_client.dart';
 
 class AuthService {
   // Token names
@@ -23,9 +19,8 @@ class AuthService {
   // ignore: unused_field, constant_identifier_names
   static const String _MFA_TOKEN_NAME = 'mfa-token';
 
-  final Dio _dio;
-  final CookieJar _cookieJar;
-  final Uri _apiBaseUrl;
+  late final Dio _dio;
+  late final SmartifyHttpClient _httpClient;
 
   static AuthState _currentAuthState = AuthState.signedOut;
 
@@ -34,53 +29,31 @@ class AuthService {
   Stream<AuthEvent> get authEventStream => _eventStream.stream;
   AuthState get state => _currentAuthState;
 
-  AuthService._(this._dio, this._cookieJar, this._apiBaseUrl);
+  AuthService._(this._dio, this._httpClient);
 
   /// factory method to create an instance of AuthService
   static Future<AuthService> create() async {
-    final apiBaseUrl =
-        Uri.parse(dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000/api');
+    final httpClient = await SmartifyHttpClient.instance;
 
-    final Dio dio = Dio(BaseOptions(
-      headers: {
-        'x-device-id': await getDeviceId(),
-      },
-      responseType: ResponseType.json,
-      contentType: 'application/json',
-      validateStatus: (status) => status != null && status < 300,
-      baseUrl: apiBaseUrl.toString(),
-    ));
-
-    final appDocDir = await getApplicationDocumentsDirectory();
-    final cookiePath = '${appDocDir.path}/.cookies/';
-    final cookieJar = PersistCookieJar(storage: FileStorage(cookiePath));
-
-    dio.interceptors.add(CookieManager(cookieJar));
-
-    final cookies = await cookieJar.loadForRequest(apiBaseUrl);
     var authState = AuthState.signedOut;
-    if (cookies.any((cookie) =>
-        (cookie.name == _ACCESS_TOKEN_NAME ||
-            cookie.name == _REFRESH_TOKEN_NAME) &&
-        cookie.expires != null &&
-        cookie.expires!.isAfter(DateTime.now()))) {
+    if (await httpClient.hasCookie(_ACCESS_TOKEN_NAME) ||
+        await httpClient.hasCookie(_REFRESH_TOKEN_NAME)) {
       authState = AuthState.signedIn;
     }
 
     _currentAuthState = authState;
 
-    return AuthService._(dio, cookieJar, apiBaseUrl);
+    return AuthService._(httpClient.dio, httpClient);
   }
 
-  // TEMP
   Future<List<Cookie>> getCookies() {
-    return _cookieJar.loadForRequest(_apiBaseUrl);
+    return _httpClient.getCookies();
   }
 
   /// Registers a new user with the given email and password and optional data
   /// This will also sign the user in, and only need to confirm setting up MFA
   Future<MFAFormattedKey?> register(String email, String password,
-      {DateTime? dob, String? sex}) async {
+      {required String name, DateTime? dob, String? sex}) async {
     try {
       if (state != AuthState.signedOut) {
         print('Error registering: user is already signed in');
@@ -92,6 +65,7 @@ class AuthService {
         'email': email,
         'salt': salt,
         'verifier': '0x${verifier.toRadixString(16)}',
+        'name': name,
       };
       if (dob != null) {
         body['dob'] = dob.toIso8601String();
@@ -111,7 +85,7 @@ class AuthService {
       final responseBody = response.data as Map<String, dynamic>;
       try {
         // TEMP: check cookies
-        final cookies = await _cookieJar.loadForRequest(_apiBaseUrl);
+        final cookies = await _httpClient.getCookies();
         print(cookies);
         //final userId = responseBody['userId'] as String;
         final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
@@ -136,7 +110,8 @@ class AuthService {
       if (e.response != null && e.response!.data != null) {
         if (e.response!.data != null) {
           final error = e.response!.data as Map<String, dynamic>;
-          print('Error registering: ${error['message'] ?? error['error']}');
+          print('Error registering: ${error['error'] ?? error['error']}');
+          print('Error registering details: ${error['details']}');
         }
       }
     } catch (e) {
@@ -165,7 +140,7 @@ class AuthService {
       return (salt: salt, B: B);
     } on DioError catch (e) {
       throw Exception(
-          e.response?.data['message'] ?? 'Failed to initiate session');
+          e.response?.data['error'] ?? 'Failed to initiate session');
     } catch (e) {
       throw Exception('Failed to initiate session: $e');
     }
@@ -205,7 +180,7 @@ class AuthService {
       print('Dio Error signing in: ${e.message}');
       return (
         success: false,
-        error: e.response?.data['message'] as String?,
+        error: e.response?.data['error'] as String?,
         mfa: null
       );
     } catch (e) {
@@ -222,7 +197,7 @@ class AuthService {
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
       return true;
     } on DioError catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'MFA verification failed');
+      throw Exception(e.response?.data['error'] ?? 'MFA verification failed');
     } catch (e) {
       throw Exception('MFA verification failed: $e');
     }
@@ -237,7 +212,7 @@ class AuthService {
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
       return true;
     } on DioError catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'MFA confirmation failed');
+      throw Exception(e.response?.data['error'] ?? 'MFA confirmation failed');
     } catch (e) {
       throw Exception('MFA confirmation failed: $e');
     }
@@ -249,7 +224,7 @@ class AuthService {
       await _dio.get('/auth/logout');
     } catch (e) {
       try {
-        await _cookieJar.deleteAll();
+        await _httpClient.deleteAllCookies();
       } catch (_) {}
     } finally {
       _currentAuthState = AuthState.signedOut;
@@ -284,7 +259,7 @@ class AuthService {
       print('Password changed status: ${response.statusCode}');
       return;
     } on DioError catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'MFA confirmation failed');
+      throw Exception(e.response?.data['error'] ?? 'MFA confirmation failed');
     } catch (e) {
       throw Exception('MFA confirmation failed: $e');
     }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/gestures.dart';
-import 'qr_setup_screen.dart';
 import 'package:smartify/widgets/back_button.dart';
 import 'package:smartify/services/auth.dart';
 
@@ -21,8 +20,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String? _selectedGender;
   DateTime? _selectedDate;
 
+  // ignore: unused_field
   late AuthService _authService; // Declare AuthService
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -80,38 +80,38 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   void _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final mfa = await _authService.register(
-        _emailController.text,
-        _passwordController.text,
-        dob: _selectedDate,
-        sex: _selectedGender,
-      );
-
-      if (mfa != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => QRSetupScreen(
-              mfaSecret: mfa.formattedKey,
-              mfaQRUri: mfa.qrCodeUri,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration failed: ${e.toString()}')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    //setState(() {
+    //  _isLoading = true;
+    //});
+    //
+    //try {
+    //  final mfa = await _authService.register(
+    //    _emailController.text,
+    //    _passwordController.text,
+    //    dob: _selectedDate,
+    //    sex: _selectedGender,
+    //  );
+    //
+    //  if (mfa != null) {
+    //    Navigator.push(
+    //      context,
+    //      MaterialPageRoute(
+    //        builder: (context) => QRSetupScreen(
+    //          mfaSecret: mfa.formattedKey,
+    //          mfaQRUri: mfa.qrCodeUri,
+    //        ),
+    //      ),
+    //    );
+    //  }
+    //} catch (e) {
+    //  ScaffoldMessenger.of(context).showSnackBar(
+    //    SnackBar(content: Text('Registration failed: ${e.toString()}')),
+    //  );
+    //} finally {
+    //  setState(() {
+    //    _isLoading = false;
+    //  });
+    //}
   }
 
   @override
