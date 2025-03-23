@@ -185,10 +185,6 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   members: z.array(memberSchema),
   invites: z.array(householdInviteSchema),
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
-  // TODO: add adjacency list for rooms
-  //roomAdjacencyList: z
-  //  .array(z.record(objectIdOrStringSchema, z.array(objectIdOrStringSchema)))
-  //  .optional(),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
 });
