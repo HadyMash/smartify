@@ -131,6 +131,77 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     }
     return [];
   }
+
+  Future<Household?> getHousehold(String householdId) async {
+    try {
+      final response = await _dio.get('/households/$householdId');
+      final responseBody = response.data;
+      try {
+        final household = Household(
+          id: responseBody['_id'],
+          name: responseBody['name'],
+          ownerId: responseBody['owner'],
+          floors: responseBody['floors'],
+          floorsOffset: responseBody['floorsOffset'],
+          rooms: (responseBody['rooms'] as List)
+              .map((r) => HouseholdRoom(
+                    id: r['id'],
+                    name: r['name'],
+                    type: r['type'],
+                    floor: r['floor'],
+                    connectedRooms: RoomConnections(
+                      top: r['connectedRooms']['top'],
+                      bottom: r['connectedRooms']['bottom'],
+                      left: r['connectedRooms']['left'],
+                      right: r['connectedRooms']['right'],
+                    ),
+                  ))
+              .toList(),
+          members: (responseBody['members'] as List)
+              .map((m) => HouseholdMember(
+                    id: m['_id'],
+                    name: m['name'],
+                    role: m['role'],
+                    permissions: HouseholdPermissions(
+                      appliances: m['permissions']['appliances'],
+                      health: m['permissions']['health'],
+                      security: m['permissions']['security'],
+                      energy: m['permissions']['energy'],
+                    ),
+                  ))
+              .toList(),
+          invites: (responseBody['invites'] as List)
+              .map((i) => HouseholdInvite(
+                    inviteId: i['_id'],
+                    userId: i['userId'],
+                  ))
+              .toList(),
+        );
+        print('Household: $household');
+        return household;
+      } catch (e) {
+        print('Error getting household: $e');
+      }
+    } on DioError catch (e) {
+      print('Dio Error getting household: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        if (e.response!.data != null) {
+          print('error response data: ${e.response!.data}');
+          final error = e.response!.data as Map<String, dynamic>;
+          print(
+              'Error getting household: ${error['error'] ?? error['message']}');
+          print('Error getting household details: ${error['details']}');
+
+          if (error['error'] != null) {
+            throw Exception(error['error']);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error getting household: $e');
+    }
+    return null;
+  }
 }
 
 class HouseholdInfo {

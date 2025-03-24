@@ -53,7 +53,6 @@ class AuthService {
 
   /// Handle cookie change events from the HTTP client
   void _handleCookieChangeEvent(CookieChangeEvent event) {
-    print('Cookie change event: $event');
     switch (event.type) {
       case CookieChangeEventType.tokenAdded:
         if (_currentAuthState == AuthState.signedOut) {

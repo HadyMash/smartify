@@ -26,7 +26,7 @@ import {
 import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { MFAFormattedKey } from '../../schemas/auth/auth';
-import { HouseholdMember } from '../../schemas/household';
+import { HouseholdMember, memberRoleSchema } from '../../schemas/household';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -304,14 +304,22 @@ export class TokenService {
     const accessUser = accessTokenUserSchema.parse({
       ...user,
       households: households
-        .filter((h) =>
-          h.members.some((m) => m.id.toString() === userId.toString()),
+        .filter(
+          (h) =>
+            h.members.some((m) => m.id.toString() === userId.toString()) ||
+            h.owner.toString() === userId.toString(),
         )
         .reduce(
           (acc, h) => {
-            acc[h._id!.toString()] = h.members.find(
-              (m) => m.id.toString() === userId.toString(),
-            )!;
+            const m: HouseholdMember =
+              h.owner.toString() === userId.toString()
+                ? {
+                    id: h.owner,
+                    role: memberRoleSchema.enum.owner,
+                  }
+                : h.members.find((m) => m.id.toString() === userId.toString())!;
+
+            acc[h._id!.toString()] = m;
             return acc;
           },
           {} as Record<string, HouseholdMember>,

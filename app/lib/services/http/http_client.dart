@@ -67,7 +67,6 @@ class SmartifyHttpClient {
     return InterceptorsWrapper(
       onResponse: (response, handler) async {
         // Check cookies after response
-        print('interceptor runninng');
         await checkCookieChanges();
         handler.next(response);
       },
@@ -88,7 +87,6 @@ class SmartifyHttpClient {
 
   /// Check for changes in authentication cookies
   Future<void> checkCookieChanges() async {
-    print('check cookie changes running');
     try {
       final cookies = await getCookies();
       final currentState = {

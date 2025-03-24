@@ -89,8 +89,8 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     return await this.collection
       .find({
         $or: [
-          { 'members.id': objectIdOrStringSchema.parse(userId) },
-          { owner: objectIdOrStringSchema.parse(userId) },
+          { 'members.id': objectIdSchema.parse(userId) },
+          { owner: objectIdSchema.parse(userId) },
         ],
       })
       .toArray();

@@ -67,6 +67,24 @@ export class HouseholdController {
         return;
       }
 
+      // update the user's tokens
+      try {
+        const ts = new TokenService();
+        const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+          req.refreshToken!,
+          req.deviceId!,
+        );
+        AuthController.writeAuthCookies(
+          res,
+          accessToken,
+          refreshToken,
+          idToken,
+        );
+        console.log('refreshed user tokens');
+      } catch (e) {
+        console.error('Failed to refresh tokens:', e);
+      }
+
       res.status(201).send(sanitizedHousehold);
     });
   }
@@ -84,6 +102,13 @@ export class HouseholdController {
 
         if (!id) {
           return;
+        }
+
+        console.log(req.user);
+
+        // TEMP
+        for (const hs in req.user!.households) {
+          console.log('household:', hs);
         }
 
         // check user is a household member

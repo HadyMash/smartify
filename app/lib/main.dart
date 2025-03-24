@@ -1,5 +1,6 @@
 // ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
 
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -117,8 +118,36 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyWidget extends StatelessWidget {
+class MyWidget extends StatefulWidget {
   const MyWidget({super.key});
+
+  @override
+  State<MyWidget> createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  late final AuthService as;
+  late final StreamSubscription subscripton;
+
+  void x() async {
+    as = await AuthService.create();
+    subscripton = as.authEventStream.listen((event) {
+      print('Auth event: $event');
+    });
+    print('sub added');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    x();
+  }
+
+  @override
+  void dispose() {
+    subscripton.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +191,7 @@ class MyWidget extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () async {
                     final as = await AuthService.create();
-                    print('verify mfa result: ${await as.verifyMFA('123456')}');
+                    print('verify mfa result: ${await as.verifyMFA('647747')}');
                   },
                   child: const Text('Verify MFA'),
                 ),
@@ -176,9 +205,9 @@ class MyWidget extends StatelessWidget {
 
                     //shc.deleteCookie('access-token');
 
-                    as.authEventStream.listen((event) {
-                      print('Auth event: $event');
-                    });
+                    //as.authEventStream.listen((event) {
+                    //  print('Auth event: $event');
+                    //});
 
                     //print('Cookies: ${await as.getCookies()}');
                     print(
@@ -186,6 +215,7 @@ class MyWidget extends StatelessWidget {
                     print(
                         'has refresh token: ${await shc.hasCookie('refresh-token')}');
                     print('has id token: ${await shc.hasCookie('id-token')}');
+                    print('has mfa token: ${await shc.hasCookie('mfa-token')}');
                   },
                   child: const Text('Print cookies'),
                 ),
@@ -239,6 +269,15 @@ class MyWidget extends StatelessWidget {
                     print('get households result: ${await hs.getHouseholds()}');
                   },
                   child: const Text('Get households'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final hs = await HouseholdService.create();
+                    print(
+                        'get household result: ${await hs.getHousehold('67e16d5ad778cfa271de0183')}');
+                  },
+                  child: const Text('Get household'),
                 ),
               ],
             ),
