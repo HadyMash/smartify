@@ -279,6 +279,15 @@ class _MyWidgetState extends State<MyWidget> {
                   },
                   child: const Text('Get household'),
                 ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final hs = await HouseholdService.create();
+                    print(
+                        'get household result: ${await hs.getHouseholdInfo('67e16d5ad778cfa271de0183')}');
+                  },
+                  child: const Text('Get household info'),
+                ),
               ],
             ),
           ),

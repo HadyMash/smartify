@@ -202,6 +202,35 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     }
     return null;
   }
+
+  Future<HouseholdInfo?> getHouseholdInfo(String householdId) async {
+    try {
+      final response = await _dio.get('/households/$householdId/info');
+      final h = response.data;
+
+      return HouseholdInfo(
+        id: h['_id'],
+        name: h['name'],
+        ownerId: h['owner'],
+        floors: h['floors'],
+        membersCount: h['members'],
+      );
+    } on DioError catch (e) {
+      print('Dio Error getting households: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        if (e.response!.data != null) {
+          print('error response data: ${e.response!.data}');
+          final error = e.response!.data as Map<String, dynamic>;
+          print(
+              'Error getting households: ${error['error'] ?? error['error']}');
+          print('Error getting households details: ${error['details']}');
+        }
+      }
+    } catch (e) {
+      print('Error getting households: $e');
+    }
+    return null;
+  }
 }
 
 class HouseholdInfo {
