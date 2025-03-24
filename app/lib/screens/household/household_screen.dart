@@ -73,8 +73,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       });
                     }
                   },
-                  items: _households
-                      .map<DropdownMenuItem<String>>((String value) {
+                  items:
+                      _households.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -184,7 +184,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         ),
         title: Text(
           member.name,
-          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold), // Bold text
+          style: textTheme.bodyLarge
+              ?.copyWith(fontWeight: FontWeight.bold), // Bold text
         ),
         subtitle: member.isInvited
             ? Text(
