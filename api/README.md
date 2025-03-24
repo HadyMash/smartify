@@ -100,3 +100,8 @@ field until rotations are implemented.
 **`MONGODB_URL`:** The MongoDB connection URL
 
 **`REDIS_URL`:** The Redis cache server URL
+
+**`ACME_API_URL`:** The Acme API URL. This should be the complete endpoint and
+without a trailing slash (e.g https://website.com/api/v3)
+
+**`ACME_API_KEY`:** The Acme API Key

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
@@ -8,6 +10,7 @@ import { parseAuth } from './middleware/auth';
 import { bigIntToHexMiddleware } from './middleware/bigint';
 // eslint-disable-next-line no-restricted-imports
 import { DatabaseService } from './services/db/db';
+import { webhookRouter } from './routes/webhook';
 
 dotenv.config();
 
@@ -28,6 +31,7 @@ router.get('/health', (_, res) => {
 
 router.use('/auth', authRouter);
 router.use('/households', householdRouter);
+router.use('/webhooks', webhookRouter);
 
 app.use('/api', router);
 
@@ -44,11 +48,22 @@ async function start() {
 
   console.log('Blacklists loaded');
 
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-    console.log('\n\n\n');
-  });
-}
+  async function start() {
+    const db = new DatabaseService();
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
+    await db.connect();
+
+    await Promise.all([
+      db.accessBlacklistRepository.loadBlacklistToCache(),
+      db.mfaBlacklistRepository.loadBlacklistToCache(),
+      db.srpSessionRepository.loadSessionsToCache(),
+    ]);
+
+    console.log('Blacklists loaded');
+
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  }
+}
 start();

@@ -149,7 +149,12 @@ export class DatabaseService {
 
       try {
         // Race between connection attempt and connection error
-        await Promise.race([DatabaseService.redis.connect(), errorPromise]);
+        await Promise.race([
+          DatabaseService.redis.connect().catch((e) => {
+            throw e;
+          }),
+          errorPromise,
+        ]);
         console.log('Redis client connected');
       } catch (err) {
         console.error('Error connecting to Redis client:', err);
