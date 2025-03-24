@@ -5,9 +5,9 @@ import (
     "log"
     "net/http"
     "os"
-    "smart-home-analysis/handlers"
+    //"smart-home-analysis/handlers"
     "smart-home-analysis/scheduler"
-    "smart-home-analysis/services"
+   //"smart-home-analysis/services"
     "smart-home-analysis/utils"
 
     "github.com/joho/godotenv"
@@ -15,10 +15,10 @@ import (
 
 // App holds the services, handlers, and scheduler
 type App struct {
-    AnalysisHandler    *handlers.AnalysisHandler
-    SecurityHandler    *handlers.SecurityHandler
-    DeviceUsageHandler *handlers.DeviceUsageHandler
-    LeaderboardHandler *handlers.LeaderboardHandler
+    //AnalysisHandler    *handlers.AnalysisHandler
+    //SecurityHandler    *handlers.SecurityHandler
+    //DeviceUsageHandler *handlers.DeviceUsageHandler
+    //LeaderboardHandler *handlers.LeaderboardHandler
     SchedulerService   *scheduler.Scheduler
 }
 
@@ -33,19 +33,19 @@ func (app *App) Initialize() {
     // Initialize MongoDB connection
     mongoURI := os.Getenv("MONGO_URI")
     utils.InitMongoClient(mongoURI)
-    db := utils.GetDatabase("smartify")
+    utils.GetDatabase("smartify")
 
     // Initialize services
-    analysisService := services.NewAnalysisService(db)
-    securityService := services.NewSecurityService(db)
-    deviceUsageService := services.NewDeviceUsageService(db)
-    leaderboardService := services.NewLeaderboardService(db)
+    //analysisService := services.NewAnalysisService(db)
+    //securityService := services.NewSecurityService(db)
+    //deviceUsageService := services.NewDeviceUsageService(db)
+    //leaderboardService := services.NewLeaderboardService(db)
 
     // Initialize handlers
-    app.AnalysisHandler = handlers.NewAnalysisHandler(analysisService)
-    app.SecurityHandler = handlers.NewSecurityHandler(securityService)
-    app.DeviceUsageHandler = handlers.NewDeviceUsageHandler(deviceUsageService)
-    app.LeaderboardHandler = handlers.NewLeaderboardHandler(leaderboardService)
+    //app.AnalysisHandler = handlers.NewAnalysisHandler(analysisService)
+    //app.SecurityHandler = handlers.NewSecurityHandler(securityService)
+    //app.DeviceUsageHandler = handlers.NewDeviceUsageHandler(deviceUsageService)
+    //app.LeaderboardHandler = handlers.NewLeaderboardHandler(leaderboardService)
 
     // Initialize the scheduler
     app.SchedulerService = scheduler.NewScheduler()
@@ -53,12 +53,12 @@ func (app *App) Initialize() {
 
 // Register API routes
 func (app *App) RegisterRoutes() {
-    http.HandleFunc("/api/analyze", app.AnalysisHandler.PerformAnalysis)
-    http.HandleFunc("/api/security/log", app.SecurityHandler.LogSecurityEvent)
-    http.HandleFunc("/api/device/usage", app.DeviceUsageHandler.AnalyzeDeviceUsage)
-    http.HandleFunc("/api/device/lifespan", app.DeviceUsageHandler.TrackDeviceLifespan)
-    http.HandleFunc("/api/leaderboard", app.LeaderboardHandler.GetLeaderboard)
-    http.HandleFunc("/api/statistics", app.LeaderboardHandler.GetStatistics)
+    //http.HandleFunc("/api/analyze", app.AnalysisHandler.PerformAnalysis)
+    //http.HandleFunc("/api/security/log", app.SecurityHandler.LogSecurityEvent)
+    //http.HandleFunc("/api/device/usage", app.DeviceUsageHandler.AnalyzeDeviceUsage)
+    //http.HandleFunc("/api/device/lifespan", app.DeviceUsageHandler.TrackDeviceLifespan)
+    //http.HandleFunc("/api/leaderboard", app.LeaderboardHandler.GetLeaderboard)
+    //http.HandleFunc("/api/statistics", app.LeaderboardHandler.GetStatistics)
 }
 
 // Run the server only if webhooks are needed

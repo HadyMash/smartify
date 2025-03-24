@@ -1,9 +1,13 @@
 package scheduler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"smart-home-analysis/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,14 +18,32 @@ func CommunicateToDevice(deviceID string, canSelfSchedule bool) {
 	if canSelfSchedule {
 		fmt.Printf("[Device %s] Schedule sent to device to handle on its own.\n", deviceID)
 	} else {
-		fmt.Printf("[Device %s] Device cannot self-schedule. Backend will control the device directly.\n", deviceID)
+		fmt.Printf("[Device %s] Device cannot self-schedule. Backend will control it.\n", deviceID)
 		ControlDevice(deviceID)
 	}
 }
 
-// ControlDevice simulates backend controlling the device directly
+// ControlDevice mocks backend control by hitting a placeholder API endpoint
 func ControlDevice(deviceID string) {
-	fmt.Printf("[Device %s] Performing control action from backend.\n", deviceID)
+	payload := map[string]string{
+		"device_id": deviceID,
+		"action":    "activate",
+	}
+	jsonData, _ := json.Marshal(payload)
+
+	apiHost := os.Getenv("API_HOST")
+	if apiHost == "" {
+		apiHost = "http://localhost:8080" // default fallback
+	}
+
+	resp, err := http.Post(apiHost+"/api/device/trigger", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("[Device %s] Failed to send control request: %v", deviceID, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[Device %s] Mock request sent to backend API. Status: %s", deviceID, resp.Status)
 }
 
 // FetchDeviceActionFromDB retrieves the latest action for the device from MongoDB
@@ -42,8 +64,26 @@ func FetchDeviceActionFromDB(deviceID string) func() {
 		}
 	}
 
-	// Return a closure that performs the action (simulated)
+	// Return a closure that simulates making an API call instead of just printing
 	return func() {
-		fmt.Printf("[Device %s] Executing action from DB: %s\n", result.DeviceID, result.Action)
+		payload := map[string]string{
+			"device_id": result.DeviceID,
+			"action":    result.Action,
+		}
+		jsonData, _ := json.Marshal(payload)
+
+		apiHost := os.Getenv("API_HOST")
+		if apiHost == "" {
+			apiHost = "http://localhost:8080"
+		}
+
+		resp, err := http.Post(apiHost+"/api/device/trigger", "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Printf("[Device %s] Failed to perform action: %v", result.DeviceID, err)
+			return
+		}
+		defer resp.Body.Close()
+
+		log.Printf("[Device %s] Executed DB-defined action '%s' via mock API. Status: %s", result.DeviceID, result.Action, resp.Status)
 	}
 }
