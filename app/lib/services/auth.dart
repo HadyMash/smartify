@@ -59,10 +59,17 @@ class AuthService {
             !event.hasAccessToken &&
             !event.hasRefreshToken) {
           _currentAuthState = AuthState.signedInMFAVerify;
-        } else if (event.hasAccessToken || event.hasRefreshToken) {
+          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        } else if ((event.hasAccessToken || event.hasRefreshToken) &&
+            _currentAuthState == AuthState.signedOut) {
+          // Only change state if we were previously signed out
           _currentAuthState = AuthState.signedIn;
+          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        } else if (event.hasAccessToken || event.hasRefreshToken) {
+          // If we already had a session (refresh token) and access token is added,
+          // it's actually a token refresh, not a state change
+          _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
         }
-        _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
         break;
 
       case CookieChangeEventType.tokenRemoved:
@@ -73,9 +80,8 @@ class AuthService {
         break;
 
       case CookieChangeEventType.tokenRefreshed:
-        if (event.hasAccessToken || event.hasRefreshToken) {
-          _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
-        }
+        // Only emit tokenRefresh event, don't change auth state
+        _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
         break;
     }
   }

@@ -105,13 +105,31 @@ class SmartifyHttpClient {
               currentState[REFRESH_TOKEN_NAME]) {
         // Determine the event type
         CookieChangeEventType eventType;
+
+        // If refresh token exists and access token is added or changed,
+        // it's a token refresh rather than a new login
         if (currentState[ACCESS_TOKEN_NAME]! &&
-            !_previousCookieState[ACCESS_TOKEN_NAME]!) {
+            !_previousCookieState[ACCESS_TOKEN_NAME]! &&
+            currentState[REFRESH_TOKEN_NAME]! &&
+            _previousCookieState[REFRESH_TOKEN_NAME]!) {
+          eventType = CookieChangeEventType.tokenRefreshed;
+        }
+        // Regular token added event
+        else if ((currentState[ACCESS_TOKEN_NAME]! &&
+                !_previousCookieState[ACCESS_TOKEN_NAME]!) ||
+            (currentState[REFRESH_TOKEN_NAME]! &&
+                !_previousCookieState[REFRESH_TOKEN_NAME]!)) {
           eventType = CookieChangeEventType.tokenAdded;
-        } else if (!currentState[ACCESS_TOKEN_NAME]! &&
-            _previousCookieState[ACCESS_TOKEN_NAME]!) {
+        }
+        // Token removed event
+        else if ((!currentState[ACCESS_TOKEN_NAME]! &&
+                _previousCookieState[ACCESS_TOKEN_NAME]!) ||
+            (!currentState[REFRESH_TOKEN_NAME]! &&
+                _previousCookieState[REFRESH_TOKEN_NAME]!)) {
           eventType = CookieChangeEventType.tokenRemoved;
-        } else {
+        }
+        // Default to token refreshed for any other changes
+        else {
           eventType = CookieChangeEventType.tokenRefreshed;
         }
 
