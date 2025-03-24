@@ -1,9 +1,12 @@
+import fs from 'fs';
 import OpenAI from 'openai';
 import { Device, deviceSchema } from '../schemas/devices.ts';
 import { randomUUID } from 'crypto';
 import { validMaterialIcon } from '../schemas/icon.ts';
 
-const MODEL = 'qwen2.5-3b-instruct-ml';
+const DEVICE_MODEL = 'qwen2.5-3b-instruct-ml';
+const VLM_MODEL = 'gemma-3-4b-it';
+const EMBEDDING_MODEL = 'text-embedding-nomic-embed-text-v1.5';
 
 export class AIService {
   private static _client: OpenAI;
@@ -2386,7 +2389,7 @@ INPUT:
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       const response = await this.client.chat.completions.create({
-        model: MODEL,
+        model: DEVICE_MODEL,
         messages,
         temperature: 0.1,
       });
@@ -2420,5 +2423,38 @@ INPUT:
     }
 
     return;
+  }
+
+  public async generateIconDescription(imagePath: string) {
+    // read the image
+    const imageFile = await fs.promises.readFile(imagePath);
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: `You are an icon descriptor AI assistant. You describe images of smart home device icons. You are given an image of an icon for a smart device and you must provide a detailed description of what's in the image, and what it can mean. Additionally, you must provide 8 to 10 tags for the icon. You must describe the image in a way that is useful for someone who is looking for an icon for a smart device such that they are able to match the device and icon.`,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Describe the icon in the image and provide 8 to 10 tags for the icon.',
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:image/png;base64,${imageFile.toString('base64')}`,
+            },
+          },
+        ],
+      },
+    ];
+    const response = await this.client.chat.completions.create({
+      model: VLM_MODEL,
+      messages,
+      temperature: 0.3,
+    });
+    return response.choices[0].message.content;
   }
 }

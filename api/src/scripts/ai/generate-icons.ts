@@ -104,6 +104,13 @@ async function start() {
             continue;
           }
 
+          // Set white background
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Set color for the icon
+          ctx.fillStyle = 'black';
+
           // Draw the icon on the canvas
           ctx.fillText(
             iconElement.textContent,

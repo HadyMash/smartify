@@ -14,7 +14,8 @@
     "format:check": "prettier . --check --ignore-path .gitignore --log-level warn --ignore-unknown",
     "lint": "eslint ./src --exit-on-fatal-error",
     "lint:fix": "eslint ./src --fix --exit-on-fatal-error",
-    "script:generate-icons": "ts-node src/scripts/ai/generate-icons.ts"
+    "script:generate-icons": "ts-node src/scripts/ai/generate-icons.ts",
+    "script:generate-embeddings": "ts-node src/scripts/ai/embed-icons.ts"
   },
   "keywords": [],
   "author": "",
