@@ -2,26 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smartify/widgets/back_button.dart';
 import 'mfa_setup_complete_screen.dart';
-import 'package:smartify/services/auth.dart'; // Ensure you have this for API calls
+import 'package:smartify/services/auth.dart';
 
 class MFAVerificationScreen extends StatefulWidget {
-  final bool isSetup;
+  final AuthState authState; // Use AuthState instead of isSetup
+  final AuthService authService;
 
-  const MFAVerificationScreen({super.key, required this.isSetup});
+  const MFAVerificationScreen(
+      {super.key, required this.authState, required this.authService});
 
   @override
   _MFAVerificationScreenState createState() => _MFAVerificationScreenState();
 }
 
 class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
+  final List<TextEditingController> _controllers =
+      List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+
   bool _isError = false;
   bool _isLoading = false;
 
@@ -43,30 +41,35 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
       setState(() => _isError = true);
       return;
     }
+    if (code.length != 6) {
+      setState(() => _isError = true);
+      return;
+    }
 
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+    });
     setState(() {
       _isLoading = true;
       _isError = false;
     });
 
     try {
-      // Create an instance of AuthService using the factory method
-      final authService = await AuthService.create();
-
       bool success = false;
-      if (widget.isSetup) {
-        success = await authService.confirmMFA(code); // Use the instance
-      } else {
-        success = await authService.verifyMFA(code); // Use the instance
+
+      if (widget.authState == AuthState.signedInMFAVerify) {
+        success = await widget.authService.verifyMFA(code);
+      } else if (widget.authState == AuthState.signedInMFAConfirm) {
+        success = await widget.authService.confirmMFA(code);
       }
 
       if (success) {
-        if (widget.isSetup) {
+        if (widget.authState == AuthState.signedInMFAConfirm) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const MFASetupCompleteScreen(),
-            ),
+                builder: (context) => const MFASetupCompleteScreen()),
           );
         } else {
           Navigator.pushReplacementNamed(context, '/home');
@@ -77,10 +80,10 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
     } catch (e) {
       setState(() {
         _isError = true;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -88,6 +91,8 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isSetup = widget.authState == AuthState.signedInMFAConfirm;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -101,7 +106,7 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  widget.isSetup ? 'Complete Your MFA Setup' : 'Enter MFA Code',
+                  isSetup ? 'Complete Your MFA Setup' : 'Enter MFA Code',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -110,13 +115,10 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.isSetup
+                  isSetup
                       ? 'Enter the 6-digit code from your authenticator app to finish setting up MFA.'
                       : 'Enter the 6-digit code from your authenticator app to sign in.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -136,14 +138,12 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                           counterText: '',
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
-                              color: _isError ? Colors.red : Colors.grey,
-                            ),
+                                color: _isError ? Colors.red : Colors.grey),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderSide: BorderSide(
-                              color: _isError ? Colors.red : Colors.black,
-                            ),
+                                color: _isError ? Colors.red : Colors.black),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -166,20 +166,15 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
                         onPressed: _verifyCode,
-                        child: const Text(
-                          'Verify',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        child: const Text('Verify',
+                            style: TextStyle(color: Colors.white)),
                       ),
                 if (_isError)
                   const Padding(
                     padding: EdgeInsets.only(top: 16),
                     child: Text(
                       'The code you entered is incorrect. Please try again.',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.red, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
                   ),

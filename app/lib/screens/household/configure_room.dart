@@ -20,14 +20,25 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
       "dy": 0.0,
       "roomName": "Main Room",
       "roomType": "Living Room",
-      "connections": {"top": false, "bottom": false, "left": false, "right": false}
+      "connections": {
+        "top": false,
+        "bottom": false,
+        "left": false,
+        "right": false
+      }
     }
   ];
 
   void _showAddRoomDialog(double dx, double dy, String connectingSide) {
     String roomName = "";
     String roomType = "Kitchen";
-    List<String> roomTypes = ["Kitchen", "Living Room", "Bedroom", "Bathroom", "Study Room"];
+    List<String> roomTypes = [
+      "Kitchen",
+      "Living Room",
+      "Bedroom",
+      "Bathroom",
+      "Study Room"
+    ];
 
     showDialog(
       context: context,
@@ -40,7 +51,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
               TextField(
                 decoration: InputDecoration(
                   labelText: "Room Name",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 onChanged: (value) => roomName = value,
               ),
@@ -48,7 +60,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: "Type",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 value: roomType,
                 items: roomTypes.map((type) {
@@ -86,7 +99,13 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
     TextEditingController roomNameController =
         TextEditingController(text: attachedBoxes[index]["roomName"]);
     String roomType = attachedBoxes[index]["roomType"];
-    List<String> roomTypes = ["Kitchen", "Living Room", "Bedroom", "Bathroom", "Study Room"];
+    List<String> roomTypes = [
+      "Kitchen",
+      "Living Room",
+      "Bedroom",
+      "Bathroom",
+      "Study Room"
+    ];
 
     showDialog(
       context: context,
@@ -100,14 +119,16 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
                 controller: roomNameController,
                 decoration: InputDecoration(
                   labelText: "Room Name",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: "Type",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 value: roomType,
                 items: roomTypes.map((type) {
@@ -142,7 +163,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
     );
   }
 
-  void _addBox(double dx, double dy, String connectingSide, String roomName, String roomType) {
+  void _addBox(double dx, double dy, String connectingSide, String roomName,
+      String roomType) {
     setState(() {
       for (var box in attachedBoxes) {
         if (box["dx"] == dx && box["dy"] == dy) {
@@ -182,136 +204,147 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
       });
     });
   }
+
   bool _isSidebarOpen = false;
 
-Widget _buildSidebar() {
-  return AnimatedContainer(
-    duration: const Duration(milliseconds: 300),
-    width: _isSidebarOpen ? 100 : 0,
-    color: Colors.blueGrey[900],
-    child: _isSidebarOpen
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    _isSidebarOpen = false;
-                  });
-                },
-              ),
-              for (String floor in ["L2", "L1", "G", "B1"])
-                ListTile(
-                  title: Text(
-                    floor,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    // Handle floor selection
+  Widget _buildSidebar() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: _isSidebarOpen ? 100 : 0,
+      color: Colors.blueGrey[900],
+      child: _isSidebarOpen
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () {
+                    setState(() {
+                      _isSidebarOpen = false;
+                    });
                   },
                 ),
-            ],
-          )
-        : null,
-  );
-}
-
+                for (String floor in ["L2", "L1", "G", "B1"])
+                  ListTile(
+                    title: Text(
+                      floor,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      // Handle floor selection
+                    },
+                  ),
+              ],
+            )
+          : null,
+    );
+  }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Configure Room'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            setState(() {
-              _isSidebarOpen = !_isSidebarOpen;
-            });
-          },
-        ),
-      ],
-    ),
-    body: Row(
-      children: [
-        _buildSidebar(),
-        Expanded(
-          child: GestureDetector(
-            onPanUpdate: (details) {
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Configure Room'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
               setState(() {
-                _x += details.delta.dx;
-                _y += details.delta.dy;
+                _isSidebarOpen = !_isSidebarOpen;
               });
             },
-            child: Stack(
-              children: attachedBoxes.map((box) {
-                return Positioned(
-                  left: _x + box["dx"],
-                  top: _y + box["dy"],
-                  child: _buildBox(box["dx"], box["dy"], box["roomName"], box["roomType"], box["connections"], attachedBoxes.indexOf(box)),
-                );
-              }).toList(),
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          _buildSidebar(),
+          Expanded(
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  _x += details.delta.dx;
+                  _y += details.delta.dy;
+                });
+              },
+              child: Stack(
+                children: attachedBoxes.map((box) {
+                  return Positioned(
+                    left: _x + box["dx"],
+                    top: _y + box["dy"],
+                    child: _buildBox(
+                        box["dx"],
+                        box["dy"],
+                        box["roomName"],
+                        box["roomType"],
+                        box["connections"],
+                        attachedBoxes.indexOf(box)),
+                  );
+                }).toList(),
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-
-Widget _buildBox(double dx, double dy, String roomName, String roomType, Map<String, bool> connections, int index) {
-  return SizedBox(
-    width: 180,
-    height: 130,
-    child: Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: boxWidth,
-            height: boxHeight,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black, width: 0.5),
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.transparent,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(roomName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(roomType, style: const TextStyle(color: Colors.grey)),
-              ],
+  Widget _buildBox(double dx, double dy, String roomName, String roomType,
+      Map<String, bool> connections, int index) {
+    return SizedBox(
+      width: 180,
+      height: 130,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: boxWidth,
+              height: boxHeight,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black, width: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.transparent,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(roomName,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(roomType, style: const TextStyle(color: Colors.grey)),
+                ],
+              ),
             ),
           ),
-        ),
-        // Edit (Pen) Icon
-        Positioned(
-          top: 5,
-          right: 5,
-          child: GestureDetector(
-            onTap: () => _showEditRoomDialog(index),
-            child: const Icon(Icons.edit, size: 20, color: Colors.blue),
+          // Edit (Pen) Icon
+          Positioned(
+            top: 5,
+            right: 5,
+            child: GestureDetector(
+              onTap: () => _showEditRoomDialog(index),
+              child: const Icon(Icons.edit, size: 20, color: Colors.blue),
+            ),
           ),
-        ),
-        if (!connections["top"]!)
-          _buildAddButton(const Alignment(0.0, -1.1), dx, dy - boxHeight - spacing, "top"),
-        if (!connections["bottom"]!)
-          _buildAddButton(const Alignment(0.0, 1.1), dx, dy + boxHeight + spacing, "bottom"),
-        if (!connections["left"]!)
-          _buildAddButton(const Alignment(-1.1, 0.0), dx - boxWidth - spacing, dy, "left"),
-        if (!connections["right"]!)
-          _buildAddButton(const Alignment(1.1, 0.0), dx + boxWidth + spacing, dy, "right"),
-      ],
-    ),
-  );
-}
+          if (!connections["top"]!)
+            _buildAddButton(const Alignment(0.0, -1.1), dx,
+                dy - boxHeight - spacing, "top"),
+          if (!connections["bottom"]!)
+            _buildAddButton(const Alignment(0.0, 1.1), dx,
+                dy + boxHeight + spacing, "bottom"),
+          if (!connections["left"]!)
+            _buildAddButton(const Alignment(-1.1, 0.0), dx - boxWidth - spacing,
+                dy, "left"),
+          if (!connections["right"]!)
+            _buildAddButton(const Alignment(1.1, 0.0), dx + boxWidth + spacing,
+                dy, "right"),
+        ],
+      ),
+    );
+  }
 
-
-  Widget _buildAddButton(Alignment alignment, double newDx, double newDy, String connectingSide) {
+  Widget _buildAddButton(
+      Alignment alignment, double newDx, double newDy, String connectingSide) {
     return Align(
       alignment: alignment,
       child: InkWell(
@@ -336,4 +369,3 @@ void main() {
     home: ConfigureRoomScreen(),
   ));
 }
-

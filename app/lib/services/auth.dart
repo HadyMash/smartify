@@ -26,6 +26,17 @@ class AuthService {
   final Dio _dio;
   final CookieJar _cookieJar;
   final Uri _apiBaseUrl;
+  MFAFormattedKey? _mfaKey;
+
+  // Clear cookies for a specific URL
+  Future<void> clearCookiesForUrlTemporarily(Uri url) async {
+    await _cookieJar.delete(url);
+  }
+
+  // Clear all cookies
+  Future<void> clearAllCookiesTemporarily() async {
+    await _cookieJar.deleteAll();
+  }
 
   static AuthState _currentAuthState = AuthState.signedOut;
 
@@ -171,9 +182,8 @@ class AuthService {
     }
   }
 
-  /// Signs the user in with the given email and password
-  Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
-      String email, String password) async {
+  Future<({bool success, String? error, String? Ms, MFAFormattedKey? mfa})?>
+      signIn(String email, String password) async {
     try {
       if (state != AuthState.signedOut) {
         throw Exception('User is already signed in');
@@ -191,27 +201,60 @@ class AuthService {
         'A': '0x${proof.A.toRadixString(16)}',
         'Mc': '0x${proof.M.toRadixString(16)}',
       });
-      print('Response Status Code: ${response.statusCode}');
+
+      print(response.statusCode);
 
       final responseBody = response.data as Map<String, dynamic>;
-      final mfa = MFAFormattedKey.fromJson(responseBody);
-      print('MFA: $mfa');
 
-      _currentAuthState = AuthState.signedInMFAVerify;
+      // Extract the server proof (Ms) from the response
+      final Ms = responseBody['Ms'] as String?;
+
+      if (Ms == null) {
+        throw Exception('Server proof (Ms) not found in response');
+      }
+
+      // Check if MFA is confirmed
+      final mfaConfirmed = responseBody['mfaConfirmed'] as bool? ?? true;
+
+      // Store MFA key and QR URI if MFA is not confirmed
+      MFAFormattedKey? mfaKey;
+      if (!mfaConfirmed) {
+        final mfaFormattedKey = responseBody['mfaFormattedKey'] as String?;
+        final mfaQRUri = responseBody['mfaQRUri'] as String?;
+
+        if (mfaFormattedKey == null || mfaQRUri == null) {
+          throw Exception('MFA key or QR URI not found in response');
+        }
+
+        mfaKey = MFAFormattedKey(mfaFormattedKey, mfaQRUri);
+        _mfaKey = mfaKey; // Store MFA key
+      }
+
+      // Update the authentication state
+      _currentAuthState = mfaConfirmed
+          ? AuthState.signedInMFAVerify
+          : AuthState.signedInMFAConfirm;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
 
-      return (success: true, error: null, mfa: mfa);
+      return (
+        success: true,
+        error: null,
+        Ms: Ms,
+        mfa: mfaKey,
+      );
     } on DioError catch (e) {
-      print('Dio Error signing in: ${e.message}');
       return (
         success: false,
-        error: e.response?.data['message'] as String?,
+        error: e.response?.data['error'] as String?,
+        Ms: null,
         mfa: null
       );
     } catch (e) {
-      return (success: false, error: 'Sign-in failed', mfa: null);
+      return (success: false, error: 'Sign-in failed', Ms: null, mfa: null);
     }
   }
+
+  MFAFormattedKey? get mfaKey => _mfaKey;
 
   /// Verifies the MFA code
   Future<bool> verifyMFA(String code) async {

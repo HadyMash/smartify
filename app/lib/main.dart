@@ -1,27 +1,27 @@
-// ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'screens/account/sign_in_screen.dart';
-
-// import 'models/mfa.dart';
-// import 'models/user.dart';
-// import 'services/mfa.dart';
-// import 'widgets/mfa_code.dart';
+import 'package:smartify/screens/household/household_screen.dart';
+import 'services/auth_wrapper.dart';
+import 'services/auth.dart'; // Import AuthService
+import 'services/household.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
-  runApp(const MyApp());
+
+  final authService = await AuthService.create(); //  Initialize AuthService
+
+  runApp(MyApp(authService: authService)); // Pass it to MyApp
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthService authService; //  Add AuthService as a property
+
+  const MyApp({super.key, required this.authService}); // Constructor
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
-      debugShowCheckedModeBanner: false,
+      title: 'Smartify',
       theme: ThemeData(
         useMaterial3: true,
         textTheme: const TextTheme(
@@ -92,6 +92,13 @@ class MyApp extends StatelessWidget {
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            floatingLabelStyle: const TextStyle(
+              color: Colors.black, // Ensure label is visible when focused
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+
+              
         ),
         datePickerTheme: const DatePickerThemeData(
           backgroundColor: Colors.white,
@@ -107,9 +114,28 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
           headerHelpStyle: TextStyle(color: Colors.white),
-        ),
+        ), 
+  textSelectionTheme: TextSelectionThemeData(
+    cursorColor: Colors.black, // Ensures cursor is black
+    selectionColor: Colors.grey[400], // Background color when selecting text
+    selectionHandleColor: Colors.black, // Handle color when dragging selection
+  ),
+  cardTheme: CardTheme(
+    elevation: 2,
+    color: Colors.white, // Background color of the card
+    shadowColor: Colors.grey[300], // Subtle shadow color
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+
       ),
-      home: const SignInScreen(),
+
+      home: const HouseholdScreen(),
+      // home: AuthWrapper(
+      //   authService: authService,
+      //   householdService: HouseholdService(),
+      // ), // Pass AuthService to AuthWrapper
     );
   }
 }

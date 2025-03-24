@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../household/household_screen.dart';
 import 'profile_screen.dart';
+import 'package:smartify/services/auth.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final AuthService authService;
+  const SettingsScreen({super.key, required this.authService});
 
   @override
   Widget build(BuildContext context) {
@@ -90,8 +91,26 @@ class SettingsScreen extends StatelessWidget {
                 context,
                 'Sign out',
                 Icons.logout,
-                onTap: () {
-                  // Handle sign out
+                onTap: () async {
+                  try {
+                    // Get the AuthService instance
+                    // Call the signOut method from AuthService
+                    await authService.signOut();
+
+                    // Show a success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Signed out successfully')),
+                    );
+
+                    // Navigate to the login screen or another appropriate screen
+                    Navigator.pushReplacementNamed(context, '/login');
+                  } catch (e) {
+                    // Show an error message if sign-out fails
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Failed to sign out: ${e.toString()}')),
+                    );
+                  } // Handle sign out
                 },
               ),
               _buildSettingsTile(
@@ -108,12 +127,12 @@ class SettingsScreen extends StatelessWidget {
                 'Manage my household',
                 Icons.home_outlined,
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HouseholdScreen(),
-                    ),
-                  );
+                  // Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute(
+                  //     builder: (context) => const HouseholdScreen(),
+                  //   ),
+                  // );
                 },
               ),
             ],

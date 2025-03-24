@@ -1,8 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/screens/household/configure_floor.dart';
+import 'package:smartify/services/household.dart'; // Import HouseholdService
+// Import AuthService
 
-class AddHouseholdScreen extends StatelessWidget {
-  const AddHouseholdScreen({super.key});
+class AddHouseholdScreen extends StatefulWidget {
+  const AddHouseholdScreen({
+    super.key,
+  });
+
+  @override
+  _AddHouseholdScreenState createState() => _AddHouseholdScreenState();
+}
+
+class _AddHouseholdScreenState extends State<AddHouseholdScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  bool _isLoading = false;
+
+  // Function to create a household
+  Future<void> _createHousehold() async {
+    final String householdName = _nameController.text.trim();
+    if (householdName.isEmpty) {
+      _showError("Household name cannot be empty");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    //final userId = await widget.authService.getUserId(); // Retrieve user ID
+    final result = await HouseholdService.createHousehold(householdName);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success']) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ConfigureFloorsScreen(),
+        ),
+      );
+    } else {
+      _showError(result['message']);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(message, style: const TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +75,16 @@ class AddHouseholdScreen extends StatelessWidget {
           children: [
             Text('Enter Household Details', style: textTheme.titleLarge),
             const SizedBox(height: 24),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Household Type'),
-            ),
-            const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Status'),
-            ),
-            const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Address'),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Household Name'),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ConfigureFloorsScreen()),
-                );
-              },
-              child: const Text('Add Household'),
+              onPressed: _isLoading ? null : _createHousehold,
+              child: _isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text('Add Household'),
             ),
           ],
         ),

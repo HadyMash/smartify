@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'newPassword.dart';
 import 'package:smartify/widgets/back_button.dart'
     as custom; // Import the custom back button widget with an alias
 
@@ -40,15 +39,15 @@ class _OTPScreenState extends State<OTPScreen> {
     }
   }
 
-  void _verifyOTP() {
-    String otp = _controllers.map((controller) => controller.text).join();
-    if (otp.length == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NewPasswordScreen()),
-      );
-    }
-  }
+  // void _verifyOTP() {
+  //   String otp = _controllers.map((controller) => controller.text).join();
+  //   if (otp.length == 4) {
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(builder: (context) => const NewPasswordScreen()),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -132,26 +131,26 @@ class _OTPScreenState extends State<OTPScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
+                  const SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _verifyOTP,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Verify',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    // child: ElevatedButton(
+                    //   onPressed: _verifyOTP,
+                    //   style: ElevatedButton.styleFrom(
+                    //     backgroundColor: Colors.black,
+                    //     foregroundColor: Colors.white,
+                    //     padding: const EdgeInsets.symmetric(vertical: 16),
+                    //     shape: RoundedRectangleBorder(
+                    //       borderRadius: BorderRadius.circular(30),
+                    //     ),
+                    //   ),
+                    //   child: const Text(
+                    //     'Verify',
+                    //     style: TextStyle(
+                    //       fontSize: 16,
+                    //       fontWeight: FontWeight.bold,
+                    //     ),
+                    //   ),
+                    // ),
                   ),
                   const SizedBox(height: 24),
                   TextButton(

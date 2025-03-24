@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/widgets/nav_bar.dart';
 import 'package:smartify/screens/energy/energy_screen.dart'; // Import the EnergyScreen
-import 'package:smartify/screens/household/household_screen.dart'; // Import the HouseholdScreen
+// Import the HouseholdScreen
 import 'package:smartify/screens/settings/settings.dart'; // Import the SettingsScreen
+import 'package:smartify/services/auth.dart'; // Import the AuthService
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // Define an instance of authService
+  final AuthService authService;
+  const DashboardScreen({super.key, required this.authService});
 
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -15,15 +18,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 2;
 
   // Define your screens
-  final List<Widget> _screens = [
-    const EnergyScreen(),
-    const HouseholdScreen(),
-    const DashboardContent(), // Display Dashboard Content first (home)
-    const SettingsScreen(),
-    // Energy screen
-    const SettingsScreen(),
-    // You can add other screens here, like DevicesScreen, SecurityScreen, SettingsScreen
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const EnergyScreen(),
+      //const HouseholdScreen(),
+      const DashboardContent(), // Display Dashboard Content first (home)
+      SettingsScreen(authService: widget.authService),
+      // Energy screen
+      SettingsScreen(authService: widget.authService),
+      // You can add other screens here, like DevicesScreen, SecurityScreen, SettingsScreen
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
