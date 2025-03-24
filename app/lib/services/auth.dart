@@ -55,9 +55,11 @@ class AuthService {
   void _handleCookieChangeEvent(CookieChangeEvent event) {
     switch (event.type) {
       case CookieChangeEventType.tokenAdded:
-        if (event.hasMfaToken && !event.hasAccessToken) {
+        if (event.hasMfaToken &&
+            !event.hasAccessToken &&
+            !event.hasRefreshToken) {
           _currentAuthState = AuthState.signedInMFAVerify;
-        } else if (event.hasAccessToken) {
+        } else if (event.hasAccessToken || event.hasRefreshToken) {
           _currentAuthState = AuthState.signedIn;
         }
         _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
@@ -71,7 +73,7 @@ class AuthService {
         break;
 
       case CookieChangeEventType.tokenRefreshed:
-        if (event.hasAccessToken) {
+        if (event.hasAccessToken || event.hasRefreshToken) {
           _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
         }
         break;
@@ -500,6 +502,11 @@ class AuthEvent {
   /// The current authentication state
   final AuthState state;
   AuthEvent(this.type, this.state);
+
+  @override
+  String toString() {
+    return 'AuthEvent{type: $type, state: $state}';
+  }
 }
 
 enum AuthEventType {
