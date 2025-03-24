@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../schemas/auth';
+import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
 import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 

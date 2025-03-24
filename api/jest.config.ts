@@ -6,7 +6,7 @@
 import type { Config } from 'jest';
 
 const config: Config = {
-  testTimeout: 30000,
+  testTimeout: 20000,
   // All imported modules in your tests should be mocked automatically
   // automock: false,
 
@@ -158,7 +158,9 @@ const config: Config = {
   // ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
-  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  // testPathIgnorePatterns: [
+  //   "/node_modules/"
+  // ],
 
   // The regexp pattern or array of patterns that Jest uses to detect test files
   // testRegex: [],

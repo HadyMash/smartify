@@ -1,5 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/**/*", "test/**/*", "eslint.config.mjs"],
-  "exclude": ["src/schemas/icon.ts"]
+  "include": [
+    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.js",
+    "src/**/*.jsx",
+    "jest.config.ts",
+    "eslint.config.mjs",
+    "src/util.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

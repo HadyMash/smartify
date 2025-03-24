@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:smartify/services/mfa.dart';
+
+import '../models/mfa.dart';
 
 // TODO: update style (this is just a placeholder for testing)
 class MFASetup extends StatelessWidget {
