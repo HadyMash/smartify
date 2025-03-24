@@ -16,8 +16,8 @@ import {
   DeviceWithState,
   deviceWithStateSchema,
   State,
-} from '../../schemas/devices.ts';
-import { BaseIotAdapter, HealthCheck } from './base-adapter.ts';
+} from '../../schemas/devices';
+import { BaseIotAdapter, HealthCheck } from './base-adapter';
 
 const source = deviceSourceSchema.enum.acme;
 

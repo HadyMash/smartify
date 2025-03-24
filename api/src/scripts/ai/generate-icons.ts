@@ -20,10 +20,7 @@ async function start() {
     );
 
     // Create the icons directory if it doesn't exist
-    const iconsDir = path.join(
-      path.dirname(import.meta.url.replace('file:', '')),
-      'icons',
-    );
+    const iconsDir = path.join('src', 'scripts', 'ai', 'icons');
 
     console.log('icons dir:', iconsDir);
 
@@ -56,6 +53,8 @@ async function start() {
           process.exit(1);
         }
 
+        const iconSet = new Set();
+
         // Get all dt and dd elements
         const dtElements = iconsContainer.querySelectorAll('dt');
         const ddElements = iconsContainer.querySelectorAll('dd');
@@ -63,16 +62,24 @@ async function start() {
 
         // Loop through the dt and dd elements
         for (let i = 0; i < dtElements.length; i++) {
+          console.log('i:', i);
           const dt = dtElements[i];
           const dd = ddElements[i];
+
+          // check if a variation was done before
+          // if so, skip the icon
+          const iconIdentifier = dd.querySelector('i')?.textContent;
+          console.log('iconIdentifier:', iconIdentifier);
+
+          if (iconIdentifier && iconSet.has(iconIdentifier)) {
+            continue;
+          }
+
+          iconSet.add(iconIdentifier);
 
           // Get the icon name from the dt's id
           const iconName = dt.id;
 
-          // Check if the icon is a rounded icon
-          if (!iconName || !iconName.endsWith('_rounded')) {
-            continue;
-          }
           console.log(`Processing icon: ${iconName}`);
 
           // Get the i element containing the icon

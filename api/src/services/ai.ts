@@ -1,8 +1,8 @@
 import fs from 'fs';
 import OpenAI from 'openai';
-import { Device, deviceSchema } from '../schemas/devices.ts';
+import { Device, deviceSchema } from '../schemas/devices';
 import { randomUUID } from 'crypto';
-import { validMaterialIcon } from '../schemas/icon.ts';
+import { validMaterialIcon } from '../schemas/icon';
 
 const DEVICE_MODEL = 'qwen2.5-3b-instruct-ml';
 const VLM_MODEL = 'gemma-3-4b-it';
@@ -102,6 +102,7 @@ export class AIService {
     // make sure device is valid
     deviceSchema.parse(example2device);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const badexample1device: Device = {
       id: randomUUID(),
       source: 'acme',
@@ -2432,7 +2433,12 @@ INPUT:
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: `You are an icon descriptor AI assistant. You describe images of smart home device icons. You are given an image of an icon for a smart device and you must provide a detailed description of what's in the image, and what it can mean. Additionally, you must provide 8 to 10 tags for the icon. You must describe the image in a way that is useful for someone who is looking for an icon for a smart device such that they are able to match the device and icon.`,
+        content: `You are an icon descriptor AI assistant. You describe images of smart home device icons. You are given an image of an icon for a smart device and you must provide a brief description of the icon's visual appearance, and a detailed description of what it can mean. Additionally, you must provide 8 to 10 tags for the icon. You must describe the image in a way that is useful for someone who is looking for an icon for a smart device such that they are able to match the device and icon.
+
+All of the icons are black, so do not talk about the colour of the icon. Only talk about what it looks like, what it represents, it's sematncis, etc.
+
+You should also consider all common meanings. For example, the snowflake icon can represent cold, cool, air conditioning etc. It can be the cool mode on an air conditioner, it could represent the air conditioner itself, it could represent a freezer, or other devices. Be sure to consider and include all possible (but reasonable and semantically sound) meanings for the icon and include it in your description.
+`,
       },
       {
         role: 'user',
@@ -2456,5 +2462,16 @@ INPUT:
       temperature: 0.3,
     });
     return response.choices[0].message.content;
+  }
+
+  public async genereteTextEmbedding(
+    text: string,
+  ): Promise<OpenAI.Embedding[]> {
+    const response = await this.client.embeddings.create({
+      model: EMBEDDING_MODEL,
+      input: text,
+    });
+
+    return response.data;
   }
 }

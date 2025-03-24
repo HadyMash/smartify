@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { AIService } from '../../services/ai.ts';
+import { AIService } from '../../services/ai';
 
 dotenv.config();
 
@@ -11,10 +11,7 @@ async function start() {
   const ai = new AIService();
 
   // Create the icons directory if it doesn't exist
-  const iconsDir = path.join(
-    path.dirname(import.meta.url.replace('file:', '')),
-    'icons',
-  );
+  const iconsDir = path.join('src', 'scripts', 'ai', 'icons');
 
   console.log('icons dir:', iconsDir);
 
@@ -25,9 +22,45 @@ async function start() {
     process.exit(1);
   }
   // TEMP
-  console.log(
-    await ai.generateIconDescription(path.join(iconsDir, 'ac_unit.png')),
-  );
+  {
+    const description = await ai.generateIconDescription(
+      path.join(iconsDir, 'ac_unit_rounded.png'),
+    );
+
+    console.log('description:', description);
+
+    if (!description) {
+      return;
+    }
+    const embedding = await ai.genereteTextEmbedding(description);
+    console.log('embedding:', embedding);
+  }
+  {
+    const description = await ai.generateIconDescription(
+      path.join(iconsDir, 'access_time_filled_rounded.png'),
+    );
+
+    console.log('description:', description);
+
+    if (!description) {
+      return;
+    }
+    const embedding = await ai.genereteTextEmbedding(description);
+    console.log('embedding:', embedding);
+  }
+  {
+    const description = await ai.generateIconDescription(
+      path.join(iconsDir, 'air.png'),
+    );
+
+    console.log('description:', description);
+
+    if (!description) {
+      return;
+    }
+    const embedding = await ai.genereteTextEmbedding(description);
+    console.log('embedding:', embedding);
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises

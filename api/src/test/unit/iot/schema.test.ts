@@ -7,7 +7,7 @@ import {
   deviceSourceSchema,
   deviceWithPartialStateSchema,
   deviceWithStateSchema,
-} from '../../../schemas/devices.ts';
+} from '../../../schemas/devices';
 
 describe('IoT Device Schema Tests', () => {
   // Base capability schema edge cases

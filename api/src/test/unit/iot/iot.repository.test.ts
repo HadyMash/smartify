@@ -16,8 +16,8 @@ import {
   deviceWithStateSchema,
   State,
   stateSchema,
-} from '../../../schemas/devices.ts';
-import { AcmeIoTAdapter } from '../../../services/iot/acme-adapter.ts';
+} from '../../../schemas/devices';
+import { AcmeIoTAdapter } from '../../../services/iot/acme-adapter';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

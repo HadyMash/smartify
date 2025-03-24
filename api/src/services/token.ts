@@ -6,7 +6,7 @@ import {
   InvalidUseType,
   type User,
   UserSchema,
-} from '../schemas/user.ts';
+} from '../schemas/user';
 import {
   type AccessTokenPayload,
   AccessTokenPayloadSchema,
@@ -18,8 +18,8 @@ import {
   RefreshTokenPayloadSchema,
   TokenPayload,
   TokenTypeSchema,
-} from '../schemas/tokens.ts';
-import { DatabaseService } from './db/db.ts';
+} from '../schemas/tokens';
+import { DatabaseService } from './db/db';
 
 //const algorithm = 'RS256';
 

@@ -2,7 +2,7 @@ import assert from 'assert';
 import { randomUUID } from 'crypto';
 import { Collection, Db, ObjectId } from 'mongodb';
 import { RedisClientType } from 'redis';
-import { TokenService } from '../../token.ts';
+import { TokenService } from '../../token';
 
 const COLLECTION_NAME = 'tokens';
 

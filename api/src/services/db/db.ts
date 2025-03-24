@@ -1,6 +1,6 @@
 import { Db, MongoClient } from 'mongodb';
-import { TokenRepository } from './repositories/token.ts';
-import { UserRepository } from './repositories/user.ts';
+import { TokenRepository } from './repositories/token';
+import { UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 
 const DB_NAME: string = 'smartify';

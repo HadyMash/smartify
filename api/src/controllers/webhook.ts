@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { DeviceSource, deviceSourceSchema } from '../schemas/devices.ts';
+import { DeviceSource, deviceSourceSchema } from '../schemas/devices';
 
 export class WebhookController {
   /**
