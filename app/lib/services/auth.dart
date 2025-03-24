@@ -24,7 +24,7 @@ class AuthService {
 
   static AuthState _currentAuthState = AuthState.signedOut;
 
-  final StreamController<AuthEvent> _eventStream =
+  static final StreamController<AuthEvent> _eventStream =
       StreamController<AuthEvent>.broadcast();
   Stream<AuthEvent> get authEventStream => _eventStream.stream;
   AuthState get state => _currentAuthState;
@@ -53,24 +53,52 @@ class AuthService {
 
   /// Handle cookie change events from the HTTP client
   void _handleCookieChangeEvent(CookieChangeEvent event) {
+    print('Cookie change event: $event');
     switch (event.type) {
       case CookieChangeEventType.tokenAdded:
-        if (event.hasMfaToken &&
-            !event.hasAccessToken &&
-            !event.hasRefreshToken) {
-          _currentAuthState = AuthState.signedInMFAVerify;
-          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-        } else if ((event.hasAccessToken || event.hasRefreshToken) &&
-            _currentAuthState == AuthState.signedOut) {
-          // Only change state if we were previously signed out
-          _currentAuthState = AuthState.signedIn;
-          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-        } else if (event.hasAccessToken || event.hasRefreshToken) {
-          // If we already had a session (refresh token) and access token is added,
-          // it's actually a token refresh, not a state change
-          _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
+        if (_currentAuthState == AuthState.signedOut) {
+          // check if user is signed in (mfa)
+          if (event.hasMfaToken) {
+            // TODO: set to verify/confirm based on mfa token
+          } else if (event.hasAccessToken || event.hasRefreshToken) {
+            _currentAuthState = AuthState.signedIn;
+            _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+          }
+        } else if (_currentAuthState != AuthState.signedIn) {
+          // prev state was mfa, check if user is signed in
+          if (event.hasAccessToken || event.hasRefreshToken) {
+            _currentAuthState = AuthState.signedIn;
+            _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+          } else if (!event.hasMfaToken &&
+              !event.hasAccessToken &&
+              !event.hasRefreshToken) {
+            _currentAuthState = AuthState.signedOut;
+            _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+          }
+        } else {
+          // user is signed in, check for refresh
+          if (event.hasAccessToken || event.hasRefreshToken) {
+            _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
+          }
         }
-        break;
+
+      //if (event.hasMfaToken &&
+      //    !event.hasAccessToken &&
+      //    !event.hasRefreshToken) {
+      //  _currentAuthState = AuthState.signedInMFAVerify;
+      //  _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+      //} else if ((event.hasAccessToken || event.hasRefreshToken) &&
+      //        _currentAuthState == AuthState.signedInMFAConfirm ||
+      //    _currentAuthState == AuthState.signedInMFAVerify) {
+      //  // Only change state if we were previously signed out
+      //  _currentAuthState = AuthState.signedIn;
+      //  _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+      //} else if (event.hasAccessToken || event.hasRefreshToken) {
+      //  // If we already had a session (refresh token) and access token is added,
+      //  // it's actually a token refresh, not a state change
+      //  _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
+      //}
+      //break;
 
       case CookieChangeEventType.tokenRemoved:
         if (!event.hasAccessToken && !event.hasRefreshToken) {
@@ -209,13 +237,18 @@ class AuthService {
       print('Response Status Code: ${response.statusCode}');
 
       final responseBody = response.data as Map<String, dynamic>;
-      final mfa = MFAFormattedKey.fromJson(responseBody);
-      print('MFA: $mfa');
-
-      _currentAuthState = AuthState.signedInMFAVerify;
-      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-
-      return (success: true, error: null, mfa: mfa);
+      try {
+        final mfa = MFAFormattedKey.fromJson(responseBody);
+        print('MFA: $mfa');
+        _currentAuthState = AuthState.signedInMFAConfirm;
+        _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        return (success: true, error: null, mfa: mfa);
+      } catch (_) {
+        _currentAuthState = AuthState.signedInMFAVerify;
+        _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        return (success: true, error: null, mfa: null);
+      }
+      //
     } on DioError catch (e) {
       print('Dio Error signing in: ${e.message}');
       return (
@@ -224,6 +257,7 @@ class AuthService {
         mfa: null
       );
     } catch (e) {
+      print('error signing in: $e');
       return (success: false, error: 'Sign-in failed', mfa: null);
     }
   }
@@ -233,8 +267,8 @@ class AuthService {
     try {
       await _dio.post('/auth/mfa/verify', data: {'code': code});
 
-      _currentAuthState = AuthState.signedIn;
-      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+      //_currentAuthState = AuthState.signedIn;
+      //_eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
       return true;
     } on DioError catch (e) {
       throw Exception(e.response?.data['error'] ?? 'MFA verification failed');
@@ -261,15 +295,38 @@ class AuthService {
   /// Signs the user out
   Future<void> signOut() async {
     try {
+      // Try server-side logout first
       await _dio.get('/auth/logout');
+      print('Server logout successful');
+    } on DioError catch (e) {
+      if (e.response?.statusCode == 401) {
+        print('already signed out');
+        return;
+      }
+      //throw Exception(e.response?.data['error'] ?? 'MFA confirmation failed');
     } catch (e) {
+      print('Server logout failed: $e');
+      // If server logout fails, manually clear cookies
       try {
         await _httpClient.deleteAllCookies();
-      } catch (_) {}
-    } finally {
-      _currentAuthState = AuthState.signedOut;
-      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        print('Cookies deleted manually');
+      } catch (error) {
+        print('Failed to delete cookies: $error');
+      }
     }
+
+    // Ensure state is updated and event is emitted
+    // This ensures the app responds to logout even if cookie events aren't triggered
+    final oldState = _currentAuthState;
+    _currentAuthState = AuthState.signedOut;
+
+    if (oldState != _currentAuthState) {
+      _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+      print('Auth state manually changed to: $_currentAuthState (signed out)');
+    }
+
+    // Force check cookie state to make sure events are triggered
+    await _httpClient.checkCookieChanges();
   }
 
   Future<void> changePassword(String newPassword) async {
