@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { mfaRouter } from './mfa';
+import { mfaRouter } from './mfa.ts';
 
 export const authRouter = Router();
 

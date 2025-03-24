@@ -4,7 +4,7 @@ import {
   DeviceCapability,
   DeviceWithPartialState,
   DeviceWithState,
-} from '../../schemas/devices';
+} from '../../schemas/devices.ts';
 
 export interface HealthCheck {
   healthCheck(): Promise<boolean>;

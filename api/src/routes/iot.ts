@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
-import { IoTController } from '../controllers/iot';
-import { AuthenticatedRequest } from '../schemas/auth';
-import { requireAuth } from '../middleware/auth';
+import { IoTController } from '../controllers/iot.ts';
+import { AuthenticatedRequest } from '../schemas/auth.ts';
+import { requireAuth } from '../middleware/auth.ts';
 
 export const iotRouter = Router();
 

@@ -1,11 +1,11 @@
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import { logMiddleware } from './middleware/log';
-import { authRouter } from './routes/auth';
-import { webhookRouter } from './routes/webhook';
-import { AIService } from './services/ai';
-import { Device, deviceSchema } from './schemas/devices';
+import { logMiddleware } from './middleware/log.ts';
+import { authRouter } from './routes/auth.ts';
+import { webhookRouter } from './routes/webhook.ts';
+import { AIService } from './services/ai.ts';
+import { Device, deviceSchema } from './schemas/devices.ts';
 import { randomUUID } from 'crypto';
 
 dotenv.config();

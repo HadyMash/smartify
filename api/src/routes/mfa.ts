@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { MFAController } from '../controllers/mfa';
-import { requireAuth } from '../middleware/auth';
+import { MFAController } from '../controllers/mfa.ts';
+import { requireAuth } from '../middleware/auth.ts';
 
 export const mfaRouter = Router();
 

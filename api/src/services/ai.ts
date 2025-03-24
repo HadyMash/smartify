@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { Device, deviceSchema } from '../schemas/devices';
+import { Device, deviceSchema } from '../schemas/devices.ts';
 import { randomUUID } from 'crypto';
-import { validMaterialIcon } from '../schemas/icon';
+import { validMaterialIcon } from '../schemas/icon.ts';
 
 const MODEL = 'qwen2.5-3b-instruct-ml';
 

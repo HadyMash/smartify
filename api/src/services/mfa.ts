@@ -1,5 +1,5 @@
 import * as authenticator from 'authenticator';
-import { MFAToken } from '../schemas/mfa';
+import { MFAToken } from '../schemas/mfa.ts';
 
 // TODO: replace temp classes with actual classes
 
