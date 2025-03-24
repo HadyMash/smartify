@@ -20,6 +20,18 @@ export const parseAuth = async (
 
     const ts = new TokenService();
 
+    async function parseAccess(accessToken: string) {
+      const { valid, payload } = await ts.verifyToken(accessToken, true);
+
+      if (valid) {
+        if (payload!.type === tokenTypeSchema.enum.ACCESS) {
+          accessTokenPayload = payload as AccessTokenPayload;
+          req.accessTokenPayload = accessTokenPayload;
+          req.user = (payload as AccessTokenPayload).user;
+        }
+      }
+    }
+
     // get access token from authorization header
     const authHeader = req.headers.authorization;
     let accessTokenPayload: AccessTokenPayload | undefined = undefined;
@@ -27,16 +39,7 @@ export const parseAuth = async (
       const prefix = 'Bearer ';
       if (authHeader.startsWith(prefix)) {
         const accessToken = authHeader.substring(prefix.length);
-
-        const { valid, payload } = await ts.verifyToken(accessToken, true);
-
-        if (valid) {
-          if (payload!.type === tokenTypeSchema.enum.ACCESS) {
-            accessTokenPayload = payload as AccessTokenPayload;
-            req.accessTokenPayload = accessTokenPayload;
-            req.user = (payload as AccessTokenPayload).user;
-          }
-        }
+        await parseAccess(accessToken);
       }
     } else {
       // check cookies for access
@@ -44,14 +47,7 @@ export const parseAuth = async (
         | string
         | undefined;
       if (accessToken) {
-        const { valid, payload } = await ts.verifyToken(accessToken, true);
-        if (valid) {
-          if (payload!.type === tokenTypeSchema.enum.ACCESS) {
-            accessTokenPayload = payload as AccessTokenPayload;
-            req.accessTokenPayload = accessTokenPayload;
-            req.user = (payload as AccessTokenPayload).user;
-          }
-        }
+        await parseAccess(accessToken);
       }
     }
 
@@ -77,7 +73,12 @@ export const parseAuth = async (
       req.refreshToken !== undefined &&
       req.deviceId !== undefined
     ) {
-      await AuthController.refresh(req, res);
+      const tokens = await AuthController.refresh(req, res);
+
+      if (tokens) {
+        // parse access token after refresh
+        await parseAccess(tokens.accessToken);
+      }
     }
 
     next();

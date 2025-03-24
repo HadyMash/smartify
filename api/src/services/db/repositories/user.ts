@@ -315,6 +315,7 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
    * client without preprocessing.
    * @param email - The user's email
    * @returns The user's document
+   * @throws  An {@link InvalidUserError} if the user doesn't exist
    */
   public async getUserDocByEmail(email: string): Promise<UserDoc> {
     const result = await this.collection.findOne({

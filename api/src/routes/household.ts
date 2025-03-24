@@ -6,6 +6,10 @@ export const householdRouter = Router();
 
 householdRouter.use(requireAuth);
 
+householdRouter.get('/', (req, res) =>
+  HouseholdController.getUserHouseholds(req, res),
+);
+
 householdRouter.post('/new', (req, res) =>
   HouseholdController.createHousehold(req, res),
 );
@@ -44,10 +48,6 @@ householdRouter.post('/invite/respond', (req, res) =>
 
 householdRouter.get('/invites', (req, res) =>
   HouseholdController.getUserInvites(req, res),
-);
-
-householdRouter.get('/households', (req, res) =>
-  HouseholdController.getUserHouseholds(req, res),
 );
 
 householdRouter.post('/:householdId/leave', (req, res) =>

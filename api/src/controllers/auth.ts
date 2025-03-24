@@ -484,6 +484,10 @@ export class AuthController {
    * @param res - The response
    */
   public static async refresh(req: AuthenticatedRequest, res: Response) {
+    if (req.tokensRefreshed) {
+      return;
+    }
+
     if (req.refreshToken === undefined) {
       throw new Error('No refresh token to refresh with');
     }
@@ -499,9 +503,17 @@ export class AuthController {
       idToken,
     } = await ts.refreshTokens(req.refreshToken, req.deviceId);
 
+    // TEMP
+    {
+      const refreshPayload = await ts.verifyToken(req.refreshToken, true);
+      console.log('Tokens refreshed for user:', refreshPayload.payload?.userId);
+    }
+
     // set new tokens in cookies
     AuthController.writeAuthCookies(res, accessToken, newRefreshToken, idToken);
     req.tokensRefreshed = true;
+
+    return { accessToken, newRefreshToken, idToken };
   }
 
   public static refreshTokens(req: AuthenticatedRequest, res: Response) {

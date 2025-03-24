@@ -24,7 +24,8 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
 });
   */
 
-  Future createHousehold(String name, int floors, List<HouseholdRoom> rooms,
+  Future<Household?> createHousehold(
+      String name, int floors, List<HouseholdRoom> rooms,
       [int? floorsOffset]) async {
     try {
       final body = {
@@ -36,11 +37,52 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
 
       final response = await _dio.post('/households/new', data: body);
 
-      print('Household created: ${response.data}');
+      final responseBody = response.data;
 
-      //final responseBody = response.data;
-
-      try {} catch (e) {
+      try {
+        final household = Household(
+          id: responseBody['_id'],
+          name: responseBody['name'],
+          ownerId: responseBody['owner'],
+          floors: responseBody['floors'],
+          floorsOffset: responseBody['floorsOffset'],
+          rooms: (responseBody['rooms'] as List)
+              .map((r) => HouseholdRoom(
+                    id: r['id'],
+                    name: r['name'],
+                    type: r['type'],
+                    floor: r['floor'],
+                    connectedRooms: RoomConnections(
+                      top: r['connectedRooms']['top'],
+                      bottom: r['connectedRooms']['bottom'],
+                      left: r['connectedRooms']['left'],
+                      right: r['connectedRooms']['right'],
+                    ),
+                  ))
+              .toList(),
+          members: (responseBody['members'] as List)
+              .map((m) => HouseholdMember(
+                    id: m['_id'],
+                    name: m['name'],
+                    role: m['role'],
+                    permissions: HouseholdPermissions(
+                      appliances: m['permissions']['appliances'],
+                      health: m['permissions']['health'],
+                      security: m['permissions']['security'],
+                      energy: m['permissions']['energy'],
+                    ),
+                  ))
+              .toList(),
+          invites: (responseBody['invites'] as List)
+              .map((i) => HouseholdInvite(
+                    inviteId: i['_id'],
+                    userId: i['userId'],
+                  ))
+              .toList(),
+        );
+        print('Household: $household');
+        return household;
+      } catch (e) {
         print('Error creating household: $e');
       }
     } on DioError catch (e) {
@@ -57,32 +99,111 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     } catch (e) {
       print('Error creating household: $e');
     }
+    return null;
+  }
+
+  Future<List<HouseholdInfo>> getHouseholds() async {
+    try {
+      final response = await _dio.get('/households');
+
+      return (response.data as List)
+          .map((h) => HouseholdInfo(
+                id: h['_id'],
+                name: h['name'],
+                ownerId: h['owner'],
+                floors: h['floors'],
+                membersCount: h['members'],
+              ))
+          .toList();
+    } on DioError catch (e) {
+      print('Dio Error getting households: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        if (e.response!.data != null) {
+          print('error response data: ${e.response!.data}');
+          final error = e.response!.data as Map<String, dynamic>;
+          print(
+              'Error getting households: ${error['error'] ?? error['error']}');
+          print('Error getting households details: ${error['details']}');
+        }
+      }
+    } catch (e) {
+      print('Error getting households: $e');
+    }
+    return [];
   }
 }
 
-/*
-export const householdRoomSchema = z.object({
-  id: z.string(),
-  /** Room name */
-  name: z
-    .string()
-    .min(1, { message: 'Room name cannot be empty' }) // Prevent empty strings
-    .trim(),
-  /** Room type */
-  type: householdRoomTypeSchema,
-  /** Room floor */
-  floor: z.number().int(),
-  /**
-   * Rooms connected to this room. This is used for laying out rooms in the app
-   */
-  connectedRooms: z.object({
-    top: z.string().optional(),
-    bottom: z.string().optional(),
-    left: z.string().optional(),
-    right: z.string().optional(),
-  }),
-});
-*/
+class HouseholdInfo {
+  final String id;
+  final String name;
+  final String ownerId;
+  final int floors;
+  final int membersCount;
+  const HouseholdInfo({
+    required this.id,
+    required this.name,
+    required this.ownerId,
+    required this.floors,
+    required this.membersCount,
+  });
+
+  @override
+  String toString() {
+    return 'HouseholdInfo{id: $id, name: $name, ownerId: $ownerId, floors: $floors, membersCount: $membersCount}';
+  }
+}
+
+class Household {
+  final String id;
+  final String name;
+  final String ownerId;
+  final int floors;
+  final int floorsOffset;
+  final List<HouseholdRoom> rooms;
+  final List<HouseholdMember> members;
+  final List<HouseholdInvite> invites;
+
+  const Household({
+    required this.id,
+    required this.name,
+    required this.ownerId,
+    required this.floors,
+    required this.floorsOffset,
+    required this.rooms,
+    required this.members,
+    required this.invites,
+  });
+}
+
+class HouseholdMember {
+  final String id;
+  final String name;
+  final String? role;
+  final HouseholdPermissions? permissions;
+
+  const HouseholdMember(
+      {required this.id, required this.name, this.role, this.permissions});
+}
+
+class HouseholdPermissions {
+  final bool appliances;
+  final bool health;
+  final bool security;
+  final bool energy;
+
+  const HouseholdPermissions(
+      {required this.health,
+      required this.security,
+      required this.appliances,
+      required this.energy});
+}
+
+class HouseholdInvite {
+  final String inviteId;
+  final String userId;
+
+  const HouseholdInvite({required this.inviteId, required this.userId});
+}
 
 class HouseholdRoom {
   final String id;
