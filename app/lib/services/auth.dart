@@ -43,7 +43,39 @@ class AuthService {
 
     _currentAuthState = authState;
 
-    return AuthService._(httpClient.dio, httpClient);
+    final service = AuthService._(httpClient.dio, httpClient);
+
+    // Subscribe to cookie changes
+    httpClient.cookieEventStream.listen(service._handleCookieChangeEvent);
+
+    return service;
+  }
+
+  /// Handle cookie change events from the HTTP client
+  void _handleCookieChangeEvent(CookieChangeEvent event) {
+    switch (event.type) {
+      case CookieChangeEventType.tokenAdded:
+        if (event.hasMfaToken && !event.hasAccessToken) {
+          _currentAuthState = AuthState.signedInMFAVerify;
+        } else if (event.hasAccessToken) {
+          _currentAuthState = AuthState.signedIn;
+        }
+        _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        break;
+
+      case CookieChangeEventType.tokenRemoved:
+        if (!event.hasAccessToken && !event.hasRefreshToken) {
+          _currentAuthState = AuthState.signedOut;
+          _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+        }
+        break;
+
+      case CookieChangeEventType.tokenRefreshed:
+        if (event.hasAccessToken) {
+          _eventStream.add(AuthEvent(AuthEventType.tokenRefresh, state));
+        }
+        break;
+    }
   }
 
   Future<List<Cookie>> getCookies() {

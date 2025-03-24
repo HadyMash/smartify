@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -14,6 +15,17 @@ class SmartifyHttpClient {
   late final Dio dio;
   late final CookieJar cookieJar;
   late final Uri apiBaseUrl;
+
+  // Cookie monitoring
+  final StreamController<CookieChangeEvent> _cookieEventStream =
+      StreamController<CookieChangeEvent>.broadcast();
+  Stream<CookieChangeEvent> get cookieEventStream => _cookieEventStream.stream;
+
+  // Token names
+  static const String ID_TOKEN_NAME = 'id-token';
+  static const String REFRESH_TOKEN_NAME = 'refresh-token';
+  static const String ACCESS_TOKEN_NAME = 'access-token';
+  static const String MFA_TOKEN_NAME = 'mfa-token';
 
   /// Private constructor
   SmartifyHttpClient._();
@@ -47,6 +59,80 @@ class SmartifyHttpClient {
     cookieJar = PersistCookieJar(storage: FileStorage(cookiePath));
 
     dio.interceptors.add(CookieManager(cookieJar));
+    dio.interceptors.add(_createCookieMonitorInterceptor());
+  }
+
+  /// Create an interceptor that monitors cookie changes
+  Interceptor _createCookieMonitorInterceptor() {
+    return InterceptorsWrapper(
+      onResponse: (response, handler) async {
+        // Check cookies after response
+        await _checkCookieChanges();
+        handler.next(response);
+      },
+      onError: (error, handler) async {
+        // Check cookies even on error responses
+        await _checkCookieChanges();
+        handler.next(error);
+      },
+    );
+  }
+
+  // Track the previous state of important cookies
+  Map<String, bool> _previousCookieState = {
+    ACCESS_TOKEN_NAME: false,
+    REFRESH_TOKEN_NAME: false,
+    MFA_TOKEN_NAME: false,
+  };
+
+  /// Check for changes in authentication cookies
+  Future<void> _checkCookieChanges() async {
+    try {
+      final cookies = await getCookies();
+      final currentState = {
+        ACCESS_TOKEN_NAME:
+            cookies.any((c) => c.name == ACCESS_TOKEN_NAME && !_isExpired(c)),
+        REFRESH_TOKEN_NAME:
+            cookies.any((c) => c.name == REFRESH_TOKEN_NAME && !_isExpired(c)),
+        MFA_TOKEN_NAME:
+            cookies.any((c) => c.name == MFA_TOKEN_NAME && !_isExpired(c)),
+      };
+
+      // Check for changes
+      if (_previousCookieState[ACCESS_TOKEN_NAME] !=
+              currentState[ACCESS_TOKEN_NAME] ||
+          _previousCookieState[REFRESH_TOKEN_NAME] !=
+              currentState[REFRESH_TOKEN_NAME]) {
+        // Determine the event type
+        CookieChangeEventType eventType;
+        if (currentState[ACCESS_TOKEN_NAME]! &&
+            !_previousCookieState[ACCESS_TOKEN_NAME]!) {
+          eventType = CookieChangeEventType.tokenAdded;
+        } else if (!currentState[ACCESS_TOKEN_NAME]! &&
+            _previousCookieState[ACCESS_TOKEN_NAME]!) {
+          eventType = CookieChangeEventType.tokenRemoved;
+        } else {
+          eventType = CookieChangeEventType.tokenRefreshed;
+        }
+
+        // Emit the event
+        _cookieEventStream.add(CookieChangeEvent(
+          type: eventType,
+          hasAccessToken: currentState[ACCESS_TOKEN_NAME]!,
+          hasRefreshToken: currentState[REFRESH_TOKEN_NAME]!,
+          hasMfaToken: currentState[MFA_TOKEN_NAME]!,
+        ));
+      }
+
+      // Update previous state
+      _previousCookieState = currentState;
+    } catch (e) {
+      print('Error checking cookie changes: $e');
+    }
+  }
+
+  bool _isExpired(Cookie cookie) {
+    return cookie.expires != null && cookie.expires!.isBefore(DateTime.now());
   }
 
   /// Get cookies for a specific URL
@@ -59,6 +145,19 @@ class SmartifyHttpClient {
     return cookieJar.deleteAll();
   }
 
+  Future<bool> deleteCookie(String name) async {
+    final cookies = await cookieJar.loadForRequest(apiBaseUrl);
+    final cookie = cookies.firstWhere((cookie) => cookie.name == name,
+        orElse: () => Cookie(name, ''));
+    if (cookie.value.isEmpty) {
+      return false;
+    }
+
+    cookie.expires = DateTime.now().subtract(const Duration(days: 1));
+    await cookieJar.saveFromResponse(apiBaseUrl, [cookie]);
+    return true;
+  }
+
   /// Check if a specific cookie exists
   Future<bool> hasCookie(String name) async {
     final cookies = await cookieJar.loadForRequest(apiBaseUrl);
@@ -66,4 +165,31 @@ class SmartifyHttpClient {
         cookie.name == name &&
         (cookie.expires == null || cookie.expires!.isAfter(DateTime.now())));
   }
+}
+
+/// Represents a cookie change event
+class CookieChangeEvent {
+  final CookieChangeEventType type;
+  final bool hasAccessToken;
+  final bool hasRefreshToken;
+  final bool hasMfaToken;
+
+  CookieChangeEvent({
+    required this.type,
+    required this.hasAccessToken,
+    required this.hasRefreshToken,
+    required this.hasMfaToken,
+  });
+
+  @override
+  String toString() {
+    return 'CookieChangeEvent{type: $type, hasAccessToken: $hasAccessToken, hasRefreshToken: $hasRefreshToken, hasMfaToken: $hasMfaToken}';
+  }
+}
+
+/// Types of cookie change events
+enum CookieChangeEventType {
+  tokenAdded,
+  tokenRemoved,
+  tokenRefreshed,
 }
