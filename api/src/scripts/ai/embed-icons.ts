@@ -24,7 +24,7 @@ async function start() {
   // TEMP
   {
     const description = await ai.generateIconDescription(
-      path.join(iconsDir, 'ac_unit_rounded.png'),
+      path.join(iconsDir, 'ac_unit.png'),
     );
 
     console.log('description:', description);
@@ -37,7 +37,7 @@ async function start() {
   }
   {
     const description = await ai.generateIconDescription(
-      path.join(iconsDir, 'access_time_filled_rounded.png'),
+      path.join(iconsDir, 'access_time_filled.png'),
     );
 
     console.log('description:', description);
