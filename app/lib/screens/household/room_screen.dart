@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:smartify/screens/household/configure_room.dart';
 import '/widgets/back_button.dart';
 // import 'add_room.dart';
 // import 'edit_room.dart';
@@ -30,11 +29,11 @@ class RoomsScreen extends StatelessWidget {
                   const Spacer(),
                   TextButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ConfigureRoomScreen()),
-                      );
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //       builder: (context) => const ConfigureRoomScreen()),
+                      // );
                     },
                     child: Text(
                       '+ Add Room',
@@ -87,11 +86,11 @@ class RoomsScreen extends StatelessWidget {
       trailing: IconButton(
         icon: const Icon(Icons.edit),
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const ConfigureRoomScreen()),
-          );
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //       builder: (context) => const ConfigureRoomScreen()),
+          // );
         },
       ),
     );

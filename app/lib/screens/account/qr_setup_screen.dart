@@ -3,15 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:smartify/widgets/back_button.dart'; // Import the custom back button widget
 import 'mfa_verification_screen.dart';
+import 'package:smartify/services/auth.dart';
 
 class QRSetupScreen extends StatelessWidget {
   final String mfaSecret; // Add a parameter for the MFA secret
   final String mfaQRUri; // QR code URI passed from registration
+  final AuthService authService; // Add AuthService for state update
 
   const QRSetupScreen({
     super.key,
     required this.mfaSecret,
     required this.mfaQRUri,
+    required this.authService, // Inject the AuthService
   });
 
   void _copyToClipboard(BuildContext context) {
@@ -20,16 +23,6 @@ class QRSetupScreen extends StatelessWidget {
       const SnackBar(
         content: Text('Code copied to clipboard'),
         duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _navigateToMFAConfirmationScreen(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MFAVerificationScreen(
-            isSetup: true), // Passing 'true' for setup
       ),
     );
   }
@@ -129,7 +122,17 @@ class QRSetupScreen extends StatelessWidget {
               // Next Button (Confirm MFA)
               const Spacer(),
               ElevatedButton(
-                onPressed: () => _navigateToMFAConfirmationScreen(context),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MFAVerificationScreen(
+                        authService: authService,
+                        authState: AuthState.signedInMFAConfirm,
+                      ),
+                    ),
+                  );
+                },
                 child: const Text(
                   'Confirm MFA',
                   style: TextStyle(color: Colors.white),

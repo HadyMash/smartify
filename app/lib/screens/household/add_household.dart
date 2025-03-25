@@ -1,8 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/screens/household/configure_floor.dart';
 
-class AddHouseholdScreen extends StatelessWidget {
+class AddHouseholdScreen extends StatefulWidget {
   const AddHouseholdScreen({super.key});
+
+  @override
+  _AddHouseholdScreenState createState() => _AddHouseholdScreenState();
+}
+
+class _AddHouseholdScreenState extends State<AddHouseholdScreen> {
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _navigateToConfigureFloors() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ConfigureFloorsScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +46,20 @@ class AddHouseholdScreen extends StatelessWidget {
           children: [
             Text('Enter Household Details', style: textTheme.titleLarge),
             const SizedBox(height: 24),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Household Type'),
-            ),
-            const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Status'),
-            ),
-            const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Address'),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Household Name'),
             ),
             const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ConfigureFloorsScreen()),
-                );
-              },
-              child: const Text('Add Household'),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _navigateToConfigureFloors,
+                child: const Text(
+                  'Add Household',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ],
         ),

@@ -77,6 +77,8 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
               .map((i) => HouseholdInvite(
                     inviteId: i['_id'],
                     userId: i['userId'],
+                    householdName: i['householdName'].toString(),
+                    senderName: i['senderName'].toString(),
                   ))
               .toList(),
         );
@@ -102,7 +104,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     return null;
   }
 
-  Future<List<HouseholdInfo>> getHouseholds() async {
+  Future<List<HouseholdInfo>> getUserHouseholds() async {
     try {
       final response = await _dio.get('/households');
 
@@ -174,6 +176,8 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
               .map((i) => HouseholdInvite(
                     inviteId: i['_id'],
                     userId: i['userId'],
+                    householdName: i['householdName'].toString(),
+                    senderName: i['senderName'].toString(),
                   ))
               .toList(),
         );
@@ -230,6 +234,140 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
       print('Error getting households: $e');
     }
     return null;
+  }
+
+  //  Get User Invites
+  Future<List<HouseholdInvite>> getUserInvites() async {
+    try {
+      final response = await _dio.get('/households/invites');
+      return (response.data as List)
+          .map((invite) => HouseholdInvite(
+                inviteId: invite['_id'].toString(),
+                userId: invite['userId'].toString(),
+                householdName: invite['householdName'].toString(),
+                senderName: invite['senderName'].toString(),
+              ))
+          .toList();
+    } on DioError catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized - Please log in');
+      }
+      throw Exception('Failed to fetch invites: ${e.message}');
+    }
+  }
+
+  // Respond to Invite
+  Future<Household> respondToInvite({
+    required String inviteId,
+    required bool response,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/households/invite/respond',
+        data: {'inviteId': inviteId, 'response': response},
+      );
+
+      return _parseHousehold(res.data);
+    } on DioError catch (e) {
+      switch (e.response?.statusCode) {
+        case 400:
+          throw Exception(e.response?.data['error'] ?? 'Invalid invite');
+        case 403:
+          throw Exception('Permission denied');
+        case 404:
+          throw Exception('Invite not found');
+        case 409:
+          throw Exception('User is already a member');
+        default:
+          throw Exception('Failed to respond to invite');
+      }
+    }
+  }
+
+  // Invite Member
+  Future<Household> inviteMember({
+    required String householdId,
+    required String email,
+    required String role,
+    required HouseholdPermissions permissions,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/households/$householdId/invite',
+        data: {
+          'email': email,
+          'role': role,
+          'permissions': {
+            'appliances': permissions.appliances,
+            'health': permissions.health,
+            'security': permissions.security,
+            'energy': permissions.energy,
+          },
+        },
+      );
+      return _parseHousehold(res.data);
+    } on DioError catch (e) {
+      switch (e.response?.statusCode) {
+        case 400:
+          throw Exception(e.response?.data['error'] ?? 'Invalid request');
+        case 403:
+          throw Exception('Only owners/admins can invite');
+        case 404:
+          throw Exception('Household not found');
+        case 409:
+          throw Exception(e.response?.data['error'] ?? 'User already invited');
+        default:
+          throw Exception('Failed to send invitation');
+      }
+    }
+  }
+
+  // Helper method to parse Household from JSON
+  Household _parseHousehold(Map<String, dynamic> json) {
+    return Household(
+      id: json['_id'].toString(),
+      name: json['name'].toString(),
+      ownerId: json['owner'].toString(),
+      floors: json['floors'] as int,
+      floorsOffset: json['floorsOffset'] as int? ?? 0,
+      rooms: (json['rooms'] as List)
+          .map((r) => HouseholdRoom(
+                id: r['id'].toString(),
+                name: r['name'].toString(),
+                type: r['type'].toString(),
+                floor: r['floor'] as int,
+                connectedRooms: RoomConnections(
+                  top: r['connectedRooms']['top']?.toString(),
+                  bottom: r['connectedRooms']['bottom']?.toString(),
+                  left: r['connectedRooms']['left']?.toString(),
+                  right: r['connectedRooms']['right']?.toString(),
+                ),
+              ))
+          .toList(),
+      members: (json['members'] as List)
+          .map((m) => HouseholdMember(
+                id: m['_id'].toString(),
+                name: m['name'].toString(),
+                role: m['role']?.toString(),
+                permissions: m['permissions'] != null
+                    ? HouseholdPermissions(
+                        appliances: m['permissions']['appliances'] as bool,
+                        health: m['permissions']['health'] as bool,
+                        security: m['permissions']['security'] as bool,
+                        energy: m['permissions']['energy'] as bool,
+                      )
+                    : null,
+              ))
+          .toList(),
+      invites: (json['invites'] as List)
+          .map((i) => HouseholdInvite(
+                inviteId: i['_id'].toString(),
+                userId: i['userId'].toString(),
+                householdName: i['householdName'].toString(),
+                senderName: i['senderName'].toString(),
+              ))
+          .toList(),
+    );
   }
 }
 
@@ -301,8 +439,14 @@ class HouseholdPermissions {
 class HouseholdInvite {
   final String inviteId;
   final String userId;
+  final String householdName;
+  final String senderName;
 
-  const HouseholdInvite({required this.inviteId, required this.userId});
+  const HouseholdInvite(
+      {required this.inviteId,
+      required this.userId,
+      required this.householdName,
+      required this.senderName});
 }
 
 class HouseholdRoom {

@@ -1,6 +1,6 @@
+// import 'package:flutter/cupertino.dart';
 // import 'package:flutter/material.dart';
-// // import 'package:flutter_picker/flutter_picker.dart';
-// import 'package:gesture_x_detector/gesture_x_detector.dart';
+// import 'package:smartify/screens/household/configure_room.dart'; // Ensure this import is correct
 
 // class ConfigureFloorsScreen extends StatefulWidget {
 //   const ConfigureFloorsScreen({super.key});
@@ -11,41 +11,48 @@
 
 // class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
 //   int _selectedFloorIndex = 2; // G floor is selected by default
-//   final List<String> _floors = ['B2', 'B1', 'G', 'L1', 'L2'];
-//   int _totalFloors = 5;
-//   double _scrollOffset = 0.0;
-//   final double _itemHeight = 100.0; // Height of each floor item
+//   final List<String> _floors = ['L2', 'L1', 'G', 'B1', 'B2'];
 
 //   void _incrementFloors() {
-//     if (_totalFloors < 10) { // Set a reasonable maximum
-//       setState(() {
-//         _totalFloors++;
-//         _floors.insert(0, 'B${_totalFloors - 4}'); // Add basement
+//     setState(() {
+//       int gIndex = _floors.indexOf('G');
+
+//       if (_selectedFloorIndex <= gIndex) {
+//         // If at or above G, add more L floors at the top
+//         int newLNumber = (_floors.first.startsWith('L'))
+//             ? int.tryParse(_floors.first.substring(1)) ?? 2
+//             : 0;
+//         _floors.insert(0, 'L${newLNumber + 1}');
 //         _selectedFloorIndex++;
-//       });
-//     }
+//       } else {
+//         // If below G (Basements), add more B floors at the bottom
+//         int newBNumber = (_floors.last.startsWith('B'))
+//             ? int.tryParse(_floors.last.substring(1)) ?? 2
+//             : 0;
+//         _floors.add('B${newBNumber + 1}');
+//       }
+//     });
 //   }
 
 //   void _decrementFloors() {
-//     if (_totalFloors > 3) { // Minimum 3 floors (1 ground + 1 upper + 1 basement)
-//       setState(() {
-//         _totalFloors--;
-//         _floors.removeAt(0);
-//         _selectedFloorIndex = _selectedFloorIndex > 0 ? _selectedFloorIndex - 1 : 0;
-//       });
-//     }
-//   }
-
-//   void _handleVerticalDragUpdate(double delta) {
 //     setState(() {
-//       _scrollOffset += delta;
-//       // Calculate the new selected index based on scroll position
-//       final newIndex = (_scrollOffset / _itemHeight).round();
-//       if (newIndex >= 0 && newIndex < _floors.length) {
-//         _selectedFloorIndex = _floors.length - 1 - newIndex;
+//       int gIndex = _floors.indexOf('G');
+
+//       if (_selectedFloorIndex <= gIndex) {
+//         // If at or above G, remove the first L floor
+//         if (_floors.first.startsWith('L')) {
+//           _floors.removeAt(0);
+//           _selectedFloorIndex =
+//               (_selectedFloorIndex > 0) ? _selectedFloorIndex - 1 : 0;
+//         }
+//       } else {
+//         // If below G (Basements), remove the last B floor
+//         if (_floors.last.startsWith('B')) {
+//           _floors.removeLast();
+//           _selectedFloorIndex =
+//               (_selectedFloorIndex > gIndex) ? _selectedFloorIndex - 1 : gIndex;
+//         }
 //       }
-//       // Keep scroll offset within bounds
-//       _scrollOffset = _selectedFloorIndex * _itemHeight;
 //     });
 //   }
 
@@ -70,410 +77,53 @@
 //                 child: Row(
 //                   mainAxisAlignment: MainAxisAlignment.center,
 //                   children: [
-//                     // Floor indicators with smooth scrolling
 //                     Expanded(
-//                       child: XGestureDetector(
-//                         onMoveUpdate: (event) {
-//                           _handleVerticalDragUpdate(event.delta.dy);
+//                       child: CupertinoPicker(
+//                         itemExtent: 50.0,
+//                         scrollController: FixedExtentScrollController(
+//                             initialItem: _selectedFloorIndex),
+//                         onSelectedItemChanged: (int index) {
+//                           setState(() {
+//                             _selectedFloorIndex = index;
+//                           });
 //                         },
-//                         child: LayoutBuilder(
-//                           builder: (context, constraints) {
-//                             final itemHeight = constraints.maxHeight / _floors.length;
-//                             return Stack(
-//                               children: [
-//                                 // Floor boxes
-//                                 ...List.generate(_floors.length, (index) {
-//                                   final isSelected = index == _selectedFloorIndex;
-//                                   return AnimatedPositioned(
-//                                     duration: const Duration(milliseconds: 200),
-//                                     curve: Curves.easeOutCubic,
-//                                     left: 0,
-//                                     right: 0,
-//                                     top: index * itemHeight - _scrollOffset,
-//                                     child: GestureDetector(
-//                                       onTap: () {
-//                                         setState(() {
-//                                           _selectedFloorIndex = index;
-//                                           _scrollOffset = (_floors.length - 1 - index) * _itemHeight;
-//                                         });
-//                                       },
-//                                       child: SizedBox(
-//                                         height: itemHeight,
-//                                         child: Center(
-//                                           child: AnimatedContainer(
-//                                             duration: const Duration(milliseconds: 200),
-//                                             width: 60,
-//                                             height: 60,
-//                                             decoration: BoxDecoration(
-//                                               color: isSelected
-//                                                   ? theme.colorScheme.secondary
-//                                                   : theme.colorScheme.surface,
-//                                               borderRadius: BorderRadius.circular(12),
-//                                               boxShadow: isSelected ? [
-//                                                 BoxShadow(
-//                                                   color: Colors.black.withOpacity(0.1),
-//                                                   blurRadius: 8,
-//                                                   offset: const Offset(0, 2),
-//                                                 )
-//                                               ] : null,
-//                                             ),
-//                                             child: Center(
-//                                               child: Text(
-//                                                 _floors[_floors.length - 1 - index],
-//                                                 style: textTheme.bodyLarge?.copyWith(
-//                                                   color: isSelected
-//                                                       ? theme.colorScheme.onSecondary
-//                                                       : theme.colorScheme.onSurface,
-//                                                   fontWeight: FontWeight.bold,
-//                                                 ),
-//                                               ),
-//                                             ),
-//                                           ),
-//                                         ),
-//                                       ),
-//                                     ),
-//                                   );
-//                                 }),
-//                               ],
-//                             );
-//                           },
-//                         ),
+//                         children: _floors
+//                             .map((floor) => Center(
+//                                   child: Text(
+//                                     floor,
+//                                     style: textTheme.bodyLarge,
+//                                   ),
+//                                 ))
+//                             .toList(),
 //                       ),
 //                     ),
 //                     const SizedBox(width: 24),
-//                     // Plus/Minus controls
 //                     Column(
 //                       mainAxisAlignment: MainAxisAlignment.center,
 //                       children: [
 //                         IconButton(
 //                           onPressed: _incrementFloors,
 //                           icon: const Icon(Icons.add),
-//                           style: IconButton.styleFrom(
-//                             backgroundColor: theme.colorScheme.surface,
-//                             padding: const EdgeInsets.all(12),
+//                           style: ButtonStyle(
+//                             backgroundColor: WidgetStateProperty.all(
+//                                 theme.colorScheme.surface),
+//                             padding: WidgetStateProperty.all(
+//                                 const EdgeInsets.all(12)),
 //                           ),
 //                         ),
 //                         Text(
-//                           _totalFloors.toString(),
+//                           _floors.length.toString(),
 //                           style: textTheme.bodyLarge,
 //                         ),
 //                         IconButton(
 //                           onPressed: _decrementFloors,
 //                           icon: const Icon(Icons.remove),
-//                           style: IconButton.styleFrom(
-//                             backgroundColor: theme.colorScheme.surface,
-//                             padding: const EdgeInsets.all(12),
+//                           style: ButtonStyle(
+//                             backgroundColor: WidgetStateProperty.all(
+//                                 theme.colorScheme.surface),
+//                             padding: WidgetStateProperty.all(
+//                                 const EdgeInsets.all(12)),
 //                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               const SizedBox(height: 24),
-//               Row(
-//                 children: [
-//                   Expanded(
-//                     child: ElevatedButton(
-//                       onPressed: () => Navigator.pop(context),
-//                       style: ElevatedButton.styleFrom(
-//                         backgroundColor: Colors.grey[300],
-//                       ),
-//                       child: Text(
-//                         'Go Back',
-//                         style: textTheme.bodyLarge?.copyWith(
-//                           fontWeight: FontWeight.bold,
-//                           color: Colors.black,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(width: 16),
-//                   Expanded(
-//                     child: ElevatedButton(
-//                       onPressed: () {
-//                         // Handle next action
-//                       },
-//                       child: Text(
-//                         'Next',
-//                         style: textTheme.bodyLarge?.copyWith(
-//                           fontWeight: FontWeight.bold,
-//                           color: theme.colorScheme.onSecondary,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// } boxes slider
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:smartify/screens/household/configure_room.dart'; // Ensure this import is correct
-
-class ConfigureFloorsScreen extends StatefulWidget {
-  const ConfigureFloorsScreen({super.key});
-
-  @override
-  State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
-}
-
-class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
-  int _selectedFloorIndex = 2; // G floor is selected by default
-  final List<String> _floors = ['L2', 'L1', 'G', 'B1', 'B2'];
-
-  void _incrementFloors() {
-    setState(() {
-      int gIndex = _floors.indexOf('G');
-
-      if (_selectedFloorIndex <= gIndex) {
-        // If at or above G, add more L floors at the top
-        int newLNumber = (_floors.first.startsWith('L'))
-            ? int.tryParse(_floors.first.substring(1)) ?? 2
-            : 0;
-        _floors.insert(0, 'L${newLNumber + 1}');
-        _selectedFloorIndex++;
-      } else {
-        // If below G (Basements), add more B floors at the bottom
-        int newBNumber = (_floors.last.startsWith('B'))
-            ? int.tryParse(_floors.last.substring(1)) ?? 2
-            : 0;
-        _floors.add('B${newBNumber + 1}');
-      }
-    });
-  }
-
-  void _decrementFloors() {
-    setState(() {
-      int gIndex = _floors.indexOf('G');
-
-      if (_selectedFloorIndex <= gIndex) {
-        // If at or above G, remove the first L floor
-        if (_floors.first.startsWith('L')) {
-          _floors.removeAt(0);
-          _selectedFloorIndex =
-              (_selectedFloorIndex > 0) ? _selectedFloorIndex - 1 : 0;
-        }
-      } else {
-        // If below G (Basements), remove the last B floor
-        if (_floors.last.startsWith('B')) {
-          _floors.removeLast();
-          _selectedFloorIndex =
-              (_selectedFloorIndex > gIndex) ? _selectedFloorIndex - 1 : gIndex;
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Configure Floors',
-                style: textTheme.displayMedium,
-              ),
-              const SizedBox(height: 40),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: CupertinoPicker(
-                        itemExtent: 50.0,
-                        scrollController: FixedExtentScrollController(
-                            initialItem: _selectedFloorIndex),
-                        onSelectedItemChanged: (int index) {
-                          setState(() {
-                            _selectedFloorIndex = index;
-                          });
-                        },
-                        children: _floors
-                            .map((floor) => Center(
-                                  child: Text(
-                                    floor,
-                                    style: textTheme.bodyLarge,
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: _incrementFloors,
-                          icon: const Icon(Icons.add),
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                                theme.colorScheme.surface),
-                            padding: WidgetStateProperty.all(
-                                const EdgeInsets.all(12)),
-                          ),
-                        ),
-                        Text(
-                          _floors.length.toString(),
-                          style: textTheme.bodyLarge,
-                        ),
-                        IconButton(
-                          onPressed: _decrementFloors,
-                          icon: const Icon(Icons.remove),
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                                theme.colorScheme.surface),
-                            padding: WidgetStateProperty.all(
-                                const EdgeInsets.all(12)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ConfigureRoomScreen(),
-                      // ConfigureRoomScreen(floors: _floors),
-                    ),
-                  );
-                },
-                child: Text(
-                  'Next',
-                  style: textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// class ConfigureFloorsScreen extends StatefulWidget {
-//   const ConfigureFloorsScreen({super.key});
-
-//   @override
-//   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
-// }
-
-// class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
-//   final List<String> _floors = ['B2', 'B1', 'G', 'L1', 'L2'];
-//   int _selectedFloorIndex = 2;
-//   int _totalFloors = 5;
-
-//   void _addFloor() {
-//     setState(() {
-//       final newFloor = 'L${_totalFloors - 2}';
-//       _floors.add(newFloor);
-//       _totalFloors++;
-//     });
-//   }
-
-//   void _removeFloor() {
-//     if (_floors.length > 3 && _floors.last != 'G') {
-//       setState(() {
-//         _floors.removeLast();
-//         _totalFloors--;
-//       });
-//     }
-//   }
-
-//   void _showPicker() {
-//     Picker(
-//       adapter: PickerDataAdapter<String>(pickerData: _floors.reversed.toList()),
-//       selecteds: [_floors.length - 1 - _selectedFloorIndex],
-//       onConfirm: (Picker picker, List<int> value) {
-//         setState(() {
-//           _selectedFloorIndex = _floors.length - 1 - value.first;
-//         });
-//       },
-//     ).showModal(context);
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.textTheme;
-
-//     return Scaffold(
-//       body: SafeArea(
-//         child: Padding(
-//           padding: const EdgeInsets.all(24.0),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Row(
-//                 children: [
-//                   IconButton(
-//                     icon: const Icon(Icons.arrow_back),
-//                     onPressed: () => Navigator.pop(context),
-//                   ),
-//                   Text('Configure Floors', style: textTheme.displayMedium),
-//                 ],
-//               ),
-//               const SizedBox(height: 40),
-//               Expanded(
-//                 child: Column(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: [
-//                     GestureDetector(
-//                       onTap: _showPicker,
-//                       child: Container(
-//                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-//                         decoration: BoxDecoration(
-//                           color: theme.colorScheme.surface,
-//                           borderRadius: BorderRadius.circular(12),
-//                           boxShadow: [
-//                             BoxShadow(
-//                               color: Colors.black.withOpacity(0.1),
-//                               blurRadius: 8,
-//                             )
-//                           ],
-//                         ),
-//                         child: Text(
-//                           _floors[_selectedFloorIndex],
-//                           style: textTheme.headlineLarge,
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(height: 24),
-//                     Row(
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       children: [
-//                         Column(
-//                           children: [
-//                             IconButton(
-//                               onPressed: _addFloor,
-//                               icon: const Icon(Icons.add),
-//                             ),
-//                             Text('$_totalFloors', style: textTheme.bodyLarge),
-//                             IconButton(
-//                               onPressed: _removeFloor,
-//                               icon: const Icon(Icons.remove),
-//                             ),
-//                           ],
 //                         ),
 //                       ],
 //                     ),
@@ -483,9 +133,21 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
 //               const SizedBox(height: 24),
 //               ElevatedButton(
 //                 onPressed: () {
-//                   // Navigate to Configure Room Page
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (context) => const ConfigureRoomScreen(),
+//                       // ConfigureRoomScreen(floors: _floors),
+//                     ),
+//                   );
 //                 },
-//                 child: const Text('Next'),
+//                 child: Text(
+//                   'Next',
+//                   style: textTheme.bodyLarge?.copyWith(
+//                     fontWeight: FontWeight.bold,
+//                     color: Colors.white,
+//                   ),
+//                 ),
 //               ),
 //             ],
 //           ),
@@ -495,132 +157,544 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
 //   }
 // }
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_picker/flutter_picker.dart';
+import 'dart:math';
+import 'dart:ui';
 
-// class ConfigureFloorsScreen extends StatefulWidget {
-//   const ConfigureFloorsScreen({super.key});
+import 'package:flutter/material.dart';
+import 'package:smartify/screens/household/configure_room.dart';
 
-//   @override
-//   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
-// }
+class ConfigureFloorsScreen extends StatefulWidget {
+  const ConfigureFloorsScreen({super.key});
 
-// class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
-//   final List<String> _floors = ['B2', 'B1', 'G', 'L1', 'L2'];
-//   int _selectedFloorIndex = 2;
-//   int _totalFloors = 5;
+  @override
+  State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
+}
 
-//   void _addFloor() {
-//     setState(() {
-//       final newFloor = 'L${_totalFloors - 2}';
-//       _floors.add(newFloor);
-//       _totalFloors++;
-//     });
-//   }
+class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
+    with TickerProviderStateMixin {
+  static const double minSizeMultiplier = 0.4;
+  static const double maxMomentumDuration = 1.5; // maximum seconds for momentum
+  static const double minMomentumDuration = 0.3; // minimum seconds for momentum
+  static const double velocityMultiplier =
+      0.0008; // adjusts velocity to duration
 
-//   void _removeFloor() {
-//     if (_floors.length > 3 && _floors.last != 'G') {
-//       setState(() {
-//         _floors.removeLast();
-//         _totalFloors--;
-//       });
-//     }
-//   }
+  static const double floorHeightMultiplier = 0.35;
 
-//   void _showPicker() {
-//     Picker(
-//       adapter: PickerDataAdapter<String>(pickerData: _floors.reversed.toList()),
-//       selecteds: [_floors.length - 1 - _selectedFloorIndex],
-//       onConfirm: (Picker picker, List<int> value) {
-//         setState(() {
-//           _selectedFloorIndex = _floors.length - 1 - value.first;
-//         });
-//       },
-//     ).showModal(context);
-//   }
+  late double selectedHeight;
+  late AnimationController _snapController;
+  late AnimationController _momentumController;
+  double? _lastVelocity;
+  final Set<int> _selectedFloorIndices = {};
 
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.textTheme;
+  int numberOfFloors = 2;
 
-//     return Scaffold(
-//       body: SafeArea(
-//         child: SingleChildScrollView( // ✅ Prevents Overflow
-//           child: Padding(
-//             padding: const EdgeInsets.all(24.0),
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min, // ✅ Fixes excess height
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Row(
-//                   children: [
-//                     IconButton(
-//                       icon: const Icon(Icons.arrow_back),
-//                       onPressed: () => Navigator.pop(context),
-//                     ),
-//                     Text('Configure Floors', style: textTheme.displayMedium),
-//                   ],
-//                 ),
-//                 const SizedBox(height: 40),
-//                 Center(
-//                   child: Column(
-//                     mainAxisSize: MainAxisSize.min,
-//                     children: [
-//                       GestureDetector(
-//                         onTap: _showPicker,
-//                         child: Container(
-//                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-//                           decoration: BoxDecoration(
-//                             color: theme.colorScheme.surface,
-//                             borderRadius: BorderRadius.circular(12),
-//                             boxShadow: [
-//                               BoxShadow(
-//                                 color: Colors.black.withOpacity(0.1),
-//                                 blurRadius: 8,
-//                               )
-//                             ],
-//                           ),
-//                           child: Text(
-//                             _floors[_selectedFloorIndex],
-//                             style: textTheme.headlineLarge,
-//                           ),
-//                         ),
-//                       ),
-//                       const SizedBox(height: 24),
-//                       Row(
-//                         mainAxisAlignment: MainAxisAlignment.center,
-//                         children: [
-//                           Column(
-//                             children: [
-//                               IconButton(
-//                                 onPressed: _addFloor,
-//                                 icon: const Icon(Icons.add),
-//                               ),
-//                               Text('$_totalFloors', style: textTheme.bodyLarge),
-//                               IconButton(
-//                                 onPressed: _removeFloor,
-//                                 icon: const Icon(Icons.remove),
-//                               ),
-//                             ],
-//                           ),
-//                         ],
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 const SizedBox(height: 24),
-//                 ElevatedButton(
-//                   onPressed: () {
-//                     // Navigate to Configure Room Page
-//                   },
-//                   child: const Text('Next'),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
+  final List<_FloorData> _floors = [];
+
+  double _sizeMultiplier(double distanceFromCenter, double height) {
+    return lerpDouble(1, minSizeMultiplier,
+        max(0, min(1, distanceFromCenter / (height / 2))))!;
+  }
+
+  double _positionMapFunction(double position, double screenHeight) {
+    if (position <= 0 || position >= screenHeight) {
+      return position;
+    }
+
+    const double a = 5;
+    double easeFunc(num x) => ((1 + a) * x) / (x + a);
+
+    final double center = screenHeight / 2;
+    final double distanceFromCenter = (position - center).abs();
+
+    return center +
+        ((position - center).sign *
+            lerpDouble(0, center, easeFunc(distanceFromCenter / center))!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _snapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _momentumController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: (minMomentumDuration * 1000).toInt()),
+    );
+
+    _momentumController.addListener(_handleMomentumScroll);
+  }
+
+  @override
+  void dispose() {
+    _snapController.dispose();
+    _momentumController.dispose();
+    super.dispose();
+  }
+
+  void _handleMomentumScroll() {
+    if (_lastVelocity == null) return;
+
+    final double progress = _momentumController.value;
+    // Apply easing to the velocity
+    final double currentVelocity = _lastVelocity! * (1 - progress);
+
+    setState(() {
+      for (var item in _floors) {
+        item.position += currentVelocity * (1 / 60); // Assuming 60fps
+      }
+
+      // Check for new floors needed during momentum scroll
+      if (_floors.first.position > 150) {
+        _addItemToTop();
+      }
+      if (_floors.last.position < MediaQuery.sizeOf(context).height - 200) {
+        _addItemToBottom();
+      }
+      _removeOffscreenWidgets();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // set the selected height to 20% of the smallest device axis
+    selectedHeight =
+        MediaQuery.sizeOf(context).shortestSide * floorHeightMultiplier;
+
+    final height = MediaQuery.sizeOf(context).height;
+    final numOfFloors = height ~/ (selectedHeight * 0.9);
+    _initialiseFloors(numOfFloors, height);
+  }
+
+  void _initialiseFloors(int visibleFloors, double screenHeight) {
+    if (_floors.isNotEmpty) return;
+    // get nearest odd number
+    final nearestOdd = visibleFloors.isEven ? visibleFloors + 1 : visibleFloors;
+
+    // make list so that it's -N, -N+1, ..., G, 1, 2, ..., N
+
+    // add positive floors
+    _floors.addAll(List.generate(
+      (nearestOdd - 1) ~/ 2,
+      (index) {
+        final int floor = ((nearestOdd - 1) ~/ 2 - index);
+        return _FloorData(
+          floor,
+          (screenHeight / 2) - selectedHeight * floor,
+        );
+      },
+    ));
+    // add ground floor
+    _floors.add(_FloorData(0, screenHeight / 2));
+
+    // add basement floors
+    _floors.addAll(List.generate(
+      (nearestOdd - 1) ~/ 2,
+      (index) {
+        final int floor = index + 1;
+        return _FloorData(
+          -floor,
+          (screenHeight / 2) + selectedHeight * (index + 1),
+        );
+      },
+    ));
+
+    // Set the middle floor (ground floor) as selected initially
+    // Initialize selected floors: middle floor and (numberOfFloors - 1) above it
+    _selectedFloorIndices.clear();
+    final middleIndex = (nearestOdd - 1) ~/ 2; // Index of the ground floor
+    for (int i = 0; i < numberOfFloors; i++) {
+      if (middleIndex - i >= 0) {
+        _selectedFloorIndices.add(middleIndex - i);
+      }
+    }
+  }
+
+  void _snapToCenter() {
+    if (_floors.isEmpty) return;
+
+    final screenCenter = MediaQuery.sizeOf(context).height / 2;
+
+    // Find the floor closest to center
+    int closestIndex = 0;
+    double smallestDistance = double.infinity;
+
+    for (int i = 0; i < _floors.length; i++) {
+      final distance = (_floors[i].position - screenCenter).abs();
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        closestIndex = i;
+      }
+    }
+
+    // Update selected floors based on the closest index
+    _selectedFloorIndices.clear();
+    for (int i = 0; i < numberOfFloors; i++) {
+      final indexToSelect = closestIndex - i;
+      if (indexToSelect >= 0 && indexToSelect < _floors.length) {
+        _selectedFloorIndices.add(indexToSelect);
+      }
+    }
+
+    // Store initial positions using floor number as key instead of floor object
+    final initialPositions = {
+      for (var floor in _floors) floor.floor: floor.position
+    };
+
+    final targetCenter = screenCenter;
+    final startingPosition = _floors[closestIndex].position;
+    final totalOffset = targetCenter - startingPosition;
+
+    // Create and configure animation
+    final Animation<double> animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _snapController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    animation.addListener(() {
+      setState(() {
+        for (var floor in _floors) {
+          final initialPosition = initialPositions[floor.floor];
+          if (initialPosition != null) {
+            floor.position = initialPosition + (totalOffset * animation.value);
+          }
+        }
+      });
+    });
+
+    _snapController.forward(from: 0);
+  }
+
+  void _handleScroll(DragUpdateDetails details) {
+    _snapController.stop();
+    _momentumController.stop();
+    setState(() {
+      //_scrollPosition += details.primaryDelta!;
+
+      for (var item in _floors) {
+        item.position += details.primaryDelta!;
+      }
+
+      // check if items need to be added to the top
+      if (_floors.first.position > 150) {
+        _addItemToTop();
+      }
+
+      // check if items need to be added to the bottom
+      if (_floors.last.position < MediaQuery.sizeOf(context).height - 200) {
+        _addItemToBottom();
+      }
+
+      _removeOffscreenWidgets();
+    });
+  }
+
+  void _addItemToBottom() {
+    if (_floors.isEmpty) return;
+
+    final lastItem = _floors.last;
+    final newFloor =
+        _FloorData(lastItem.floor - 1, lastItem.position + selectedHeight);
+
+    _floors.add(newFloor);
+  }
+
+  void _addItemToTop() {
+    if (_floors.isEmpty) return;
+
+    final firstItem = _floors.first;
+    final newFloor =
+        _FloorData(firstItem.floor + 1, firstItem.position - selectedHeight);
+
+    //_floors.add(newFloor);
+    _floors.insert(0, newFloor);
+  }
+
+  void _removeOffscreenWidgets() {
+    _floors.removeWhere((floor) =>
+        floor.position < -selectedHeight ||
+        floor.position > MediaQuery.sizeOf(context).height + selectedHeight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+
+    void updateSelectedFloors() {
+      // Ensure indices are in order
+      final lowestIndex =
+          _selectedFloorIndices.first; // Get the lowest selected floor index
+
+      _selectedFloorIndices.clear(); // Reset selected floors
+
+      for (int i = 0; i < numberOfFloors; i++) {
+        if (lowestIndex + i < _floors.length) {
+          _selectedFloorIndices.add(lowestIndex - i);
+        } else {
+          break; // Stop if we reach the end of the list
+        }
+      }
+    }
+
+    void incrementFloors() {
+      setState(() {
+        if (numberOfFloors < _floors.length) {
+          numberOfFloors++;
+          updateSelectedFloors();
+        }
+      });
+    }
+
+    void decrementFloors() {
+      setState(() {
+        if (numberOfFloors > 1) {
+          numberOfFloors--;
+          updateSelectedFloors();
+        }
+      });
+    }
+
+    final theme = Theme.of(context);
+    return Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Configure Floors'),
+        backgroundColor: Colors.transparent,
+      ),
+      body: GestureDetector(
+        onVerticalDragStart: (_) {
+          _snapController.stop();
+        },
+        onVerticalDragUpdate: _handleScroll,
+        onVerticalDragEnd: (details) {
+          _lastVelocity = details.primaryVelocity;
+          if (_lastVelocity != null && _lastVelocity!.abs() > 100) {
+            final velocityDuration = (_lastVelocity!.abs() * velocityMultiplier)
+                .clamp(minMomentumDuration, maxMomentumDuration);
+
+            _momentumController.duration = Duration(
+              milliseconds: (velocityDuration * 1000).toInt(),
+            );
+
+            _momentumController.forward(from: 0).then((_) {
+              _snapToCenter();
+            });
+          } else {
+            _snapToCenter();
+          }
+        },
+        child: Container(
+          height: double.infinity,
+          width: double.infinity,
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Row(
+            children: [
+              // Expanded to keep the main content flexible
+              Expanded(
+                child: Stack(
+                  children: [
+                    ..._floors.map((floor) {
+                      final size = selectedHeight;
+                      final isSelected = _selectedFloorIndices
+                          .contains(_floors.indexOf(floor));
+
+                      return AnimatedPositioned(
+                        duration: const Duration(milliseconds: 100),
+                        curve: Curves.easeOutCubic,
+                        key: ValueKey(floor.floor),
+                        top: _positionMapFunction(floor.position, height) -
+                            size / 2,
+                        left: MediaQuery.sizeOf(context).shortestSide / 2 -
+                            size / 2,
+                        child: TweenAnimationBuilder(
+                          duration: const Duration(milliseconds: 100),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween<double>(
+                            begin: _sizeMultiplier(
+                                ((height / 2) - floor.position).abs(), height),
+                            end: _sizeMultiplier(
+                                ((height / 2) - floor.position).abs(), height),
+                          ),
+                          builder: (context, double scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: child!,
+                            );
+                          },
+                          child: _Floor(
+                            size: size,
+                            floor: floor.floor,
+                            isSelected: isSelected,
+                          ),
+                        ),
+                      );
+                    }),
+                    // top and bottom gradients
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Theme.of(context).scaffoldBackgroundColor,
+                              Theme.of(context)
+                                  .scaffoldBackgroundColor
+                                  .withAlpha(0),
+                            ],
+                            stops: const [120 / 200, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: height - 200,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Theme.of(context).scaffoldBackgroundColor,
+                              Theme.of(context)
+                                  .scaffoldBackgroundColor
+                                  .withAlpha(0),
+                            ],
+                            stops: const [85 / 160, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Column with buttons on the right side
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: incrementFloors,
+                      icon: const Icon(Icons.add),
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(theme.colorScheme.surface),
+                        padding:
+                            WidgetStateProperty.all(const EdgeInsets.all(12)),
+                      ),
+                    ),
+                    Text(
+                      numberOfFloors.toString(),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    IconButton(
+                      onPressed: decrementFloors,
+                      icon: const Icon(Icons.remove),
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(theme.colorScheme.surface),
+                        padding:
+                            WidgetStateProperty.all(const EdgeInsets.all(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        child: ElevatedButton(
+          onPressed: () {
+            // Get the actual floor numbers of selected floors
+            final selectedFloors = _selectedFloorIndices
+                .map((index) => _floors[index].floor)
+                .toList();
+
+            // Find the lowest floor number (e.g., -2 for B2, 0 for G, etc.)
+            final floorOffset = selectedFloors.reduce((a, b) => a < b ? a : b);
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ConfigureRoomScreen(
+                  floorCount: numberOfFloors,
+                  finalOffset:
+                      floorOffset, // Pass the actual floor number (e.g., -2, 0, 1)
+                ),
+              ),
+            );
+          },
+          child: const Text('Next'),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloorData {
+  int floor;
+  double position;
+
+  _FloorData(this.floor, this.position);
+
+  @override
+  String toString() {
+    return 'Floor: $floor, Position: $position';
+  }
+}
+
+class _Floor extends StatelessWidget {
+  const _Floor({
+    required this.size,
+    required this.floor,
+    required this.isSelected,
+  });
+
+  final double size;
+  final int floor;
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      //duration: const Duration(milliseconds: 50),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.red : Colors.grey,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            floor == 0 ? 'G' : '${floor < 0 ? 'B' : 'L'}${floor.abs()}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

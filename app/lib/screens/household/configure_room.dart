@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
 class ConfigureRoomScreen extends StatefulWidget {
-  const ConfigureRoomScreen({super.key});
+  //final int lowestIndex;
+  final int floorCount;
+  final int finalOffset;
+
+  const ConfigureRoomScreen({
+    super.key,
+    // required this.lowestIndex,
+    required this.floorCount,
+    required this.finalOffset,
+  });
 
   @override
   _ConfigureRoomScreenState createState() => _ConfigureRoomScreenState();
@@ -13,6 +22,25 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
   final double boxWidth = 200.0;
   final double boxHeight = 150.0;
   final double spacing = 0.5;
+
+  List<String> calculateFloorNames(int finalOffset, int floorCount) {
+    List<String> floorNames = [];
+    print("final offset: $finalOffset");
+    print("floor count:$floorCount");
+    for (int i = 0; i < floorCount; i++) {
+      int floorNumber = finalOffset + i;
+
+      if (floorNumber == 0) {
+        floorNames.add("G"); // Ground floor
+      } else if (floorNumber > 0) {
+        floorNames.add("L$floorNumber"); // Above ground (L1, L2, ...)
+      } else {
+        floorNames.add("B${-floorNumber}"); // Below ground (B1, B2, ...)
+      }
+    }
+
+    return floorNames;
+  }
 
   List<Map<String, dynamic>> attachedBoxes = [
     {
@@ -224,7 +252,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
                     });
                   },
                 ),
-                for (String floor in ["L2", "L1", "G", "B1"])
+                for (String floor in calculateFloorNames(
+                    widget.finalOffset, widget.floorCount))
                   ListTile(
                     title: Text(
                       floor,
@@ -362,10 +391,4 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
       ),
     );
   }
-}
-
-void main() {
-  runApp(const MaterialApp(
-    home: ConfigureRoomScreen(),
-  ));
 }

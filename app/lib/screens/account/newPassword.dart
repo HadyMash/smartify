@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'confirm_password.dart';
 import 'package:smartify/widgets/back_button.dart'; // Import the custom back button widget
+import 'package:smartify/services/auth.dart'; // Import the AuthService
 
 class NewPasswordScreen extends StatefulWidget {
-  const NewPasswordScreen({super.key});
+  final AuthService authService;
+  const NewPasswordScreen({super.key, required this.authService});
 
   @override
   State<NewPasswordScreen> createState() => _NewPasswordScreenState();
@@ -27,7 +29,9 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
     if (_formKey.currentState!.validate()) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const PasswordChangedScreen()),
+        MaterialPageRoute(
+            builder: (context) =>
+                PasswordChangedScreen(authService: widget.authService)),
       );
     }
   }

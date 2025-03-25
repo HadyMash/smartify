@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'invite_member.dart';
 import 'edit_member.dart';
 import 'room_screen.dart';
+import 'package:smartify/widgets/house_icon.dart';
 
 class Member {
   final String name;
@@ -44,60 +45,41 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Household Dropdown and Title
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: theme.colorScheme.secondary),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButton<String>(
-                      value: _selectedHousehold,
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: textTheme.bodyLarge,
-                      underline: Container(height: 0),
-                      onChanged: (String? value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedHousehold = value;
-                          });
-                        }
-                      },
-                      items: _households
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
               // Household Icon
-              Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      'H',
-                      style: textTheme.displayMedium?.copyWith(
-                        color: theme.colorScheme.onSecondary,
-                      ),
-                    ),
-                  ),
+              const Center(
+                child: HouseIcon(),
+              ),
+              const SizedBox(height: 16),
+
+              // Centered Dropdown
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colorScheme.secondary),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedHousehold,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: textTheme.bodyLarge,
+                  underline: Container(height: 0),
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedHousehold = value;
+                      });
+                    }
+                  },
+                  items:
+                      _households.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 32),
@@ -112,6 +94,30 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   },
                 ),
               ),
+
+              // Plus Icon Button
+              Align(
+                alignment: Alignment.center,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.add,
+                    color: Colors.black,
+                    size: 30,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InviteMemberScreen(
+                          onMemberInvited: _addNewMember,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               // Bottom Buttons
               Row(
@@ -169,25 +175,36 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    return ListTile(
-      title: Text(member.name),
-      subtitle: member.isInvited
-          ? Text(
-              'Invited',
-              style: textTheme.bodySmall?.copyWith(
-                color: Colors.green,
-                fontWeight: FontWeight.w500,
-              ),
-            )
-          : null,
-      trailing: IconButton(
-        icon: const Icon(Icons.edit),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const EditMemberScreen()),
-          );
-        },
+    return Card(
+      child: ListTile(
+        leading: const Icon(
+          Icons.person, // User icon
+          color: Colors.black, // Icon color set to black
+          size: 30, // Adjust icon size if needed
+        ),
+        title: Text(
+          member.name,
+          style: textTheme.bodyLarge
+              ?.copyWith(fontWeight: FontWeight.bold), // Bold text
+        ),
+        subtitle: member.isInvited
+            ? Text(
+                'Invited',
+                style: textTheme.bodySmall?.copyWith(
+                  color: Colors.green,
+                  fontWeight: FontWeight.w500,
+                ),
+              )
+            : null,
+        trailing: IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const EditMemberScreen()),
+            );
+          },
+        ),
       ),
     );
   }

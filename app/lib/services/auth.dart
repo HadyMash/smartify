@@ -21,6 +21,7 @@ class AuthService {
 
   late final Dio _dio;
   late final SmartifyHttpClient _httpClient;
+  MFAFormattedKey? _mfaKey;
 
   static AuthState _currentAuthState = AuthState.signedOut;
 
@@ -260,6 +261,8 @@ class AuthService {
       return (success: false, error: 'Sign-in failed', mfa: null);
     }
   }
+
+  MFAFormattedKey? get mfaKey => _mfaKey;
 
   /// Verifies the MFA code
   Future<bool> verifyMFA(String code) async {
