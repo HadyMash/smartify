@@ -1,7 +1,6 @@
 import { Request, Response, Router } from 'express';
 import util from 'util';
 import { DBService } from '../services/db-service';
-import { DeviceAction } from '../schemas/capabilities';
 import {
   defaultStates,
   Device,
@@ -16,34 +15,8 @@ import {
   deviceSchemaMap,
 } from '../schemas/device';
 import { ZodObject } from 'zod';
-
-// Define read-only fields mapping
-const deviceReadOnlyFields: Record<DeviceType, string[]> = {
-  [deviceTypeSchema.enum.BULB_ON_OFF]: [],
-  [deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS]: [],
-  [deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS]: [],
-  [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
-  [deviceTypeSchema.enum.CURTAIN]: [],
-  [deviceTypeSchema.enum.AC]: [],
-  //[deviceTypeSchema.enum.GARAGE_DOOR]: [],
-  [deviceTypeSchema.enum.SOLAR_PANEL]: [
-    'currentpoweroutput',
-    'totalDailyOutput',
-    'isExportingToGrid',
-  ],
-  [deviceTypeSchema.enum.THERMOMETER]: ['temperature'],
-  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity'],
-  [deviceTypeSchema.enum.POWER_METER]: [
-    'currentConsumption',
-    'totalConsumption',
-  ],
-  [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
-  //[deviceTypeSchema.enum.COFFEE_MACHINE]: [
-  //  'waterLevel',
-  //  'beansLevel',
-  //  'lastMaintenance',
-  //], // these are sensor readings
-};
+import { getReadOnlyFieldsForDeviceType } from '../schemas/capabilities';
+import { DeviceSimulator } from '../services/device-simulation';
 
 export const adminRouter = Router();
 
@@ -134,6 +107,9 @@ adminRouter.post('/devices/new', async (req: Request, res: Response) => {
       res.status(500).send({ error: 'Internal server error' });
       return;
     }
+
+    // If this is a device that should be simulated, add it to the simulation
+    await DeviceSimulator.getInstance().addDeviceToSimulation(device);
 
     res.status(201).send(device);
     return;
@@ -235,104 +211,104 @@ adminRouter.delete('/devices/:id', async (req: Request, res: Response) => {
 //);
 
 // Update device action status
-adminRouter.patch(
-  '/devices/:id/actions/:actionId',
-  async (req: Request, res: Response) => {
-    try {
-      const { status, error } = req.body;
-      const dbService = new DBService();
-      const device = await dbService.getDevice(req.params.id);
-
-      if (!device) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-
-      const action = device.activeActions[req.params.actionId];
-      if (!action) {
-        res.status(404).json({ error: 'Action not found' });
-        return;
-      }
-
-      // Validate status transition
-      if (!status || !['IN_PROGRESS', 'COMPLETED', 'FAILED'].includes(status)) {
-        res.status(400).json({ error: 'Invalid status' });
-        return;
-      }
-
-      const updatedAction = {
-        ...action,
-        status,
-        ...(status === 'COMPLETED' || status === 'FAILED'
-          ? { completedAt: new Date().toISOString() }
-          : {}),
-        ...(error && status === 'FAILED' ? { error } : {}),
-      };
-
-      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
-        activeActions: {
-          ...device.activeActions,
-          [req.params.actionId]: updatedAction,
-        },
-      });
-
-      if (!updatedDevice) {
-        res.status(500).json({ error: 'Failed to update action status' });
-        return;
-      }
-
-      res.json(updatedAction);
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
+//adminRouter.patch(
+//  '/devices/:id/actions/:actionId',
+//  async (req: Request, res: Response) => {
+//    try {
+//      const { status, error } = req.body;
+//      const dbService = new DBService();
+//      const device = await dbService.getDevice(req.params.id);
+//
+//      if (!device) {
+//        res.status(404).json({ error: 'Device not found' });
+//        return;
+//      }
+//
+//      const action = device.activeActions[req.params.actionId];
+//      if (!action) {
+//        res.status(404).json({ error: 'Action not found' });
+//        return;
+//      }
+//
+//      // Validate status transition
+//      if (!status || !['IN_PROGRESS', 'COMPLETED', 'FAILED'].includes(status)) {
+//        res.status(400).json({ error: 'Invalid status' });
+//        return;
+//      }
+//
+//      const updatedAction = {
+//        ...action,
+//        status,
+//        ...(status === 'COMPLETED' || status === 'FAILED'
+//          ? { completedAt: new Date().toISOString() }
+//          : {}),
+//        ...(error && status === 'FAILED' ? { error } : {}),
+//      };
+//
+//      const updatedDevice = await dbService.updateDeviceState(req.params.id, {
+//        activeActions: {
+//          ...device.activeActions,
+//          [req.params.actionId]: updatedAction,
+//        },
+//      });
+//
+//      if (!updatedDevice) {
+//        res.status(500).json({ error: 'Failed to update action status' });
+//        return;
+//      }
+//
+//      res.json(updatedAction);
+//    } catch (e) {
+//      console.error(e);
+//      res.status(500).json({ error: 'Internal server error' });
+//    }
+//  },
+//);
 
 // Get device action status
-adminRouter.get(
-  '/devices/:id/actions/:actionId',
-  async (req: Request, res: Response) => {
-    try {
-      const dbService = new DBService();
-      const device = await dbService.getDevice(req.params.id);
+//adminRouter.get(
+//  '/devices/:id/actions/:actionId',
+//  async (req: Request, res: Response) => {
+//    try {
+//      const dbService = new DBService();
+//      const device = await dbService.getDevice(req.params.id);
+//
+//      if (!device) {
+//        res.status(404).json({ error: 'Device not found' });
+//        return;
+//      }
+//
+//      const action = device.activeActions[req.params.actionId];
+//      if (!action) {
+//        res.status(404).json({ error: 'Action not found' });
+//        return;
+//      }
+//
+//      res.json(action);
+//    } catch (e) {
+//      console.error(e);
+//      res.status(500).json({ error: 'Internal server error' });
+//    }
+//  },
+//);
 
-      if (!device) {
-        res.status(404).json({ error: 'Device not found' });
-        return;
-      }
-
-      const action = device.activeActions[req.params.actionId];
-      if (!action) {
-        res.status(404).json({ error: 'Action not found' });
-        return;
-      }
-
-      res.json(action);
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-);
-
-// Get all device actions
-adminRouter.get('/devices/:id/actions', async (req: Request, res: Response) => {
-  try {
-    const dbService = new DBService();
-    const device = await dbService.getDevice(req.params.id);
-
-    if (!device) {
-      res.status(404).json({ error: 'Device not found' });
-      return;
-    }
-
-    res.json(device.activeActions);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+//// Get all device actions
+//adminRouter.get('/devices/:id/actions', async (req: Request, res: Response) => {
+//  try {
+//    const dbService = new DBService();
+//    const device = await dbService.getDevice(req.params.id);
+//
+//    if (!device) {
+//      res.status(404).json({ error: 'Device not found' });
+//      return;
+//    }
+//
+//    res.json(device.activeActions);
+//  } catch (e) {
+//    console.error(e);
+//    res.status(500).json({ error: 'Internal server error' });
+//  }
+//});
 
 adminRouter.patch('/devices/:id', async (req: Request, res: Response) => {
   try {
@@ -351,7 +327,7 @@ adminRouter.patch('/devices/:id', async (req: Request, res: Response) => {
 
     try {
       // Check for read-only fields first
-      const readOnlyFields = deviceReadOnlyFields[device.type];
+      const readOnlyFields = getReadOnlyFieldsForDeviceType(device.type);
       const attemptedReadOnlyUpdate = Object.keys(req.body).some((field) =>
         readOnlyFields.includes(field),
       );

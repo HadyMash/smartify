@@ -7,7 +7,6 @@ import {
   HumiditySensor,
   PowerMeter,
   TempColorBulb,
-  Curtain,
   AC,
 } from '../schemas/device';
 
@@ -15,10 +14,21 @@ export class DeviceSimulator {
   private readonly db: DBService;
   private simulationIntervals: Map<string, NodeJS.Timeout>;
   private static instance: DeviceSimulator;
+  private simulatedDeviceTypes: DeviceType[];
+  private simulationActive: boolean;
 
   private constructor() {
     this.db = new DBService();
     this.simulationIntervals = new Map();
+    this.simulatedDeviceTypes = [
+      'THERMOMETER',
+      'HUMIDITY_SENSOR',
+      'SOLAR_PANEL',
+      'POWER_METER',
+      'BULB_TEMP_COLOR',
+      'AC',
+    ];
+    this.simulationActive = false;
   }
 
   public static getInstance(): DeviceSimulator {
@@ -47,10 +57,15 @@ export class DeviceSimulator {
     const currentTemp = device.temperature;
     const newTemp = currentTemp + this.getRandomFloat(-0.1, 0.1);
     const boundedTemp = Math.min(Math.max(newTemp, 16), 30);
+    const tempChange = boundedTemp - currentTemp;
 
     await this.db.updateDeviceState<Thermometer>(device.id, {
       temperature: Number(boundedTemp.toFixed(1)),
     });
+
+    console.log(
+      `THERMOMETER [${device.id}] temp: ${boundedTemp.toFixed(1)}°C, change: ${tempChange.toFixed(3)}`,
+    );
   }
 
   private async simulateHumiditySensor(device: HumiditySensor) {
@@ -58,10 +73,15 @@ export class DeviceSimulator {
     const currentHumidity = device.humidity;
     const newHumidity = currentHumidity + this.getRandomFloat(-0.5, 0.5);
     const boundedHumidity = Math.min(Math.max(newHumidity, 30), 70);
+    const humidityChange = boundedHumidity - currentHumidity;
 
     await this.db.updateDeviceState<HumiditySensor>(device.id, {
       humidity: Number(boundedHumidity.toFixed(1)),
     });
+
+    console.log(
+      `HUMIDITY [${device.id}] humidity: ${boundedHumidity.toFixed(1)}%, change: ${humidityChange.toFixed(3)}`,
+    );
   }
 
   private async simulateSolarPanel(device: SolarPanel) {
@@ -80,16 +100,21 @@ export class DeviceSimulator {
 
     // Update total daily output
     const prevOutput = device.totalDailyOutput;
-    const timeDiff = 10; // our update interval in seconds
+    const timeDiff = 30; // our update interval in seconds (matches the 30000ms interval)
     const additionalOutput = (finalOutput * timeDiff) / 3600; // convert to kWh
+    const newTotalOutput = prevOutput + additionalOutput / 1000;
+    const outputChange = finalOutput - device.currentPowerOutput;
+    const isExporting = finalOutput > 2000;
 
     await this.db.updateDeviceState<SolarPanel>(device.id, {
       currentPowerOutput: Number(finalOutput.toFixed(2)),
-      totalDailyOutput: Number(
-        (prevOutput + additionalOutput / 1000).toFixed(2),
-      ),
-      isExportingToGrid: finalOutput > 2000, // Export if generating more than 2kW
+      totalDailyOutput: Number(newTotalOutput.toFixed(2)),
+      isExportingToGrid: isExporting,
     });
+
+    console.log(
+      `SOLAR [${device.id}] power: ${finalOutput.toFixed(2)}W, daily: ${newTotalOutput.toFixed(2)}kWh, change: ${outputChange.toFixed(2)}W, exporting: ${isExporting ? 'YES' : 'NO'}`,
+    );
   }
 
   private async simulatePowerMeter(device: PowerMeter) {
@@ -97,6 +122,7 @@ export class DeviceSimulator {
     const baseLoad = 500; // Base load of 500W
     const randomLoad = this.getRandomFloat(-50, 100);
     const currentConsumption = Math.max(0, baseLoad + randomLoad);
+    const consumptionChange = currentConsumption - device.currentConsumption;
 
     // Update total consumption (convert W to kWh for the 10-second interval)
     const additionalConsumption = (currentConsumption * 10) / 3600000; // 10 seconds in kWh
@@ -106,11 +132,20 @@ export class DeviceSimulator {
       currentConsumption: Number(currentConsumption.toFixed(2)),
       totalConsumption: Number(newTotalConsumption.toFixed(3)),
     });
+
+    console.log(
+      `POWER [${device.id}] current: ${currentConsumption.toFixed(2)}W, total: ${newTotalConsumption.toFixed(3)}kWh, change: ${consumptionChange.toFixed(2)}W`,
+    );
   }
 
   private async simulateTempColorBulb(device: TempColorBulb) {
     // Only simulate if the bulb is on
-    if (!device.on) return;
+    if (!device.on) {
+      console.log(
+        `BULB_TEMP [${device.id}] OFF temp: ${device.temperature}°C, RGB: ${device.rgb.join(',')}`,
+      );
+      return;
+    }
 
     // Calculate RGB values based on temperature
     // Mapping temperature to color (blue for cold, white for neutral, red for warm)
@@ -133,14 +168,16 @@ export class DeviceSimulator {
       b = Math.round(255 * (1 - factor * 0.8));
     }
 
+    const oldRgb = device.rgb.slice();
+    const newRgb = [r, g, b];
+
     await this.db.updateDeviceState<TempColorBulb>(device.id, {
       rgb: [r, g, b],
     });
-  }
 
-  private async simulateCurtain(device: Curtain) {
-    // nothing to simulate for curtains
-    return;
+    console.log(
+      `BULB_TEMP [${device.id}] ON temp: ${device.temperature}°C, RGB: ${oldRgb.join(',')} → ${newRgb.join(',')}`,
+    );
   }
 
   private async simulateAC(device: AC) {
@@ -180,7 +217,6 @@ export class DeviceSimulator {
 
         // Make cooling more consistent with less randomness
         tempChange -= coolingRate * (0.9 + Math.random() * 0.2);
-        //console.log('cooling, rate:', coolingRate, 'change:', tempChange);
       } else if (device.mode === 'heat' && currentTemp < targetTemp) {
         // Heating mode - move towards target temperature
         // Increased base heating rate to make it more effective
@@ -204,7 +240,6 @@ export class DeviceSimulator {
 
         // Make heating more consistent with less randomness
         tempChange += heatingRate * (0.9 + Math.random() * 0.2);
-        console.log('heating, rate:', heatingRate, 'change:', tempChange);
       } else if (device.mode === 'fan') {
         // Fan mode - just circulates air, minimal effect on temperature
         // Slightly enhance the natural fluctuation
@@ -233,20 +268,18 @@ export class DeviceSimulator {
       currentTemperature: Number(boundedTemp.toFixed(1)),
     });
 
-    // logging
-    //if (device.on) {
-    //  console.log(
-    //    `AC [${device.mode}] temp: ${boundedTemp.toFixed(
-    //      1,
-    //    )}, target: ${targetTemp}, change: ${tempChange.toFixed(3)}`,
-    //  );
-    //} else {
-    //  console.log(
-    //    `AC [OFF] temp: ${boundedTemp.toFixed(1)}, change: ${tempChange.toFixed(
-    //      3,
-    //    )}`,
-    //  );
-    //}
+    // Enhanced logging
+    if (device.on) {
+      console.log(
+        `AC [${device.id}] [${device.mode.toUpperCase()}] fan: ${device.fanSpeed}, temp: ${boundedTemp.toFixed(
+          1,
+        )}°C, target: ${targetTemp}°C, change: ${tempChange.toFixed(3)}`,
+      );
+    } else {
+      console.log(
+        `AC [${device.id}] [OFF] temp: ${boundedTemp.toFixed(1)}°C, change: ${tempChange.toFixed(3)}`,
+      );
+    }
   }
 
   private async simulateDevice(deviceId: string) {
@@ -270,9 +303,6 @@ export class DeviceSimulator {
       case 'BULB_TEMP_COLOR':
         await this.simulateTempColorBulb(device as TempColorBulb);
         break;
-      case 'CURTAIN':
-        await this.simulateCurtain(device as Curtain);
-        break;
       case 'AC':
         await this.simulateAC(device as AC);
         break;
@@ -287,19 +317,64 @@ export class DeviceSimulator {
     const solarPanels = devices.filter(
       (d) => d.type === 'SOLAR_PANEL',
     ) as SolarPanel[];
+
+    console.log(
+      `DAILY RESET: Resetting daily values for ${solarPanels.length} solar panels`,
+    );
+
     for (const panel of solarPanels) {
       await this.db.updateDeviceState<SolarPanel>(panel.id, {
         totalDailyOutput: 0,
       });
+      console.log(`SOLAR [${panel.id}] daily output reset to 0kWh`);
     }
   }
 
+  /**
+   * Adds a specific device to the simulation if it belongs to a simulated device type
+   * @param device The device to add to the simulation
+   * @returns boolean indicating if the device was added to simulation
+   */
+  public async addDeviceToSimulation(device: Device): Promise<boolean> {
+    if (!this.simulationActive) {
+      // Simulation not running yet
+      return false;
+    }
+
+    if (!this.simulatedDeviceTypes.includes(device.type)) {
+      // Not a device type we simulate
+      return false;
+    }
+
+    if (this.simulationIntervals.has(device.id)) {
+      // Already simulating this device
+      return false;
+    }
+
+    console.log(
+      `SIMULATION: Adding new ${device.type} device [${device.id}] to active simulation`,
+    );
+    const interval = setInterval(() => this.simulateDevice(device.id), 30000);
+    this.simulationIntervals.set(device.id, interval);
+
+    // Run simulation once immediately to get initial log
+    this.simulateDevice(device.id);
+    return true;
+  }
+
   public async startSimulation() {
+    console.log('SIMULATION: Starting device simulation');
+    this.simulationActive = true;
+
     // Set up midnight reset for solar panels
     const now = new Date();
     const midnight = new Date(now);
     midnight.setHours(24, 0, 0, 0);
     const msUntilMidnight = midnight.getTime() - now.getTime();
+
+    console.log(
+      `SIMULATION: Scheduling daily reset in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`,
+    );
 
     setTimeout(() => {
       this.resetDailyValues();
@@ -316,31 +391,34 @@ export class DeviceSimulator {
     const devices = await this.db.getDevices();
     if (!devices) return;
 
-    const simulatedDeviceTypes: DeviceType[] = [
-      'THERMOMETER',
-      'HUMIDITY_SENSOR',
-      'SOLAR_PANEL',
-      'POWER_METER',
-      'BULB_TEMP_COLOR',
-      'CURTAIN',
-      'AC',
-    ];
+    const simulatedDevices = devices.filter((device) =>
+      this.simulatedDeviceTypes.includes(device.type),
+    );
+    console.log(
+      `SIMULATION: Found ${simulatedDevices.length} devices to simulate`,
+    );
 
-    for (const device of devices) {
-      if (simulatedDeviceTypes.includes(device.type)) {
-        const interval = setInterval(
-          () => this.simulateDevice(device.id),
-          30000,
-        );
-        this.simulationIntervals.set(device.id, interval);
-      }
+    for (const device of simulatedDevices) {
+      console.log(
+        `SIMULATION: Setting up simulation for ${device.type} device [${device.id}]`,
+      );
+      const interval = setInterval(() => this.simulateDevice(device.id), 30000);
+      this.simulationIntervals.set(device.id, interval);
+
+      // Run simulation once immediately to get initial log
+      this.simulateDevice(device.id);
     }
   }
 
   public stopSimulation() {
+    console.log(
+      `SIMULATION: Stopping simulation for ${this.simulationIntervals.size} devices`,
+    );
     for (const interval of this.simulationIntervals.values()) {
       clearInterval(interval);
     }
     this.simulationIntervals.clear();
+    this.simulationActive = false;
+    console.log('SIMULATION: All simulations stopped');
   }
 }

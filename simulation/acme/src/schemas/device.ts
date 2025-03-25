@@ -1,5 +1,5 @@
 import { z, ZodObject, ZodSchema } from 'zod';
-import { deviceActionSchema } from './capabilities';
+//import { deviceActionSchema } from './capabilities';
 
 export const deviceTypeSchema = z.enum([
   'BULB_ON_OFF',
@@ -9,8 +9,6 @@ export const deviceTypeSchema = z.enum([
   'BULB_TEMP_COLOR',
   'CURTAIN',
   'AC',
-  //'COFFEE_MACHINE',
-  //'GARAGE_DOOR',
   'SOLAR_PANEL',
   'THERMOMETER',
   'HUMIDITY_SENSOR',
@@ -23,7 +21,7 @@ const baseDeviceSchema = z.object({
   type: deviceTypeSchema,
   connected: z.boolean(),
   pairedApiKeys: z.array(z.string()).default([]),
-  activeActions: z.record(deviceActionSchema).default({}),
+  //activeActions: z.record(deviceActionSchema).default({}),
 });
 
 // bulbs
@@ -171,23 +169,6 @@ export type SolarPanel = z.infer<typeof solarPanelSchema>;
 export type Thermometer = z.infer<typeof thermometerSchema>;
 export type HumiditySensor = z.infer<typeof humiditySchema>;
 export type PowerMeter = z.infer<typeof powerMeterSchema>;
-
-// Read-only fields per device type
-export const readOnlyFields: Record<DeviceType, string[]> = {
-  BULB_ON_OFF: [],
-  BULB_RGB_BRIGHTNESS: [],
-  BULB_LIMITED_COLOR_BRIGHTNESS: [],
-  BULB_LIMITED_COLOR: [],
-  CURTAIN: [],
-  AC: ['currentTemperature'],
-  //GARAGE_DOOR: [],
-  SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
-  THERMOMETER: ['temperature'],
-  HUMIDITY_SENSOR: ['humidity'],
-  POWER_METER: ['currentConsumption', 'totalConsumption'],
-  BULB_TEMP_COLOR: ['rgb'], // RGB values are determined by temperature
-  //COFFEE_MACHINE: ['waterLevel', 'beansLevel', 'lastMaintenance'], // these are sensor readings
-};
 
 // Default states for device creation
 export const defaultStates: Record<DeviceType, any> = {

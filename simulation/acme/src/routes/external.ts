@@ -2,34 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validateApiKey, validateDevicePairing } from '../middleware/api-key';
 import { DBService } from '../services/db-service';
 import { DeviceType, deviceTypeSchema } from '../schemas/device';
-
-// Define read-only fields mapping
-const deviceReadOnlyFields: Record<DeviceType, string[]> = {
-  [deviceTypeSchema.enum.BULB_ON_OFF]: [],
-  [deviceTypeSchema.enum.BULB_RGB_BRIGHTNESS]: [],
-  [deviceTypeSchema.enum.BULB_LIMITED_COLOR_BRIGHTNESS]: [],
-  [deviceTypeSchema.enum.BULB_LIMITED_COLOR]: [],
-  [deviceTypeSchema.enum.CURTAIN]: [],
-  [deviceTypeSchema.enum.AC]: [],
-  //[deviceTypeSchema.enum.GARAGE_DOOR]: [],
-  [deviceTypeSchema.enum.SOLAR_PANEL]: [
-    'currentPowerOutput',
-    'totalDailyOutput',
-    'isExportingToGrid',
-  ],
-  [deviceTypeSchema.enum.THERMOMETER]: ['temperature'],
-  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity'],
-  [deviceTypeSchema.enum.POWER_METER]: [
-    'currentConsumption',
-    'totalConsumption',
-  ],
-  [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
-  //[deviceTypeSchema.enum.COFFEE_MACHINE]: [
-  //  'waterLevel',
-  //  'beansLevel',
-  //  'lastMaintenance',
-  //], // these are sensor readings
-};
+import { getReadOnlyFieldsForDeviceType } from '../schemas/capabilities';
 
 export const externalAPIRouter = Router();
 
@@ -247,7 +220,7 @@ externalAPIRouter.patch(
       }
 
       // Check for read-only fields
-      const readOnlyFields = deviceReadOnlyFields[device.type];
+      const readOnlyFields = getReadOnlyFieldsForDeviceType(device.type);
       const attemptedReadOnlyUpdate = Object.keys(req.body).some((field) =>
         readOnlyFields.includes(field),
       );
