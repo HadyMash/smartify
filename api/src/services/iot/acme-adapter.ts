@@ -6,15 +6,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import axios from 'axios';
 import {
+  BadRequestToDeviceError,
   Device,
   DeviceCapability,
   deviceCapabilitySchema,
+  DeviceNotFoundError,
+  DeviceOfflineError,
   deviceSchema,
   deviceSourceSchema,
   DeviceWithPartialState,
   deviceWithPartialStateSchema,
   DeviceWithState,
   deviceWithStateSchema,
+  ExternalServerError,
+  InvalidAPIKeyError,
+  MissingAPIKeyError,
   State,
 } from '../../schemas/devices';
 import { BaseIotAdapter, HealthCheck } from './base-adapter';
@@ -127,6 +133,42 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         );
       }
 
+      if (device.capabilities.length === 0) {
+        switch (device.type) {
+          case 'THERMOMETER':
+            device.capabilities = [
+              {
+                type: 'temperature',
+                isReadOnly: true,
+              },
+            ];
+            break;
+        }
+      } else {
+        switch (device.type) {
+          case 'CURTAIN':
+            // change capability that says 'BRIGHTNESS' to 'position'
+            device.capabilities = device.capabilities.map((c: any) => {
+              if (c.type === 'BRIGHTNESS') {
+                c.type = 'POSITION';
+              }
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+              return c;
+            });
+            break;
+          case 'AC':
+            // change capability that says 'BRIGHTNESS' to 'temperature'
+            device.capabilities = device.capabilities.map((c: any) => {
+              if (c.type === 'BRIGHTNESS') {
+                c.type = 'TEMPERATURE';
+              }
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+              return c;
+            });
+            break;
+        }
+      }
+
       const d: Device = {
         id: device.id,
         capabilities: device.capabilities
@@ -226,7 +268,20 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     try {
       const response = await this.axiosInstance.get('/discover');
       if (response.status !== 200) {
-        throw new Error('Failed to discover devices');
+        switch (response.status) {
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when discovering devices`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}. Error: ${response?.data?.error}`,
+            );
+        }
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -267,7 +322,30 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   private async pairDeviceById(deviceId: string): Promise<void> {
     // Call the external API to pair devices
     try {
-      await this.axiosInstance.post(`/pair/${deviceId}`);
+      const response = await this.axiosInstance.post(`/pair/${deviceId}`);
+
+      if (response.status !== 201) {
+        switch (response.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceId);
+          case 404:
+            throw new DeviceNotFoundError(deviceId);
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when pairing device ${deviceId}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(deviceId, 'getting device');
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}. Error: ${response?.data?.error}`,
+            );
+        }
+      }
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
@@ -293,7 +371,30 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   private async unpairDeviceById(deviceId: string): Promise<void> {
     // Call the external API to unpair devices
     try {
-      await this.axiosInstance.delete(`/pair/${deviceId}`);
+      const response = await this.axiosInstance.delete(`/pair/${deviceId}`);
+
+      if (response.status !== 204) {
+        switch (response.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceId);
+          case 404:
+            throw new DeviceNotFoundError(deviceId);
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when unpairing device ${deviceId}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(deviceId, 'getting device');
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}. Error: ${response?.data?.error}`,
+            );
+        }
+      }
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
@@ -322,10 +423,31 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     try {
       const response = await this.axiosInstance.get(`/devices/${deviceId}`);
       if (response.status !== 200) {
-        throw new Error('Failed to get device');
+        switch (response.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceId);
+          case 404:
+            throw new DeviceNotFoundError(deviceId);
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when getting device ${deviceId}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(deviceId, 'getting device');
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}`,
+            );
+        }
       }
 
       const device = response.data;
+
+      console.log('response data:', device);
 
       const mappedCapabilites = device.capabilities.map((c: any) =>
         this.mapCapability(c),
@@ -345,10 +467,11 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        console.error(e.message);
         return;
       } else {
         console.log('non axios error:', e);
+        throw e;
       }
     }
   }
@@ -359,7 +482,29 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     try {
       const response = await this.axiosInstance.get(`/devices`);
       if (response.status !== 200) {
-        throw new Error('Failed to get device');
+        switch (response.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceIds.join(', '));
+          case 404:
+            throw new DeviceNotFoundError(deviceIds.join(', '));
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when getting devices ${deviceIds.join(', ')}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(
+              deviceIds.join(', '),
+              'getting device',
+            );
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}`,
+            );
+        }
       }
 
       const devices = response.data;
@@ -405,6 +550,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // Get current device state to check readonly fields
       const device = await this.getDevice(deviceId);
       if (!device) {
+        console.log('device not found throwing error');
         throw new Error('Device not found');
       }
 
@@ -423,12 +569,36 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       );
 
       if (response.status !== 200) {
-        throw new Error(response?.data?.error || 'Failed to set device state');
+        switch (response.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceId);
+          case 404:
+            throw new DeviceNotFoundError(deviceId);
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when setting device ${deviceId}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(deviceId, 'getting device');
+          default:
+            throw new Error(
+              `Failed to get device. response status: ${response.status}. Error: ${response?.data?.error}`,
+            );
+        }
       }
       return;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.log(e.message);
+        if (e.response?.status === 401) {
+          throw new MissingAPIKeyError(this.apiKey);
+        } else if (e.response?.status === 403) {
+          throw new InvalidAPIKeyError(this.apiKey);
+        }
         throw e;
       } else {
         console.log('non axios error:', e);
@@ -436,6 +606,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       }
     }
   }
+
   public async setDeviceStates(
     deviceStates: Record<string, Record<string, unknown>>,
   ): Promise<DeviceWithState[] | undefined> {
@@ -483,10 +654,11 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       );
       return;
     } catch (e) {
-      console.error('Failed to set device states:', e);
+      console.log('Failed to set device states:', e);
       throw e;
     }
   }
+
   /*public async startAction(
     deviceId: string,
     actionId: string,
