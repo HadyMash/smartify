@@ -2426,7 +2426,7 @@ INPUT:
     return;
   }
 
-  public async generateIconDescription(imagePath: string) {
+  public async generateIconDescription(iconName: string, imagePath: string) {
     // read the image
     const imageFile = await fs.promises.readFile(imagePath);
 
@@ -2440,6 +2440,32 @@ All of the icons are black, so do not talk about the colour of the icon. Only ta
 You should also consider all common meanings. For example, the snowflake icon can represent cold, cool, air conditioning etc. It can be the cool mode on an air conditioner, it could represent the air conditioner itself, it could represent a freezer, or other devices. Be sure to consider and include all possible (but reasonable and semantically sound) meanings for the icon and include it in your description.
 
 However, you must be very brief. It shouldn't be longer than 3-4 lines (excluding tags).
+
+CRITICAL: Your tags and description of the icon, must be specific to the icon. DO NOT indclude any vague information about smart devices in general. Only include relevant information.
+
+IMPORTANT: Your tags should be about the semantics of the icon, and possible names for the icon.
+
+IMPORTANT: You are also provided with the icon name. You should add the icon name to your tags.
+
+POSITIVE EXAMPLES:
+Example 1: ABC icon
+
+description: This icon depicts a block letter “ABC” stacked vertically, forming a geometric shape. It represents a system or sequence – potentially referencing initial settings, configurations, or control elements within a smart home environment. The design suggests a foundational element of device management and organization.
+
+Tags: ABC, Letter Icon, Block Letter, Sequential, Configuration, Control, System, Initial Setup, Device Management, Alphabet.
+
+Example 2: Snowflake icon (called ac_unit)
+description: This icon represents a snowflake, strongly suggesting cooling or refrigeration functionality. It commonly symbolizes air conditioning, freezer settings, or temperature control within a smart home system. The design evokes a sense of cold and climate regulation.
+
+Tags:
+ac_unit, snowflake, cooling, refrigeration, temperature, air_conditioner, freeze, climate_control, cold
+
+NEGATIVE EXAMPLES:
+Example: ABC icon
+description: This icon represents a stylized block letter “ABC”, suggesting a device focused on temperature control or cooling. It could represent an air conditioner, a freezer, or a thermostat controlling a cool setting.
+
+Tags:
+Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, Cold, Freeze
 `,
       },
       {
@@ -2447,7 +2473,7 @@ However, you must be very brief. It shouldn't be longer than 3-4 lines (excludin
         content: [
           {
             type: 'text',
-            text: 'Describe the icon in the image and provide 8 to 10 tags for the icon.',
+            text: `Describe the icon in the image and provide 8 to 10 tags for the icon. this icon is called: ${iconName}`,
           },
           {
             type: 'image_url',

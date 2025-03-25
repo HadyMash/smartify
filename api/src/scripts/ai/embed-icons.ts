@@ -23,13 +23,15 @@ async function start() {
     process.exit(1);
   }
 
-  const icons = await fs.promises.readdir(iconsDir);
+  let icons = await fs.promises.readdir(iconsDir);
+  icons = icons.slice(0, 2);
   const embeddings: Record<string, OpenAI.Embedding[]> = {};
 
   for (const icon of icons) {
     console.log('icon:', icon);
 
     const description = await ai.generateIconDescription(
+      icon,
       path.join(iconsDir, icon),
     );
 
@@ -40,6 +42,7 @@ async function start() {
     }
     const embedding = await ai.genereteTextEmbedding(description);
     console.log('embedding:', embedding);
+    embeddings[icon.replace('.png', '')] = embedding;
   }
 
   // save embeddings to a file
