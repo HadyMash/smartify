@@ -23,10 +23,11 @@ async function start() {
     process.exit(1);
   }
 
-  let icons = await fs.promises.readdir(iconsDir);
-  icons = icons.slice(0, 2);
+  const icons = await fs.promises.readdir(iconsDir);
   const embeddings: Record<string, OpenAI.Embedding[]> = {};
 
+  let totalTime = 0;
+  let iconsDone = 0;
   for (const icon of icons) {
     const startTime = Date.now();
     console.log('icon:', icon);
@@ -45,7 +46,28 @@ async function start() {
     //console.log('embedding:', embedding);
     embeddings[icon.replace('.png', '')] = embedding;
     const stopTime = Date.now();
-    console.log('Time taken:', stopTime - startTime, 'ms');
+    totalTime += stopTime - startTime;
+    console.log('\n-------------------------------------------');
+    console.log(
+      'Time taken:',
+      ((stopTime - startTime) / 1000).toFixed(2),
+      'seconds',
+    );
+    console.log('Total time:', (totalTime / 1000).toFixed(2), 'seconds');
+    console.log(
+      'Average time:',
+      (totalTime / ++iconsDone / 1000).toFixed(2),
+      'seconds',
+    );
+    console.log('-------------------------------------------');
+    console.log(
+      'Estimated time:',
+      (((icons.length - iconsDone) * (totalTime / iconsDone)) / 1000).toFixed(
+        2,
+      ),
+      'seconds',
+    );
+    console.log('-------------------------------------------\n');
   }
 
   // save embeddings to a file
