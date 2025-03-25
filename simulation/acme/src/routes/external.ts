@@ -17,12 +17,11 @@ const deviceReadOnlyFields: Record<DeviceType, string[]> = {
     'totalDailyOutput',
     'isExportingToGrid',
   ],
-  [deviceTypeSchema.enum.THERMOMETER]: ['temperature', 'lastUpdated'],
-  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity', 'lastUpdated'],
+  [deviceTypeSchema.enum.THERMOMETER]: ['temperature'],
+  [deviceTypeSchema.enum.HUMIDITY_SENSOR]: ['humidity'],
   [deviceTypeSchema.enum.POWER_METER]: [
     'currentConsumption',
     'totalConsumption',
-    'lastUpdated',
   ],
   [deviceTypeSchema.enum.BULB_TEMP_COLOR]: ['color'],
   //[deviceTypeSchema.enum.COFFEE_MACHINE]: [

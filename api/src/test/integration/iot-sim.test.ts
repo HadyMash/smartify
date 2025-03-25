@@ -164,7 +164,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       const adapter = new AcmeIoTAdapter();
 
       try {
-        await adapter.getDevice('12e5a67b-be59-4b79-a12b-59b057ad9112');
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c7');
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
       }
@@ -173,7 +173,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('device that does not exist', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevice('12e5a67b-be59-4b79-a12b-59b057ad9555');
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c5');
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
       }
@@ -182,14 +182,14 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('get devices', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevices(['12e5a67b-be59-4b79-a12b-59b057ad9112']);
+        await adapter.getDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
       }
       try {
         await adapter.getDevices([
-          '12e5a67b-be59-4b79-a12b-59b057ad9112',
-          'a9c97031-53cc-404f-be69-968fe6de9da2',
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
@@ -199,14 +199,16 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('devices that do not exist', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevices(['12e5a67b-be59-4b79-a12b-59b057ad9555']);
+        // id doesn't exist
+        await adapter.getDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c5']);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
       }
       try {
+        // id doesn't exist
         await adapter.getDevices([
-          '12e5a67b-be59-4b79-a12b-59b057ad9555',
-          'a9c97031-53cc-404f-be69-968fe6de9555',
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c5',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c13',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
@@ -225,7 +227,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('pair device', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.pairDevices(['12e5a67b-be59-4b79-a12b-59b057ad9112']);
+        await adapter.pairDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
       }
@@ -235,8 +237,8 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       const adapter = new AcmeIoTAdapter();
       try {
         await adapter.pairDevices([
-          '12e5a67b-be59-4b79-a12b-59b057ad9112',
-          'a9c97031-53cc-404f-be69-968fe6de9da2',
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(MissingAPIKeyError);
@@ -246,7 +248,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('set device state', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.setDeviceState('a9c97031-53cc-404f-be69-968fe6de9da2', {
+        await adapter.setDeviceState('eab2c1f6-d95b-48d3-a19b-267f19cd18c7', {
           on: true,
         });
       } catch (e) {
@@ -258,8 +260,8 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       const adapter = new AcmeIoTAdapter();
       try {
         await adapter.setDeviceStates({
-          'a9c97031-53cc-404f-be69-968fe6de9da2': { on: true },
-          '20b9e785-642a-431e-937e-4e8f6eb32a32': { brightness: 50 },
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7': { on: true },
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14': { brightness: 50 },
         });
       } catch (e) {
         expect(e).toBeDefined();
@@ -272,13 +274,13 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       await inintialize('example-db-valid-key.json');
       // invalid key
       process.env.ACME_API_KEY =
-        '815602b86d8406651c5a2ad2c4d0e42d381f8887936450f1074394ad7caa85d5';
+        'afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0a';
     });
 
     test('get device', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevice('12e5a67b-be59-4b79-a12b-59b057ad9112');
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c7');
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
       }
@@ -287,7 +289,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('device that does not exist', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevice('12e5a67b-be59-4b79-a12b-59b057ad9555');
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c5');
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
       }
@@ -296,14 +298,14 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('get devices', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.getDevices(['12e5a67b-be59-4b79-a12b-59b057ad9112']);
+        await adapter.getDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
       }
       try {
         await adapter.getDevices([
-          '12e5a67b-be59-4b79-a12b-59b057ad9112',
-          'a9c97031-53cc-404f-be69-968fe6de9da2',
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
@@ -320,7 +322,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       try {
         await adapter.getDevices([
           '12e5a67b-be59-4b79-a12b-59b057ad9555',
-          'a9c97031-53cc-404f-be69-968fe6de9555',
+          'a9c97031-53cc-404f-be69-968fe6de9553',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
@@ -339,7 +341,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('pair device', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.pairDevices(['12e5a67b-be59-4b79-a12b-59b057ad9112']);
+        await adapter.pairDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
       }
@@ -349,8 +351,8 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       const adapter = new AcmeIoTAdapter();
       try {
         await adapter.pairDevices([
-          '12e5a67b-be59-4b79-a12b-59b057ad9112',
-          'a9c97031-53cc-404f-be69-968fe6de9da2',
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
         ]);
       } catch (e) {
         expect(e).toBeInstanceOf(InvalidAPIKeyError);
@@ -360,7 +362,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     test('set device state', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
-        await adapter.setDeviceState('a9c97031-53cc-404f-be69-968fe6de9da2', {
+        await adapter.setDeviceState('eab2c1f6-d95b-48d3-a19b-267f19cd18c7', {
           on: true,
         });
       } catch (e) {
@@ -372,8 +374,122 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       const adapter = new AcmeIoTAdapter();
       try {
         await adapter.setDeviceStates({
-          'a9c97031-53cc-404f-be69-968fe6de9da2': { on: true },
-          '20b9e785-642a-431e-937e-4e8f6eb32a32': { brightness: 50 },
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7': { on: true },
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14': { brightness: 50 },
+        });
+      } catch (e) {
+        expect(e).toBeDefined();
+      }
+    });
+  });
+
+  describe('Should reject a disabled api key', () => {
+    beforeEach(async () => {
+      await inintialize('example-db-valid-key.json');
+      // invalid key
+      process.env.ACME_API_KEY =
+        '7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d';
+    });
+
+    test('get device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c7');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('device that does not exist', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.getDevice('eab2c1f6-d95b-48d3-a19b-267f19cd18c5');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('get devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.getDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+      try {
+        await adapter.getDevices([
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
+        ]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('devices that do not exist', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.getDevices(['12e5a67b-be59-4b79-a12b-59b057ad9555']);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+      try {
+        await adapter.getDevices([
+          '12e5a67b-be59-4b79-a12b-59b057ad9555',
+          'a9c97031-53cc-404f-be69-968fe6de9553',
+        ]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('discover devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.discoverDevices();
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('pair device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.pairDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c7']);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('pair devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.pairDevices([
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14',
+        ]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('set device state', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.setDeviceState('eab2c1f6-d95b-48d3-a19b-267f19cd18c7', {
+          on: true,
+        });
+      } catch (e) {
+        expect(e).toBeDefined();
+      }
+    });
+
+    test('set devices states', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.setDeviceStates({
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c7': { on: true },
+          '90cd8c96-ac3a-4ee2-9549-50a905511c14': { brightness: 50 },
         });
       } catch (e) {
         expect(e).toBeDefined();
@@ -386,7 +502,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       await inintialize('example-db-valid-key.json');
       // invalid key
       process.env.ACME_API_KEY =
-        '815602b86d8406651c5a2ad2c4d0e42d381f8887936450f1074394ad7caa85d8';
+        'afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c';
     });
 
     test('disover devices', async () => {
@@ -400,6 +516,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         fail(`Should not throw exception: ${error}`);
       }
     });
+
     test('should not get unpaired device', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
@@ -415,6 +532,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         expect(error).toBeInstanceOf(Error);
       }
     });
+
     test('pair device', async () => {
       const adapter = new AcmeIoTAdapter();
       try {

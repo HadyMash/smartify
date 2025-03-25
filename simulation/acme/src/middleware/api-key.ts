@@ -18,8 +18,13 @@ export const validateApiKey = async (
   const dbService = new DBService();
   const keyData = await dbService.getApiKey(apiKey);
 
-  if (!keyData || !keyData.isActive) {
-    res.status(401).json({ error: 'Invalid or inactive API key' });
+  if (!keyData) {
+    res.status(401).json({ error: 'Invalid api key' });
+    console.log('Invalid or inactive API key, request rejected');
+    return;
+  }
+  if (!keyData.isActive) {
+    res.status(403).json({ error: 'Inactive API key' });
     console.log('Invalid or inactive API key, request rejected');
     return;
   }

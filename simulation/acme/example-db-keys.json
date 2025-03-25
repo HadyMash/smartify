@@ -47,7 +47,7 @@
       "connected": true,
       "pairedApiKeys": [],
       "activeActions": {},
-      "currentPowerOutput": 1220.18,
+      "currentPowerOutput": 1181.38,
       "totalDailyOutput": 0,
       "isExportingToGrid": false
     },
@@ -72,21 +72,27 @@
     "1b63407d-73ab-4a81-b69b-9e4f3353317a": {
       "type": "BULB_ON_OFF",
       "connected": true,
-      "pairedApiKeys": [],
+      "pairedApiKeys": [
+        "7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d"
+      ],
       "activeActions": {},
       "on": false
     },
     "bbb39b3a-bc96-4144-9c7d-ea1f816b65cb": {
       "type": "BULB_ON_OFF",
       "connected": true,
-      "pairedApiKeys": [],
+      "pairedApiKeys": [
+        "afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c"
+      ],
       "activeActions": {},
       "on": false
     },
     "23d6b4cf-74dc-4ad1-8d44-079c7a494c34": {
       "type": "BULB_RGB_BRIGHTNESS",
       "connected": true,
-      "pairedApiKeys": [],
+      "pairedApiKeys": [
+        "7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d"
+      ],
       "activeActions": {},
       "on": false,
       "rgb": [255, 255, 255],
@@ -95,12 +101,27 @@
     "9405e5f6-66a9-4941-97d0-7c462eff857e": {
       "type": "BULB_RGB_BRIGHTNESS",
       "connected": true,
-      "pairedApiKeys": [],
+      "pairedApiKeys": [
+        "afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c"
+      ],
       "activeActions": {},
       "on": false,
       "rgb": [255, 255, 255],
       "brightness": 100
     }
+  },
+  "apikeys": {
+    "afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c": {
+      "key": "afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c",
+      "name": "Smartify",
+      "createdAt": "2025-03-25T14:03:35.905Z",
+      "isActive": true
+    },
+    "7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d": {
+      "key": "7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d",
+      "name": "Smartify",
+      "createdAt": "2025-03-25T14:03:38.113Z",
+      "isActive": false
+    }
   }
 }
-

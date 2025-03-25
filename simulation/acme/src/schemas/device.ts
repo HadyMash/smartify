@@ -58,13 +58,19 @@ export const limitedColorBulbSchema = baseDeviceSchema.extend({
   color: z.enum(['warm', 'neutral', 'cool']),
 });
 
-// empty device schemas
+// Complete device schemas
 export const curtainSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.CURTAIN),
+  position: z.number().min(0).max(100), // 0 = fully closed, 100 = fully open
 });
 
 export const acSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.AC),
+  on: z.boolean(),
+  targetTemperature: z.number().min(16).max(30),
+  currentTemperature: z.number(),
+  mode: z.enum(['cool', 'heat', 'fan']),
+  fanSpeed: z.enum(['low', 'medium', 'high', 'auto']),
 });
 
 //export const garageDoorSchema = baseDeviceSchema.extend({
@@ -81,20 +87,17 @@ export const solarPanelSchema = baseDeviceSchema.extend({
 export const thermometerSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.THERMOMETER),
   temperature: z.number(),
-  lastUpdated: z.string().datetime(),
 });
 
 export const humiditySchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.HUMIDITY_SENSOR),
   humidity: z.number().min(0).max(100),
-  lastUpdated: z.string().datetime(),
 });
 
 export const powerMeterSchema = baseDeviceSchema.extend({
   type: z.literal(deviceTypeSchema.enum.POWER_METER),
   currentConsumption: z.number().min(0),
   totalConsumption: z.number().min(0),
-  lastUpdated: z.string().datetime(),
 });
 
 export const tempColorBulbSchema = baseDeviceSchema.extend({
@@ -176,12 +179,12 @@ export const readOnlyFields: Record<DeviceType, string[]> = {
   BULB_LIMITED_COLOR_BRIGHTNESS: [],
   BULB_LIMITED_COLOR: [],
   CURTAIN: [],
-  AC: [],
+  AC: ['currentTemperature'],
   //GARAGE_DOOR: [],
   SOLAR_PANEL: ['currentPowerOutput', 'totalDailyOutput', 'isExportingToGrid'],
-  THERMOMETER: ['temperature', 'lastUpdated'],
-  HUMIDITY_SENSOR: ['humidity', 'lastUpdated'],
-  POWER_METER: ['currentConsumption', 'totalConsumption', 'lastUpdated'],
+  THERMOMETER: ['temperature'],
+  HUMIDITY_SENSOR: ['humidity'],
+  POWER_METER: ['currentConsumption', 'totalConsumption'],
   BULB_TEMP_COLOR: ['rgb'], // RGB values are determined by temperature
   //COFFEE_MACHINE: ['waterLevel', 'beansLevel', 'lastMaintenance'], // these are sensor readings
 };
@@ -209,8 +212,20 @@ export const defaultStates: Record<DeviceType, any> = {
     connected: true,
     pairedApiKeys: [],
   },
-  CURTAIN: { connected: true, pairedApiKeys: [] },
-  AC: { connected: true, pairedApiKeys: [] },
+  CURTAIN: {
+    connected: true,
+    pairedApiKeys: [],
+    position: 0,
+  },
+  AC: {
+    connected: true,
+    pairedApiKeys: [],
+    on: false,
+    targetTemperature: 22,
+    currentTemperature: 24,
+    mode: 'cool',
+    fanSpeed: 'auto',
+  },
   //GARAGE_DOOR: { connected: true, pairedApiKeys: [] },
   SOLAR_PANEL: {
     connected: true,
@@ -223,20 +238,17 @@ export const defaultStates: Record<DeviceType, any> = {
     connected: true,
     pairedApiKeys: [],
     temperature: 20,
-    lastUpdated: new Date().toISOString(),
   },
   HUMIDITY_SENSOR: {
     connected: true,
     pairedApiKeys: [],
     humidity: 50,
-    lastUpdated: new Date().toISOString(),
   },
   POWER_METER: {
     connected: true,
     pairedApiKeys: [],
     currentConsumption: 0,
     totalConsumption: 0,
-    lastUpdated: new Date().toISOString(),
   },
   BULB_TEMP_COLOR: {
     on: false,
