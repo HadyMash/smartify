@@ -20,12 +20,12 @@ export const validateApiKey = async (
 
   if (!keyData) {
     res.status(401).json({ error: 'Invalid api key' });
-    console.log('Invalid or inactive API key, request rejected');
+    console.log('Invalid api key, request rejected');
     return;
   }
   if (!keyData.isActive) {
     res.status(403).json({ error: 'Inactive API key' });
-    console.log('Invalid or inactive API key, request rejected');
+    console.log('inactive API key, request rejected');
     return;
   }
 

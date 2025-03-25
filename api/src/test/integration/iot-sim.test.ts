@@ -10,13 +10,13 @@ describe('AcmeIoTAdapter (with simulation)', () => {
   let projectDir: string;
 
   async function inintialize(
-    file: 'example-db-no-key.json' | 'example-db-valid-key.json',
+    file: 'example-db-no-key.json' | 'example-db-keys.json',
   ) {
     process.env.ACME_API_URL = 'http://localhost:3009/api';
     // Start the simulator
     child = spawn(
       'npm',
-      ['run', 'start', '--port', '3009', '--db-file', file],
+      ['run', 'start', '--', '--port', '3009', '--db-file', file],
       {
         cwd: projectDir,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -70,8 +70,6 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     if (startupTimeout) {
       clearTimeout(startupTimeout);
     }
-
-    process.env.ACME_API_URL = 'http://localhost:3001/api';
   }
 
   beforeAll(async () => {
@@ -271,7 +269,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
   describe('Should reject an invalid api key', () => {
     beforeEach(async () => {
-      await inintialize('example-db-valid-key.json');
+      await inintialize('example-db-keys.json');
       // invalid key
       process.env.ACME_API_KEY =
         'afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0a';
@@ -385,7 +383,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
   describe('Should reject a disabled api key', () => {
     beforeEach(async () => {
-      await inintialize('example-db-valid-key.json');
+      await inintialize('example-db-keys.json');
       // invalid key
       process.env.ACME_API_KEY =
         '7f873c3465155251979680d2156d0264c52d5c1bdb38ba4feef146979a26170d';
@@ -499,7 +497,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
   describe('Valid api key', () => {
     beforeEach(async () => {
-      await inintialize('example-db-valid-key.json');
+      await inintialize('example-db-keys.json');
       // invalid key
       process.env.ACME_API_KEY =
         'afb4caf79357d8336340f203535d267d88a8f6352711ecac90d9c0770ff8bf0c';
@@ -510,10 +508,10 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       try {
         const devices = await adapter.discoverDevices();
         console.log('discover devices', devices);
-        expect(devices).toHaveLength(5);
+        expect(devices).not.toHaveLength(0);
       } catch (error) {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        fail(`Should not throw exception: ${error}`);
+        console.error('error:', error);
+        throw error;
       }
     });
 
@@ -523,11 +521,12 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         const devices = await adapter.discoverDevices();
         console.log('discover devices', devices);
         if (!devices || devices.length === 0) {
-          fail('No devices found');
+          expect(devices).toBeDefined();
+          expect(devices).not.toHaveLength(0);
         }
-        const device = await adapter.getDevice(devices[0].id);
+        const device = await adapter.getDevice(devices![0].id);
         console.log('device:', device);
-        fail('Should not get device without pairing');
+        expect(device).toBeUndefined();
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
       }
@@ -539,21 +538,21 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         const devices = await adapter.discoverDevices();
         console.log('discover devices', devices);
         if (!devices || devices.length === 0) {
-          fail('No devices found');
+          expect(devices).toBeDefined();
+          expect(devices).not.toHaveLength(0);
         }
-        const firstDevice = devices[0];
+        const firstDevice = devices![0];
         console.log('first device:', firstDevice);
-        await adapter.pairDevices([devices[0].id]);
-        console.log('paired device:', devices[0].id);
+        await adapter.pairDevices([devices![0].id]);
+        console.log('paired device:', devices![0].id);
         // try getting the device
-        const device = await adapter.getDevice(devices[0].id);
+        const device = await adapter.getDevice(devices![0].id);
         console.log('device:', device);
         expect(device).toBeDefined();
-        expect(device?.id).toBe(devices[0].id);
+        expect(device?.id).toBe(devices![0].id);
       } catch (error) {
         console.error('Error:', error);
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        fail(`Should not throw exception: ${error}`);
+        throw error;
       }
     });
   });

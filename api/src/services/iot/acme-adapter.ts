@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -64,60 +62,98 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       return undefined;
     }
 
-    switch ((capability.type as string).toLowerCase()) {
-      case 'power': {
-        const mc: DeviceCapability = {
-          id: 'on',
-          type: 'switch',
-          name: 'power',
-          readonly: capability.isReadOnly || false,
-        };
-        // validate the capability and return
-        return deviceCapabilitySchema.parse(mc);
+    try {
+      // Handle capability types based on the schema from the simulation
+      switch (capability.type.toUpperCase()) {
+        case 'POWER': {
+          const mc: DeviceCapability = {
+            id: capability.name || 'on', // Use provided name or default to 'on'
+            type: 'switch',
+            name: capability.name || 'power',
+            readonly: capability.isReadOnly || false,
+          };
+          return deviceCapabilitySchema.parse(mc);
+        }
+        case 'RANGE': {
+          const mc: DeviceCapability = {
+            id: capability.name,
+            type: 'range',
+            min: capability.minValue || 0,
+            max: capability.maxValue || 100,
+            unit: capability.unit,
+            readonly: capability.isReadOnly || false,
+          };
+          return deviceCapabilitySchema.parse(mc);
+        }
+        case 'RGB_COLOR': {
+          const mc: DeviceCapability = {
+            id: capability.name || 'rgb',
+            type: 'multirange',
+            min: capability.minValue || 0,
+            max: capability.maxValue || 255,
+            step: 1,
+            length: 3, // RGB requires exactly 3 values
+            name: capability.name || 'Color',
+            readonly: capability.isReadOnly || false,
+          };
+          return deviceCapabilitySchema.parse(mc);
+        }
+        case 'LIMITED_COLOR': {
+          const mc: DeviceCapability = {
+            id: capability.name || 'color',
+            name: 'color',
+            type: 'mode',
+            modes: capability.availableColors,
+            readonly: capability.isReadOnly || false,
+          };
+          return deviceCapabilitySchema.parse(mc);
+        }
+        // TODO: change to range if both min and max are defined
+        case 'ENERGY': {
+          const mc: DeviceCapability = {
+            id: capability.name,
+            name: capability.name,
+            type: 'number',
+            bound:
+              capability.minValue !== undefined
+                ? { type: 'min', value: capability.minValue }
+                : capability.maxValue !== undefined
+                  ? { type: 'max', value: capability.maxValue }
+                  : undefined,
+            unit: capability.unit,
+            readonly: capability.isReadOnly || false,
+          };
+          return deviceCapabilitySchema.parse(mc);
+        }
+        default:
+          console.error(`Unsupported capability type: ${capability.type}`);
+          return undefined;
       }
-      case 'brightness': {
-        const mc: DeviceCapability = {
-          id: 'brightness',
-          type: 'range',
-          min: (capability.min as number) || 0,
-          max: (capability.max as number) || 100,
-          unit: '%',
-          readonly: capability.isReadOnly || false,
-        };
-        return deviceCapabilitySchema.parse(mc);
-      }
-      case 'rgb_color': {
-        const mc: DeviceCapability = {
-          id: 'color',
-          type: 'multirange',
-          min: 0,
-          max: 255,
-          step: 1,
-          length: 3, // RGB requires exactly 3 values
-          name: 'RGB Color',
-          readonly: capability.isReadOnly || false,
-        };
-        return deviceCapabilitySchema.parse(mc);
-      }
-      case 'limited_color': {
-        const mc: DeviceCapability = {
-          id: 'color',
-          type: 'mode',
-          modes: capability.availableColors,
-          readonly: capability.isReadOnly || false,
-        };
-        return deviceCapabilitySchema.parse(mc);
-      }
-      default:
-        console.error('Invalid capability type');
-        return undefined;
+    } catch (error) {
+      console.error('Error mapping capability:', error);
+      return undefined;
     }
   }
 
-  private mapCapabilities(
-    capabilities: any[],
-  ): (DeviceCapability | undefined)[] {
-    return capabilities.map((c) => this.mapCapability(c));
+  /**
+   * Maps an array of external capabilities to our internal format
+   *
+   * @param capabilities - The array of capabilities from the external API
+   * @returns An array of mapped capabilities
+   */
+  private mapCapabilities(capabilities: any[]): DeviceCapability[] {
+    if (!Array.isArray(capabilities)) {
+      console.warn('Capabilities is not an array, returning empty array');
+      return [];
+    }
+
+    // Bind this context to ensure correct access to this.mapCapability
+    // Filter out undefined/null values and properly type the result
+    return capabilities
+      .map((c) => this.mapCapability.bind(this)(c))
+      .filter(
+        (cap): cap is DeviceCapability => cap !== undefined && cap !== null,
+      );
   }
 
   public mapDevice(device: any): Device | undefined {
@@ -127,58 +163,41 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         throw new Error('Device mapping failed: missing ID');
       }
 
-      if (!device.capabilities || device.capabilities.length === 0) {
-        throw new Error(
-          'Device mapping failed: capabilities array must not be empty',
+      if (!device.capabilities || !Array.isArray(device.capabilities)) {
+        // Try to get capabilities from the device type if capabilities not provided
+        // This uses the deviceCapabilityMap from the simulation schema
+        console.warn(
+          `Device ${device.id} has no capabilities, attempting to infer from type`,
         );
+        if (!device.type) {
+          throw new Error(
+            'Device mapping failed: no capabilities and no device type',
+          );
+        }
+
+        // We'll let the validation handle the case where there are no capabilities
       }
 
-      if (device.capabilities.length === 0) {
-        switch (device.type) {
-          case 'THERMOMETER':
-            device.capabilities = [
-              {
-                type: 'temperature',
-                isReadOnly: true,
-              },
-            ];
-            break;
-        }
-      } else {
-        switch (device.type) {
-          case 'CURTAIN':
-            // change capability that says 'BRIGHTNESS' to 'position'
-            device.capabilities = device.capabilities.map((c: any) => {
-              if (c.type === 'BRIGHTNESS') {
-                c.type = 'POSITION';
-              }
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-              return c;
-            });
-            break;
-          case 'AC':
-            // change capability that says 'BRIGHTNESS' to 'temperature'
-            device.capabilities = device.capabilities.map((c: any) => {
-              if (c.type === 'BRIGHTNESS') {
-                c.type = 'TEMPERATURE';
-              }
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-              return c;
-            });
-            break;
-        }
+      // Map device capabilities, binding the mapCapability method to this instance
+      const mappedCapabilities: DeviceCapability[] = (device.capabilities || [])
+        .map((c: any) => this.mapCapability.bind(this)(c))
+        .filter(
+          (cap: DeviceCapability | undefined): cap is DeviceCapability =>
+            cap !== undefined && cap !== null,
+        );
+
+      if (mappedCapabilities.length === 0) {
+        console.warn(`No valid capabilities mapped for device ${device.id}`);
+        return;
       }
 
       const d: Device = {
         id: device.id,
-        capabilities: device.capabilities
-          .map(this.mapCapability)
-          .filter(Boolean),
-        source: deviceSourceSchema.enum.acme, // Ensures a valid source
+        capabilities: mappedCapabilities as any,
+        source: deviceSourceSchema.enum.acme,
       };
 
-      console.log('Mapped device before validation:', d); // Debugging
-      return deviceSchema.parse(d); // Validate against schema
+      return deviceSchema.parse(d);
     } catch (error) {
       console.warn('Failed to map device:', error);
       throw error;
@@ -187,30 +206,38 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
   public mapDeviceWithState(device: any): DeviceWithState | undefined {
     try {
-      const mappedCapabilites = this.mapCapabilities(device.capabilities);
-
-      if (mappedCapabilites.some((c) => c === undefined)) {
-        throw new Error('Failed to map capabilities');
+      if (!device?.id) {
+        console.error('Device with state mapping failed: missing ID');
+        return undefined;
       }
 
-      const mappedState = this.mapState(
-        device,
-        mappedCapabilites as DeviceCapability[],
-      );
+      // Map the capabilities - ensure we properly type and filter null/undefined values
+      const mappedCapabilities: DeviceCapability[] = (device.capabilities || [])
+        .map((c: any) => this.mapCapability.bind(this)(c))
+        .filter(
+          (cap: DeviceCapability | undefined | null): cap is DeviceCapability =>
+            cap !== undefined && cap !== null,
+        );
+
+      if (mappedCapabilities.length === 0) {
+        console.warn(`No valid capabilities mapped for device ${device.id}`);
+        return;
+      }
+
+      // Map the state based on the capabilities
+      const mappedState = this.mapState(device, mappedCapabilities);
 
       const mappedDevice: DeviceWithState = {
         id: device.id,
         source,
-        capabilities: device.capabilities.map((c: any) =>
-          this.mapCapability(c),
-        ),
+        capabilities: mappedCapabilities as any,
         state: mappedState,
       };
 
-      // validate and return
+      // Validate against schema and return
       return deviceWithStateSchema.parse(mappedDevice);
-    } catch (_) {
-      console.error('error mapping device with state');
+    } catch (error) {
+      console.error('Error mapping device with state:', error);
       return undefined;
     }
   }
@@ -219,30 +246,38 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     device: any,
   ): DeviceWithPartialState | undefined {
     try {
-      const mappedCapabilites = this.mapCapabilities(device.capabilities);
-
-      if (mappedCapabilites.some((c) => c === undefined)) {
-        throw new Error('Failed to map capabilities');
+      if (!device?.id) {
+        console.error('Device with partial state mapping failed: missing ID');
+        return undefined;
       }
 
-      const mappedState = this.mapState(
-        device,
-        mappedCapabilites as DeviceCapability[],
-      );
+      // Map the capabilities - ensure we properly type and filter null/undefined values
+      const mappedCapabilities: DeviceCapability[] = (device.capabilities || [])
+        .map((c: any) => this.mapCapability.bind(this)(c))
+        .filter(
+          (cap: DeviceCapability | undefined | null): cap is DeviceCapability =>
+            cap !== undefined && cap !== null,
+        );
+
+      if (mappedCapabilities.length === 0) {
+        console.error(`No valid capabilities mapped for device ${device.id}`);
+        return;
+      }
+
+      // Map the state based on the capabilities
+      const mappedState = this.mapState(device, mappedCapabilities);
 
       const mappedDevice: DeviceWithPartialState = {
         id: device.id,
         source,
-        capabilities: device.capabilities.map((c: any) =>
-          this.mapCapability(c),
-        ),
+        capabilities: mappedCapabilities as any,
         state: mappedState,
       };
 
-      // validate and return
+      // Validate against schema and return
       return deviceWithPartialStateSchema.parse(mappedDevice);
-    } catch (_) {
-      console.error('error mapping device with state');
+    } catch (error) {
+      console.error('Error mapping device with partial state:', error);
       return undefined;
     }
   }
@@ -253,17 +288,66 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
    * @param capabilities - The device capabilities
    * @returns The device's state
    */
+  /**
+   * Maps the device state from external device representation to our internal state format
+   *
+   * @param device - The device data from the external API
+   * @param capabilities - The already mapped device capabilities
+   * @returns The device's mapped state
+   */
   private mapState(device: any, capabilities: DeviceCapability[]) {
     const state: State = {};
-    //Object.fromEntries(capabilities.map(capability => [capability.id, device[capability.id]]))
+
     for (const capability of capabilities) {
-      state[capability.id] = device[capability.id];
+      if (!capability) continue;
+
+      // Map state values based on capability ID
+      // This is more resilient as it will use the mapped IDs from our capabilities
+      if (device[capability.id] !== undefined) {
+        // Direct mapping when property names match
+        state[capability.id] = device[capability.id];
+      } else if (capability.name && device[capability.name] !== undefined) {
+        // Try using the capability name as fallback
+        state[capability.id] = device[capability.name];
+      } else {
+        // Special case mappings based on known device types and capability types
+        switch (device.type) {
+          case 'BULB_RGB_BRIGHTNESS':
+            if (capability.id === 'color' && device.rgb) {
+              state[capability.id] = device.rgb;
+            }
+            break;
+          case 'CURTAIN':
+            if (capability.id === 'position') {
+              state[capability.id] = device.position;
+            }
+            break;
+          case 'AC':
+            if (capability.id === 'temperature') {
+              state[capability.id] =
+                device.targetTemperature || device.currentTemperature;
+            }
+            break;
+          case 'THERMOMETER':
+            if (capability.id === 'temperature') {
+              state[capability.id] = device.temperature;
+            }
+            break;
+          case 'HUMIDITY_SENSOR':
+            if (capability.id === 'humidity') {
+              state[capability.id] = device.humidity;
+            }
+            break;
+        }
+      }
     }
+
     return state;
   }
 
   public async discoverDevices(): Promise<Device[] | undefined> {
     // Call the external API to discover devices
+    console.log('DISCOVER API KEY:', this.apiKey);
 
     try {
       const response = await this.axiosInstance.get('/discover');
@@ -449,16 +533,25 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       console.log('response data:', device);
 
-      const mappedCapabilites = device.capabilities.map((c: any) =>
-        this.mapCapability(c),
-      );
+      // Map and filter capabilities
+      const mappedCapabilities: DeviceCapability[] = device.capabilities
+        .map((c: any) => this.mapCapability(c))
+        .filter(
+          (cap: DeviceCapability | undefined | null): cap is DeviceCapability =>
+            cap !== undefined && cap !== null,
+        );
 
-      const mappedState = this.mapState(device, mappedCapabilites);
+      if (mappedCapabilities.length === 0) {
+        console.error(`No valid capabilities mapped for device ${device.id}`);
+        return;
+      }
+
+      const mappedState = this.mapState(device, mappedCapabilities);
 
       const mappedDevice: DeviceWithState = {
         id: device.id,
         source,
-        capabilities: mappedCapabilites,
+        capabilities: mappedCapabilities as any,
         state: mappedState,
       };
 
@@ -509,27 +602,39 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       const devices = response.data;
 
-      const mappedDevices = devices
+      const mappedDevices: DeviceWithState[] = devices
         .filter((d: any) => deviceIds.includes(d.id as string))
         .map((device: any) => {
-          const mappedCapabilites = device.capabilities.map((c: any) =>
-            this.mapCapability(c),
-          );
+          // Map and filter capabilities
+          const mappedCapabilities: DeviceCapability[] = device.capabilities
+            .map((c: any) => this.mapCapability(c))
+            .filter(
+              (
+                cap: DeviceCapability | undefined | null,
+              ): cap is DeviceCapability => cap !== undefined && cap !== null,
+            );
 
-          const mappedState = this.mapState(device, mappedCapabilites);
+          if (mappedCapabilities.length === 0) {
+            console.error(
+              `No valid capabilities mapped for device ${device.id}`,
+            );
+            return;
+          }
+
+          const mappedState = this.mapState(device, mappedCapabilities);
 
           const mappedDevice: DeviceWithState = {
             id: device.id,
             source,
-            capabilities: mappedCapabilites,
+            capabilities: mappedCapabilities as any,
             state: mappedState,
           };
 
           // validate and return
           return deviceWithStateSchema.parse(mappedDevice);
-        });
+        })
+        .filter((d: DeviceWithState | undefined) => d !== undefined);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return mappedDevices;
     } catch (e) {
       // TODO: Handle errors
