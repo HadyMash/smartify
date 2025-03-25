@@ -28,6 +28,7 @@ async function start() {
   const embeddings: Record<string, OpenAI.Embedding[]> = {};
 
   for (const icon of icons) {
+    const startTime = Date.now();
     console.log('icon:', icon);
 
     const description = await ai.generateIconDescription(
@@ -41,8 +42,10 @@ async function start() {
       return;
     }
     const embedding = await ai.genereteTextEmbedding(description);
-    console.log('embedding:', embedding);
+    //console.log('embedding:', embedding);
     embeddings[icon.replace('.png', '')] = embedding;
+    const stopTime = Date.now();
+    console.log('Time taken:', stopTime - startTime, 'ms');
   }
 
   // save embeddings to a file
