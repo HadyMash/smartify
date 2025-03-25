@@ -12,12 +12,17 @@ describe('AcmeIoTAdapter (with simulation)', () => {
   async function inintialize(
     file: 'example-db-no-key.json' | 'example-db-valid-key.json',
   ) {
+    process.env.ACME_API_URL = 'http://localhost:3009/api';
     // Start the simulator
-    child = spawn('npm', ['run', 'start', '3001', file], {
-      cwd: projectDir,
-      stdio: ['ignore', 'pipe', 'pipe'], // Explicit about stdin, stdout, stderr
-      shell: true,
-    });
+    child = spawn(
+      'npm',
+      ['run', 'start', '--port', '3009', '--db-file', file],
+      {
+        cwd: projectDir,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: true,
+      },
+    );
 
     // Wait for simulator to start up
     let startupTimeout: NodeJS.Timeout | undefined;
