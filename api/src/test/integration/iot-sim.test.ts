@@ -1,8 +1,13 @@
-/*import { spawn, ChildProcess, exec } from 'child_process';
+/* eslint-disable @typescript-eslint/require-await */
+import { spawn, ChildProcess, exec } from 'child_process';
 import { resolve } from 'path';
 import fs from 'fs';
-import { AcmeIoTAdapter } from '../../../services/iot/acme-adapter';
-import { deviceSourceSchema, deviceWithPartialStateSchema, deviceWithStateSchema } from '../../../schemas/devices';
+import { AcmeIoTAdapter } from '../../services/iot/acme-adapter';
+import {
+  deviceSourceSchema,
+  deviceWithPartialStateSchema,
+  deviceWithStateSchema,
+} from '../../schemas/devices';
 
 const projectDir = resolve('..', 'simulation', 'acme');
 const sampleFile = resolve(projectDir, 'src/example-devices-db-test.ts');
@@ -48,7 +53,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       // Timeout if file isn't created in 15s
       setTimeout(() => {
         clearInterval(interval);
-        reject(new Error('Simulator did not generate the sample file in time.'));
+        reject(
+          new Error('Simulator did not generate the sample file in time.'),
+        );
       }, 15000);
     });
 
@@ -71,7 +78,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
     it('should map power capability correctly', async () => {
       const devices = await adapter.getDevices(['device-123']);
-      const powerCapability = devices?.[0]?.capabilities.find(c => c.type === 'switch' && c.name === 'power');
+      const powerCapability = devices?.[0]?.capabilities.find(
+        (c) => c.type === 'switch' && c.name === 'power',
+      );
 
       if (!powerCapability) {
         throw new Error('No power capability found in simulated devices');
@@ -88,7 +97,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
     it('should map brightness capability correctly', async () => {
       const devices = await adapter.getDevices(['device-123']);
-      const brightnessCapability = devices?.[0]?.capabilities.find(c => c.type === 'range' && c.name === 'brightness');
+      const brightnessCapability = devices?.[0]?.capabilities.find(
+        (c) => c.type === 'range' && c.name === 'brightness',
+      );
 
       if (!brightnessCapability) {
         throw new Error('No brightness capability found in simulated devices');
@@ -159,7 +170,10 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         throw new Error('No devices found for testing');
       }
 
-      const simulatedDevice = { ...devices[0], state: { on: true, brightness: 75 } };
+      const simulatedDevice = {
+        ...devices[0],
+        state: { on: true, brightness: 75 },
+      };
       const result = adapter.mapDeviceWithState(simulatedDevice);
 
       expect(result).toBeDefined();
@@ -243,7 +257,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     });
 
     it('should handle API errors during discovery', async () => {
-      jest.spyOn(adapter, 'discoverDevices').mockRejectedValue(new Error('API error'));
+      jest
+        .spyOn(adapter, 'discoverDevices')
+        .mockRejectedValue(new Error('API error'));
 
       try {
         await adapter.discoverDevices();
@@ -275,7 +291,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     });
 
     it('should handle errors during device pairing', async () => {
-      jest.spyOn(adapter, 'pairDevices').mockRejectedValue(new Error('Pairing error'));
+      jest
+        .spyOn(adapter, 'pairDevices')
+        .mockRejectedValue(new Error('Pairing error'));
 
       try {
         await adapter.pairDevices(['device-123']);
@@ -300,7 +318,9 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     });
 
     it('should handle errors during device unpairing', async () => {
-      jest.spyOn(adapter, 'unpairDevices').mockRejectedValue(new Error('Unpairing error'));
+      jest
+        .spyOn(adapter, 'unpairDevices')
+        .mockRejectedValue(new Error('Unpairing error'));
 
       try {
         await adapter.unpairDevices(['device-123']);
@@ -341,13 +361,13 @@ describe('AcmeIoTAdapter (with simulation)', () => {
 
     it('should throw error when modifying readonly capability', async () => {
       await expect(
-        adapter.setDeviceState('device-456', { locked: false })
+        adapter.setDeviceState('device-456', { locked: false }),
       ).rejects.toThrow('Cannot modify readonly capabilities');
     });
 
     it('should handle device not found error', async () => {
       await expect(
-        adapter.setDeviceState('device-999', { brightness: 80 })
+        adapter.setDeviceState('device-999', { brightness: 80 }),
       ).rejects.toThrow('Device not found');
     });
   });
@@ -355,18 +375,18 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     it('should update multiple device states successfully', async () => {
       const adapter = new AcmeIoTAdapter();
       const devices = await adapter.getDevices(['device-1', 'device-2']);
-  
+
       if (!devices) {
         throw new Error('Failed to fetch simulated devices');
       }
-  
+
       jest.spyOn(adapter, 'setDeviceState').mockResolvedValue(undefined);
-  
+
       await adapter.setDeviceStates({
         'device-1': { brightness: 80 },
         'device-2': { power: false },
       });
-  
+
       expect(adapter.setDeviceState).toHaveBeenCalledWith('device-1', {
         brightness: 80,
       });
@@ -374,46 +394,46 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         power: false,
       });
     });
-  
+
     it('should throw an error if trying to modify readonly capabilities', async () => {
       const adapter = new AcmeIoTAdapter();
       const devices = await adapter.getDevices(['device-3']);
-  
+
       if (!devices) {
         throw new Error('Failed to fetch simulated devices');
       }
-  
+
       await expect(
         adapter.setDeviceStates({ 'device-3': { temperature: 24 } }),
       ).rejects.toThrow(
         'Cannot modify readonly capabilities for device device-3',
       );
     });
-  
+
     it('should throw an error when devices cannot be fetched', async () => {
       const adapter = new AcmeIoTAdapter();
       jest.spyOn(adapter, 'getDevices').mockResolvedValue(undefined);
-  
+
       await expect(
         adapter.setDeviceStates({ 'device-4': { brightness: 60 } }),
       ).rejects.toThrow('Failed to fetch devices');
     });
-  
+
     it('should skip state updates for devices that do not exist', async () => {
       const adapter = new AcmeIoTAdapter();
       const devices = await adapter.getDevices(['device-5']);
-  
+
       if (!devices) {
         throw new Error('Failed to fetch simulated devices');
       }
-  
+
       jest.spyOn(adapter, 'setDeviceState').mockResolvedValue(undefined);
-  
+
       await adapter.setDeviceStates({
         'device-5': { speed: 5 },
         'device-6': { brightness: 100 }, // This device doesn't exist
       });
-  
+
       expect(adapter.setDeviceState).toHaveBeenCalledWith('device-5', {
         speed: 5,
       });
@@ -422,6 +442,5 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         expect.anything(),
       );
     });
-  });  
+  });
 });
-*/
