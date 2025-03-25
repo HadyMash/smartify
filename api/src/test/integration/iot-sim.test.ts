@@ -3,6 +3,8 @@ import { resolve } from 'path';
 import { AcmeIoTAdapter } from '../../services/iot/acme-adapter';
 
 describe('AcmeIoTAdapter (with simulation)', () => {
+  // Set Jest timeout to ensure we have enough time for cleanup
+  jest.setTimeout(30000);
   let adapter: AcmeIoTAdapter;
   let child: ChildProcess | null = null;
   let projectDir: string;
@@ -48,6 +50,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     });
 
     // Wait for simulator to start up
+    let startupTimeout: NodeJS.Timeout | undefined;
     await new Promise<void>((resolve) => {
       let serverStarted = false;
 
@@ -61,29 +64,38 @@ describe('AcmeIoTAdapter (with simulation)', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           if (output.includes('Server running on port') && !serverStarted) {
             serverStarted = true;
+            // Clear the timeout before resolving
+            clearTimeout(startupTimeout);
             // Give a little time for server to be fully ready
             setTimeout(resolve, 500);
           }
         });
-      }
+        const readyTimeout = setTimeout(resolve, 500);
+        // Ensure this timeout is cleared if the test terminates
+        readyTimeout.unref();
 
-      if (child!.stderr) {
-        child!.stderr.on('data', (data) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          console.error(`[Simulator stderr]: ${data.toString().trim()}`);
-        });
-      }
-
-      // Fallback if server doesn't start in reasonable time
-      setTimeout(() => {
-        if (!serverStarted) {
-          console.warn(
-            '[Test] Simulator may not have started properly, continuing anyway',
-          );
-          resolve();
+        if (child!.stderr) {
+          child!.stderr.on('data', (data) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+            console.error(`[Simulator stderr]: ${data.toString().trim()}`);
+          });
         }
-      }, 5000);
+
+        startupTimeout = setTimeout(() => {
+          if (!serverStarted) {
+            console.warn(
+              '[Test] Simulator may not have started properly, continuing anyway',
+            );
+            resolve();
+          }
+        }, 5000);
+      }
     });
+
+    // Clear the timeout just in case it wasn't cleared above
+    if (startupTimeout) {
+      clearTimeout(startupTimeout);
+    }
 
     process.env.ACME_API_URL = 'http://localhost:3001/api';
 
@@ -91,19 +103,42 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     adapter = new AcmeIoTAdapter();
 
     // Wait for adapter to initialize
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => {
+      const initTimeout = setTimeout(resolve, 500);
+      // Ensure this timeout is cleared if the test terminates
+      initTimeout.unref();
+    });
     console.log('Adapter initialized');
   });
 
   afterEach(async () => {
+    // terminate the child process properly
     if (child) {
       return new Promise<void>((resolve) => {
+        // Set up exit handler before sending kill signal
         child!.on('exit', () => {
           child = null;
           resolve();
         });
+
+        // Send SIGTERM signal
         child!.kill('SIGTERM');
-        setTimeout(resolve, 1000); // Fallback in case process doesn't exit
+
+        // Fallback in case process doesn't exit
+        // Make sure to call resolve only if child hasn't already exited
+        const killTimeout = setTimeout(() => {
+          console.warn('[Test] Force-killing simulator process');
+          if (child) {
+            child.kill('SIGKILL'); // Force kill if SIGTERM didn't work
+            child = null;
+            resolve();
+          }
+        }, 2000);
+
+        // Make sure to clear the timeout when the child process exits
+        child!.on('exit', () => {
+          clearTimeout(killTimeout);
+        });
       });
     }
   });
@@ -116,5 +151,6 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       // skip this test
       test.skip("server doesn't support health checks", () => {});
     }
+  }, 10000); // Add timeout to ensure the test has enough time to complete
   });
 });

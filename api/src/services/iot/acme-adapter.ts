@@ -35,6 +35,8 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       headers: {
         'x-api-key': this.apiKey,
       },
+      // Set default timeout to avoid hanging connections
+      timeout: 10000,
     });
   }
 
