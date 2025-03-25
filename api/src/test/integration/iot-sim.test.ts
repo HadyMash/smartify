@@ -1,13 +1,20 @@
 import { spawn, ChildProcess, exec } from 'child_process';
 import { resolve } from 'path';
 import { AcmeIoTAdapter } from '../../services/iot/acme-adapter';
-import { InvalidAPIKeyError, MissingAPIKeyError } from '../../schemas/devices';
+import {
+  DeviceNotFoundError,
+  InvalidAPIKeyError,
+  MissingAPIKeyError,
+} from '../../schemas/devices';
 
 describe('AcmeIoTAdapter (with simulation)', () => {
   // Set Jest timeout to ensure we have enough time for cleanup
   jest.setTimeout(30000);
   let child: ChildProcess | null = null;
   let projectDir: string;
+
+  const DEVICE1ID = 'bbb39b3a-bc96-4144-9c7d-ea1f816b65cb';
+  const DEVICE2ID = '9405e5f6-66a9-4941-97d0-7c462eff857e';
 
   async function inintialize(
     file: 'example-db-no-key.json' | 'example-db-keys.json',
@@ -135,20 +142,36 @@ describe('AcmeIoTAdapter (with simulation)', () => {
   });
 
   describe('Health check', () => {
-    beforeEach(async () => {
-      await inintialize('example-db-no-key.json');
+    describe('Successful startup', () => {
+      beforeEach(async () => {
+        await inintialize('example-db-no-key.json');
+      });
+
+      test('health check successful', async () => {
+        const adapter = new AcmeIoTAdapter();
+        if (adapter.isHealthCheck()) {
+          const health = await adapter.healthCheck();
+          expect(health).toBe(true);
+          return;
+        } else {
+          // skip this test
+          test.skip("server doesn't support health checks", () => {});
+        }
+      });
     });
 
-    test('server starts up correctly', async () => {
-      const adapter = new AcmeIoTAdapter();
-      if (adapter.isHealthCheck()) {
-        const health = await adapter.healthCheck();
-        expect(health).toBe(true);
-        return;
-      } else {
-        // skip this test
-        test.skip("server doesn't support health checks", () => {});
-      }
+    describe('Failed/no startup', () => {
+      test('health check unsuccessful', async () => {
+        const adapter = new AcmeIoTAdapter();
+        if (adapter.isHealthCheck()) {
+          const health = await adapter.healthCheck();
+          expect(health).toBe(false);
+          return;
+        } else {
+          // skip this test
+          test.skip("server doesn't support health checks", () => {});
+        }
+      });
     });
   });
 
@@ -553,6 +576,188 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       } catch (error) {
         console.error('Error:', error);
         throw error;
+      }
+    });
+
+    test('get paired device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      const device1 = await adapter.getDevice(DEVICE1ID);
+      const device2 = await adapter.getDevice(DEVICE2ID);
+      expect(device1).toBeDefined();
+      expect(device1!.id).toBe(DEVICE1ID);
+      expect(device2).toBeDefined();
+      expect(device2!.id).toBe(DEVICE2ID);
+    });
+
+    test('pair device and get', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        // pair
+        const devices = await adapter.discoverDevices();
+        console.log('discover devices', devices);
+        if (!devices || devices.length === 0) {
+          expect(devices).toBeDefined();
+          expect(devices).not.toHaveLength(0);
+        }
+        const firstDevice = devices![0];
+        console.log('first device:', firstDevice);
+        await adapter.pairDevices([devices![0].id]);
+        console.log('paired device:', devices![0].id);
+        // try getting the device
+        const device = await adapter.getDevice(devices![0].id);
+        console.log('device:', device);
+        expect(device).toBeDefined();
+        expect(device?.id).toBe(devices![0].id);
+
+        // get device
+        const device1 = await adapter.getDevice(devices![0].id);
+        expect(device1).toBeDefined();
+        expect(device1!.id).toBe(devices![0].id);
+      } catch (error) {
+        console.error('Error:', error);
+        throw error;
+      }
+    });
+
+    test('get devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      const devices = await adapter.getDevices([DEVICE1ID, DEVICE2ID]);
+      expect(devices).toBeDefined();
+      expect(devices).toHaveLength(2);
+      expect(devices![0].id).toBe(DEVICE1ID);
+      expect(devices![1].id).toBe(DEVICE2ID);
+    });
+
+    test('expect non existent device to be undefined', async () => {
+      try {
+        const adapter = new AcmeIoTAdapter();
+        const device = await adapter.getDevice(
+          'bbb39b3a-bc96-4144-9c7d-ea1f816b65c0',
+        );
+        expect(device).toBeUndefined();
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect(error).toBeInstanceOf(DeviceNotFoundError);
+      }
+    });
+
+    test('expect non existent devices to be undefined', async () => {
+      try {
+        const adapter = new AcmeIoTAdapter();
+        const devices = await adapter.getDevices([
+          'bbb39b3a-bc96-4144-9c7d-ea1f816b65c0',
+          '9405e5f6-66a9-4941-97d0-7c462eff8570',
+        ]);
+        expect(devices).toBeUndefined();
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect(error).toBeInstanceOf(Error);
+      }
+    });
+
+    test('expect get device to have state', async () => {
+      const adapter = new AcmeIoTAdapter();
+      const device1 = await adapter.getDevice(DEVICE1ID);
+      const device2 = await adapter.getDevice(DEVICE2ID);
+
+      expect(device1).toHaveProperty('capabilities');
+      expect(device1).toHaveProperty('state');
+      expect(device1!.state).toHaveProperty('on');
+      console.log('device2:', device2);
+      expect(typeof device2!.state.on).toBe('boolean');
+      expect(device2).toBeDefined();
+      expect(device2).toHaveProperty('capabilities');
+      expect(device2).toHaveProperty('state');
+      expect(device2!.state).toHaveProperty('on');
+      expect(device2!.state).toHaveProperty('rgb');
+      expect(device2!.state).toHaveProperty('brightness');
+      expect(typeof device2!.state.brightness).toBe('number');
+      expect(typeof device2!.state.on).toBe('boolean');
+      expect(typeof device2!.state.rgb).toBe('object');
+      expect(device2!.state.rgb).toHaveLength(3);
+      expect(typeof (device2!.state.rgb as number[])[0]).toBe('number');
+      expect(typeof (device2!.state.rgb as number[])[1]).toBe('number');
+      expect(typeof (device2!.state.rgb as number[])[2]).toBe('number');
+    });
+
+    test('set device state', async () => {
+      const adapter = new AcmeIoTAdapter();
+
+      // on off bulb
+      const device1 = await adapter.getDevice(DEVICE1ID);
+      expect(device1).toBeDefined();
+      expect(device1!.id).toBe(DEVICE1ID);
+
+      // toggle the state
+      await adapter.setDeviceState(device1!.id, {
+        on: !device1!.state.on,
+      });
+
+      // get device to double check
+      const device1new = await adapter.getDevice(DEVICE1ID);
+      expect(device1new).toBeDefined();
+      expect(device1new!.id).toBe(DEVICE1ID);
+      expect(device1new!.state.on).toBe(!device1!.state.on);
+
+      // rgb bulb
+      const device2 = await adapter.getDevice(DEVICE2ID);
+      expect(device2).toBeDefined();
+      expect(device2!.id).toBe(DEVICE2ID);
+
+      // toggle the state
+      await adapter.setDeviceState(device2!.id, {
+        on: !device2!.state.on,
+      });
+
+      // get device to double check
+      const device2new = await adapter.getDevice(DEVICE2ID);
+      expect(device2new).toBeDefined();
+      expect(device2new!.id).toBe(DEVICE2ID);
+      expect(device2new!.state.on).toBe(!device2!.state.on);
+    });
+
+    test('setting multiple states at once for a single device', async () => {
+      const adapter = new AcmeIoTAdapter();
+
+      // rgb bulb
+      const device2 = await adapter.getDevice(DEVICE2ID);
+      expect(device2).toBeDefined();
+      expect(device2!.id).toBe(DEVICE2ID);
+
+      // toggle the state
+      const newRGB = [123, 145, 189];
+      await adapter.setDeviceState(device2!.id, {
+        on: !device2!.state.on,
+        rgb: newRGB,
+      });
+
+      // get device to double check
+      const device2new = await adapter.getDevice(DEVICE2ID);
+      expect(device2new).toBeDefined();
+      expect(device2new!.id).toBe(DEVICE2ID);
+      expect(device2new!.state.on).toBe(!device2!.state.on);
+      expect((device2new!.state.rgb as number[])[0]).toEqual(newRGB[0]);
+      expect((device2new!.state.rgb as number[])[1]).toEqual(newRGB[1]);
+      expect((device2new!.state.rgb as number[])[2]).toEqual(newRGB[2]);
+    });
+
+    test('should not accept inavlid state when setting', async () => {
+      const adapter = new AcmeIoTAdapter();
+
+      // rgb bulb
+      const device2 = await adapter.getDevice(DEVICE2ID);
+      expect(device2).toBeDefined();
+      expect(device2!.id).toBe(DEVICE2ID);
+
+      // toggle the state
+      const newRGB = [123, 145];
+      try {
+        await adapter.setDeviceState(device2!.id, {
+          on: !device2!.state.on,
+          rgb: newRGB,
+        });
+      } catch (e) {
+        expect(e).toBeDefined();
       }
     });
   });

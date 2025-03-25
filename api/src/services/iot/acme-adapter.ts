@@ -644,7 +644,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   public async setDeviceState(
     deviceId: string,
     state: Record<string, unknown>,
-  ): Promise<DeviceWithState | undefined> {
+  ): Promise<undefined> {
     try {
       // Get current device state to check readonly fields
       const device = await this.getDevice(deviceId);
@@ -689,16 +689,29 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
             );
         }
       }
+
       return;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.log(e.message);
-        if (e.response?.status === 401) {
-          throw new MissingAPIKeyError(this.apiKey);
-        } else if (e.response?.status === 403) {
-          throw new InvalidAPIKeyError(this.apiKey);
+        switch (e.status) {
+          case 503:
+            throw new DeviceOfflineError(deviceId);
+          case 404:
+            throw new DeviceNotFoundError(deviceId);
+          case 500:
+            throw new ExternalServerError(
+              `500 Response when setting device ${deviceId}`,
+            );
+          case 401:
+            throw new MissingAPIKeyError(this.apiKey);
+          case 403:
+            throw new InvalidAPIKeyError(this.apiKey);
+          case 400:
+            throw new BadRequestToDeviceError(deviceId, 'getting device');
+          default:
+            throw e;
         }
-        throw e;
       } else {
         console.log('non axios error:', e);
         throw e;
@@ -708,7 +721,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
   public async setDeviceStates(
     deviceStates: Record<string, Record<string, unknown>>,
-  ): Promise<DeviceWithState[] | undefined> {
+  ): Promise<undefined> {
     try {
       // Get all devices first to validate readonly states
       const deviceIds = Object.keys(deviceStates);
