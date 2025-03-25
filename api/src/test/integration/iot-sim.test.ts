@@ -266,6 +266,24 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       }
     });
 
+    test('unpair device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.unpairDevices([DEVICE1ID]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(MissingAPIKeyError);
+      }
+    });
+
+    test('unpair devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.unpairDevices([DEVICE1ID, DEVICE2ID]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(MissingAPIKeyError);
+      }
+    });
+
     test('set device state', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
@@ -494,6 +512,24 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       }
     });
 
+    test('unpair device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.unpairDevices([DEVICE1ID]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('unpair devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.unpairDevices([DEVICE1ID, DEVICE2ID]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
     test('set device state', async () => {
       const adapter = new AcmeIoTAdapter();
       try {
@@ -576,6 +612,89 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       } catch (error) {
         console.error('Error:', error);
         throw error;
+      }
+    });
+
+    test('pair devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        const devices = await adapter.discoverDevices();
+        console.log('discover devices', devices);
+        if (!devices || devices.length === 0) {
+          expect(devices).toBeDefined();
+          expect(devices).not.toHaveLength(0);
+        }
+        if (devices!.length < 2) {
+          test.skip('not enough devices to pair', () => {});
+        }
+
+        const firstDevice = devices![0];
+        console.log('first device:', firstDevice);
+        const secondDevice = devices![1];
+        console.log('second device:', secondDevice);
+        await adapter.pairDevices([devices![0].id, devices![1].id]);
+
+        console.log('paired device:', devices![0].id);
+        console.log('paired device:', devices![1].id);
+        // try getting the device
+        const device1 = await adapter.getDevice(devices![0].id);
+        console.log('device:', device1);
+        expect(device1).toBeDefined();
+        expect(device1?.id).toBe(devices![0].id);
+        const device2 = await adapter.getDevice(devices![1].id);
+        console.log('device:', device2);
+        expect(device2).toBeDefined();
+        expect(device2?.id).toBe(devices![1].id);
+      } catch (error) {
+        console.error('Error:', error);
+        throw error;
+      }
+    });
+
+    test('unpair device', async () => {
+      const adapter = new AcmeIoTAdapter();
+
+      // check it's paired first
+      const device = await adapter.getDevice(DEVICE1ID);
+      expect(device).toBeDefined();
+      expect(device!.id).toBe(DEVICE1ID);
+
+      // unpair
+      await adapter.unpairDevices([DEVICE1ID]);
+      try {
+        const device = await adapter.getDevice(DEVICE1ID);
+        expect(device).toBeUndefined();
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+    });
+
+    test('unpair devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+
+      // check it's paired first
+      const device1 = await adapter.getDevice(DEVICE1ID);
+      expect(device1).toBeDefined();
+      expect(device1!.id).toBe(DEVICE1ID);
+
+      const device2 = await adapter.getDevice(DEVICE2ID);
+      expect(device2).toBeDefined();
+      expect(device2!.id).toBe(DEVICE2ID);
+
+      // unpair
+      await adapter.unpairDevices([DEVICE1ID, DEVICE2ID]);
+      try {
+        const device = await adapter.getDevice(DEVICE1ID);
+        expect(device).toBeUndefined();
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
+      }
+
+      try {
+        const device = await adapter.getDevice(DEVICE2ID);
+        expect(device).toBeUndefined();
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidAPIKeyError);
       }
     });
 
