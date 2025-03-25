@@ -40,9 +40,12 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
   public async healthCheck(): Promise<boolean> {
     try {
-      const response = await axios.get(`${this.apiUrl}/health`);
+      // Use the configured axiosInstance with the API key instead of plain axios
+      const response = await this.axiosInstance.get(`/health`);
+      console.log('Health check response:', response.status);
       return response.status === 200;
-    } catch (_) {
+    } catch (error) {
+      console.error('Health check failed:', error);
       return false;
     }
   }

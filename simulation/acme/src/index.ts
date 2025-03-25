@@ -4,15 +4,26 @@ import { adminRouter } from './routes/admin';
 import { logMiddleware } from './middleware/log';
 import { externalAPIRouter } from './routes/external';
 import { DBService } from './services/db-service';
-import {DeviceSimulator} from './services/device-simulation';
+import { DeviceSimulator } from './services/device-simulation';
 import fs from 'fs';
 import path, { resolve } from 'path';
 import { randomUUID } from 'crypto';
 
-
 const app: Express = express();
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-let dbFileName = process.argv[2];
+let port: number;
+let dbFileName: string | undefined;
+
+if (process.argv.length > 2) {
+  port = parseInt(process.argv[2]);
+} else {
+  port = 3001;
+}
+if (process.argv.length > 3) {
+  dbFileName = process.argv[3];
+}
+
+//let port = process.argv[2];
+//let dbFileName = process.argv[3];
 app.use(express.json());
 app.use(cookieParser());
 app.use(logMiddleware);
@@ -33,7 +44,7 @@ async function start() {
 
       await fs.promises.mkdir(dataDir, { recursive: true });
       await fs.promises.copyFile(sourcePath, dbCopyFileName);
-      
+
       console.log(`Database initialized at ${dbCopyFileName}`);
       dbFileName = dbCopyFileName;
     } catch (error) {
@@ -42,7 +53,7 @@ async function start() {
     }
   }
 
-  const dbService = new DBService(dbFileName); 
+  const dbService = new DBService(dbFileName);
   // Start the device simulator
   const { DeviceSimulator } = require('./services/device-simulation');
   const simulator = DeviceSimulator.getInstance();

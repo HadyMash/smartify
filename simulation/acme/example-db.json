@@ -1,21 +1,21 @@
 {
     "devices": {
-        "040edff0-7316-421d-ad48-f07e0473e887": {
+        "12e5a67b-be59-4b79-a12b-59b057ad9112": {
             "type": "THERMOMETER",
             "connected": true,
             "pairedApiKeys": [],
             "activeActions": {},
             "temperature": 20,
-            "lastUpdated": "2025-03-23T13:15:11.765Z"
+            "lastUpdated": "2025-03-25T08:10:31.037Z"
         },
-        "8b68008e-9515-4402-8ca2-987d631e873a": {
+        "a9c97031-53cc-404f-be69-968fe6de9da2": {
             "type": "BULB_ON_OFF",
             "connected": true,
             "pairedApiKeys": [],
             "activeActions": {},
             "on": false
         },
-        "b26d9abd-5bfc-4db5-8355-cf7825401264": {
+        "20b9e785-642a-431e-937e-4e8f6eb32a32": {
             "type": "BULB_RGB_BRIGHTNESS",
             "connected": true,
             "pairedApiKeys": [],
@@ -28,7 +28,16 @@
             ],
             "brightness": 100
         },
-        "e079eed0-1bb2-4866-8803-97d340c3a1fa": {
+        "66460bd6-9683-4cdb-89f4-db66c7dd0c7b": {
+            "type": "BULB_LIMITED_COLOR_BRIGHTNESS",
+            "connected": true,
+            "pairedApiKeys": [],
+            "activeActions": {},
+            "on": false,
+            "color": "neutral",
+            "brightness": 100
+        },
+        "7cb38d0d-92a2-4516-9a72-82817791a0d2": {
             "type": "BULB_LIMITED_COLOR",
             "connected": true,
             "pairedApiKeys": [],
