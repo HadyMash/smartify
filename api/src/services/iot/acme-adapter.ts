@@ -283,12 +283,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   }
 
   /**
-   * Maps the device state to the internal state
-   * @param device - The device state from the external API
-   * @param capabilities - The device capabilities
-   * @returns The device's state
-   */
-  /**
    * Maps the device state from external device representation to our internal state format
    *
    * @param device - The device data from the external API
