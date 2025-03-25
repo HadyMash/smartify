@@ -5,45 +5,14 @@ import { AcmeIoTAdapter } from '../../services/iot/acme-adapter';
 describe('AcmeIoTAdapter (with simulation)', () => {
   // Set Jest timeout to ensure we have enough time for cleanup
   jest.setTimeout(30000);
-  let adapter: AcmeIoTAdapter;
   let child: ChildProcess | null = null;
   let projectDir: string;
-  //let sampleFile: string;
 
-  beforeAll(async () => {
-    projectDir = resolve('..', 'simulation', 'acme');
-    //sampleFile = resolve(projectDir, 'example-devices-db-test.json');
-
-    await new Promise<void>((resolve, reject) => {
-      exec('npm install', { cwd: projectDir }, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Install error: ${error.message}`);
-          reject(error);
-          return;
-        }
-        if (stderr) {
-          console.error(`Install stderr: ${stderr}`);
-        }
-        console.log(`Install output: ${stdout}`);
-        exec('npm run build', { cwd: projectDir }, (error, stdout, stderr) => {
-          if (error) {
-            console.error(`Build error: ${error.message}`);
-            reject(error);
-            return;
-          }
-          if (stderr) {
-            console.error(`Build stderr: ${stderr}`);
-          }
-          console.log(`Build output: ${stdout}`);
-          resolve();
-        });
-      });
-    });
-  });
-
-  beforeEach(async () => {
+  async function inintialize(
+    file: 'example-db-no-key.json' | 'example-db-valid-key.json',
+  ) {
     // Start the simulator
-    child = spawn('npm', ['run', 'start', '3001', 'example-db.json'], {
+    child = spawn('npm', ['run', 'start', '3001', file], {
       cwd: projectDir,
       stdio: ['ignore', 'pipe', 'pipe'], // Explicit about stdin, stdout, stderr
       shell: true,
@@ -98,17 +67,36 @@ describe('AcmeIoTAdapter (with simulation)', () => {
     }
 
     process.env.ACME_API_URL = 'http://localhost:3001/api';
+  }
 
-    // Initialize the adapter
-    adapter = new AcmeIoTAdapter();
+  beforeAll(async () => {
+    projectDir = resolve('..', 'simulation', 'acme');
 
-    // Wait for adapter to initialize
-    await new Promise((resolve) => {
-      const initTimeout = setTimeout(resolve, 500);
-      // Ensure this timeout is cleared if the test terminates
-      initTimeout.unref();
+    await new Promise<void>((resolve, reject) => {
+      exec('npm install', { cwd: projectDir }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Install error: ${error.message}`);
+          reject(error);
+          return;
+        }
+        if (stderr) {
+          console.error(`Install stderr: ${stderr}`);
+        }
+        console.log(`Install output: ${stdout}`);
+        exec('npm run build', { cwd: projectDir }, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Build error: ${error.message}`);
+            reject(error);
+            return;
+          }
+          if (stderr) {
+            console.error(`Build stderr: ${stderr}`);
+          }
+          console.log(`Build output: ${stdout}`);
+          resolve();
+        });
+      });
     });
-    console.log('Adapter initialized');
   });
 
   afterEach(async () => {
@@ -142,15 +130,42 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       });
     }
   });
-  test('server starts up correctly', async () => {
-    if (adapter.isHealthCheck()) {
-      const health = await adapter.healthCheck();
-      expect(health).toBe(true);
-      return;
-    } else {
-      // skip this test
-      test.skip("server doesn't support health checks", () => {});
-    }
-  }, 10000); // Add timeout to ensure the test has enough time to complete
+
+  describe('Health check', () => {
+    beforeEach(async () => {
+      await inintialize('example-db-no-key.json');
+    });
+
+    test('server starts up correctly', async () => {
+      const adapter = new AcmeIoTAdapter();
+      if (adapter.isHealthCheck()) {
+        const health = await adapter.healthCheck();
+        expect(health).toBe(true);
+        return;
+      } else {
+        // skip this test
+        test.skip("server doesn't support health checks", () => {});
+      }
+    });
   });
+
+  describe('Should reject without an api key', () => {
+    beforeEach(async () => {
+      await inintialize('example-db-no-key.json');
+      process.env.ACME_API_KEY = undefined;
+    });
+
+    test('getDevices', () => {
+      const adapter = new AcmeIoTAdapter();
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      expect(
+        adapter.getDevice('12e5a67b-be59-4b79-a12b-59b057ad9112'),
+      ).resolves.toBeUndefined();
+    });
+  });
+  //describe('Should reject an invalid api key', () => {
+  //  beforeEach(async () => {
+  //    await inintialize('example-db-no-key.json');
+  //  });
+  //});
 });
