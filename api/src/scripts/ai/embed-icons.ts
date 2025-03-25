@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { AIService } from '../../services/ai';
+import OpenAI from 'openai';
 
 dotenv.config();
 
@@ -21,10 +22,15 @@ async function start() {
     console.error('Icons directory not found. Please generate the icons first');
     process.exit(1);
   }
-  // TEMP
-  {
+
+  const icons = await fs.promises.readdir(iconsDir);
+  const embeddings: Record<string, OpenAI.Embedding[]> = {};
+
+  for (const icon of icons) {
+    console.log('icon:', icon);
+
     const description = await ai.generateIconDescription(
-      path.join(iconsDir, 'ac_unit.png'),
+      path.join(iconsDir, icon),
     );
 
     console.log('description:', description);
@@ -35,33 +41,13 @@ async function start() {
     const embedding = await ai.genereteTextEmbedding(description);
     console.log('embedding:', embedding);
   }
-  {
-    const description = await ai.generateIconDescription(
-      path.join(iconsDir, 'access_time_filled.png'),
-    );
 
-    console.log('description:', description);
-
-    if (!description) {
-      return;
-    }
-    const embedding = await ai.genereteTextEmbedding(description);
-    console.log('embedding:', embedding);
-  }
-  {
-    const description = await ai.generateIconDescription(
-      path.join(iconsDir, 'air.png'),
-    );
-
-    console.log('description:', description);
-
-    if (!description) {
-      return;
-    }
-    const embedding = await ai.genereteTextEmbedding(description);
-    console.log('embedding:', embedding);
-  }
+  // save embeddings to a file
+  const embeddingsFile = path.join('src', 'scripts', 'ai', 'embeddings.json');
+  await fs.promises.writeFile(
+    embeddingsFile,
+    JSON.stringify(embeddings, null, 2),
+  );
 }
-
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 start();
