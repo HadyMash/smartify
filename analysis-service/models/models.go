@@ -1,6 +1,10 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type DeviceData struct {
     ID              primitive.ObjectID `json:"_id" bson:"_id,omitempty"` // MongoDB _id
@@ -28,4 +32,10 @@ type LeaderboardEntry struct {
     ID          primitive.ObjectID `json:"_id" bson:"_id,omitempty"` // MongoDB _id
     UserID      string             `json:"user_id" bson:"user_id"`
     EnergySaved float64            `json:"energy_saved" bson:"energy_saved"`
+}
+
+type EnergyGenerationData struct {
+    Timestamp   time.Time `bson:"timestamp"`
+    DeviceID    string    `bson:"device_id"`
+    EnergyValue float64   `bson:"energy_value"` // Energy generated during 10-minute interval
 }

@@ -44,4 +44,20 @@ func (h *AnalysisHandler) PerformAnalysis(w http.ResponseWriter, r *http.Request
         return
     }
 }
-//
+
+//A new handler to expose energy generation analysis via HTTP API
+func (h *AnalysisHandler) GetEnergyGenerationSummary(w http.ResponseWriter, r *http.Request) {
+    window := r.URL.Query().Get("window")
+    if window == "" {
+        window = "hour" // default
+    }
+
+    summary, err := h.AnalysisService.AnalyzeEnergyGeneration(window)
+    if err != nil {
+        http.Error(w, "Failed to analyze energy generation: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(summary)
+}

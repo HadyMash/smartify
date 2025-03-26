@@ -1,13 +1,15 @@
 package services
 
 import (
-    "context"
-    "fmt"
-    "math"
-    "smart-home-analysis/models"
-    "sync"
-    "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/mongo"
+	"context"
+	"fmt"
+	"math"
+	"smart-home-analysis/models"
+	"sync"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // AnalysisService handles all analysis tasks
@@ -124,4 +126,61 @@ func StdDeviation(data []float64) float64 {
     }
     variance := sum / float64(len(data))
     return math.Sqrt(variance)
+}
+
+// AnalyzeEnergyGeneration aggregates total and average energy generated per time window (e.g., hourly, daily)
+func (s *AnalysisService) AnalyzeEnergyGeneration(window string) ([]map[string]interface{}, error) {
+    collection := s.db.Collection("energy_generation_data")
+
+    // Define aggregation pipeline
+    pipeline := mongo.Pipeline{
+        // Match all documents (can be extended with filters later)
+        bson.D{{Key: "$match", Value: bson.D{}}},
+
+        // Group by truncated timestamp (e.g., hourly or daily buckets)
+        bson.D{{Key: "$group", Value: bson.D{
+            {Key: "_id", Value: bson.D{
+                {Key: "$dateTrunc", Value: bson.D{
+                    {Key: "date", Value: "$timestamp"}, // Grouping based on timestamp field
+                    {Key: "unit", Value: window},       // Unit like "hour", "day", etc.
+                }},
+            }},
+            {Key: "totalGenerated", Value: bson.D{{Key: "$sum", Value: "$energy_value"}}}, // Sum of energy values
+            {Key: "avgGenerated", Value: bson.D{{Key: "$avg", Value: "$energy_value"}}},   // Average of energy values
+        }}},
+
+        // Sort by timestamp ascending
+        bson.D{{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
+    }
+
+    // Run the aggregation query
+    cursor, err := collection.Aggregate(context.TODO(), pipeline)
+    if err != nil {
+        return nil, fmt.Errorf("aggregation error: %v", err)
+    }
+    defer cursor.Close(context.TODO())
+
+    var results []map[string]interface{}
+
+    // Iterate through aggregation results
+    for cursor.Next(context.TODO()) {
+        var doc struct {
+            ID             time.Time `bson:"_id"`            // Truncated time bucket
+            TotalGenerated float64   `bson:"totalGenerated"` // Total energy for the bucket
+            AvgGenerated   float64   `bson:"avgGenerated"`   // Average energy for the bucket
+        }
+
+        if err := cursor.Decode(&doc); err != nil {
+            return nil, err
+        }
+
+        // Add formatted result to the response slice
+        results = append(results, map[string]interface{}{
+            "timestamp":       doc.ID.Format(time.RFC3339),
+            "total_generated": doc.TotalGenerated,
+            "avg_generated":   doc.AvgGenerated,
+        })
+    }
+
+    return results, nil
 }

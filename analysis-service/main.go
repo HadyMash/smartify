@@ -58,6 +58,7 @@ func (app *App) RegisterRoutes() {
     http.HandleFunc("/api/device/lifespan", app.DeviceUsageHandler.TrackDeviceLifespan)
     http.HandleFunc("/api/leaderboard", app.LeaderboardHandler.GetLeaderboard)
     http.HandleFunc("/api/statistics", app.LeaderboardHandler.GetStatistics)
+    http.HandleFunc("/api/energy-generation", app.AnalysisHandler.GetEnergyGenerationSummary)
 }
 
 // Run the server only if webhooks are needed
