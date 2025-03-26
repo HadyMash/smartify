@@ -190,7 +190,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
-  devices: z.array(deviceSchema),
+  devices: z.array(deviceSchema).default([]),
 });
 
 export type Household = z.infer<typeof householdSchema>;

@@ -159,6 +159,7 @@ describe('Household Schema Validation', () => {
             name: 'Living Room',
             type: 'living',
             floor: 1,
+            devices: [],
             connectedRooms: {},
           },
         ],
@@ -211,6 +212,7 @@ describe('Room Schema Validation', () => {
         type: 'bedroom',
         floor: 2,
         connectedRooms: {},
+        devices: [],
       }),
     ).not.toThrow();
   });
@@ -256,6 +258,7 @@ describe('Room Schema Validation', () => {
         type: 'other',
         floor: 1,
         connectedRooms: {},
+        devices: [],
       }),
     ).not.toThrow();
   });
