@@ -547,6 +547,10 @@ export const deviceCapabilitySchema = z
 export const deviceSchema = z.object({
   /** Device ID */
   id: z.string().min(1),
+  /** The device's name */
+  name: z.string().optional(),
+  /** The device's description */
+  description: z.string().optional(),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
   /** The device's icon */
