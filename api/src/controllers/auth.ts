@@ -25,6 +25,7 @@ import {
 import { AuthService } from '../services/auth/auth';
 import { MFAService } from '../services/auth/mfa';
 import { InvalidTokenError, MFATokenPayload } from '../schemas/auth/tokens';
+import { log } from '../util/log';
 
 const MFA_TOKEN_COOKIE_NAME = 'mfa-token';
 const ACCESS_TOKEN_COOKIE_NAME = 'access-token';
@@ -128,7 +129,7 @@ export class AuthController {
         // get data from body
         const data = validateSchema(res, registerDataSchema, req.body);
         if (!data) {
-          console.log('data invalid');
+          log.info('data invalid');
           return;
         }
 
@@ -245,7 +246,7 @@ export class AuthController {
 
         // don't wait for this as it will unnecessarily delay the response
         as.deleteAuthSession(data.email).catch((e) =>
-          console.error('Error deleting auth sesssion:', e),
+          log.error('Error deleting auth sesssion:', e),
         );
 
         if (session.mfaConfirmed) {
@@ -267,15 +268,15 @@ export class AuthController {
       },
       (err) => {
         if (err instanceof InvalidUserError) {
-          console.log('invalid user error');
+          log.debug('invalid user error');
           res.status(400).send({ error: 'Invalid request' });
           return true;
         } else if (err instanceof IncorrectPasswordError) {
-          console.log('incorrect password');
+          log.debug('incorrect password');
           res.status(400).send({ error: 'Incorrect email or password' });
           return true;
         } else if (err instanceof AuthSessionError) {
-          console.log('auth session does not exist');
+          log.debug('auth session does not exist');
           res.status(404).send({ error: 'Auth session does not exist' });
           return true;
         }
@@ -290,7 +291,7 @@ export class AuthController {
 
       // get mfa token
       const mfaToken = req.cookies['mfa-token'] as string | undefined;
-      console.log(req.cookies);
+      log.debug(req.cookies);
 
       if (!mfaToken) {
         res.status(400).send({ error: 'MFA token not found' });
@@ -311,13 +312,13 @@ export class AuthController {
       let mfaPayload: MFATokenPayload;
       try {
         mfaPayload = await ts.verifyMFAToken(mfaToken);
-        console.log('mfaPayload:', mfaPayload);
+        log.debug('mfaPayload:', mfaPayload);
       } catch (e) {
         if (e instanceof InvalidTokenError) {
           res.status(401).send({ error: 'Invalid MFA auth token' });
           return;
         } else {
-          console.error(e);
+          log.error(e);
           res.status(500).send({ error: 'Internal Server Error' });
           return;
         }
@@ -348,21 +349,21 @@ export class AuthController {
         if (e instanceof MFAError) {
           switch (e.type) {
             case MFAErrorType.INCORRECT_CODE:
-              console.log('incorrect code');
+              log.debug('incorrect code');
               res.status(400).send({ error: 'Incorrect MFA Code' });
               break;
             case MFAErrorType.MFA_ALREADY_CONFIRMED:
-              console.log('mfa already confirmed');
+              log.debug('mfa already confirmed');
               res.status(400).send({ error: 'MFA already confirmed' });
               break;
             case MFAErrorType.MFA_NOT_CONFIRMED:
               // this should never happen
-              console.error('mfa not confirmed in confirm mfa');
+              log.error('mfa not confirmed in confirm mfa');
               res.status(500).send({ error: 'Internal Server Error' });
               break;
           }
         } else {
-          console.error(e);
+          log.error(e);
           res
             .status(400)
             // user does not exist but don't tell client that
@@ -371,7 +372,7 @@ export class AuthController {
       }
       return;
     } catch (e) {
-      console.error(e);
+      log.error(e);
       res.status(500).send({ error: 'Internal Server Error' });
     }
   }
@@ -400,13 +401,13 @@ export class AuthController {
       let mfaPayload: MFATokenPayload;
       try {
         mfaPayload = await ts.verifyMFAToken(mfaToken);
-        console.log('mfaPayload:', mfaPayload);
+        log.debug('mfaPayload:', mfaPayload);
       } catch (e) {
         if (e instanceof InvalidTokenError) {
           res.status(401).send({ error: 'Invalid MFA auth token' });
           return;
         } else {
-          console.error(e);
+          log.error(e);
           res.status(500).send({ error: 'Internal Server Error' });
           return;
         }
@@ -428,7 +429,7 @@ export class AuthController {
             mfaPayload.formattedKey,
           );
           this.writeMFACookie(res, newMfaToken);
-          console.log('incorrect code');
+          log.debug('incorrect code');
 
           res.status(400).send({ error: 'Incorrect MFA Code' });
           return;
@@ -452,28 +453,28 @@ export class AuthController {
           this.writeMFACookie(res, newMfaToken);
           switch (e.type) {
             case MFAErrorType.INCORRECT_CODE:
-              console.log('incorrect code');
+              log.debug('incorrect code');
 
               res.status(400).send({ error: 'Incorrect MFA Code' });
               break;
             case MFAErrorType.MFA_ALREADY_CONFIRMED:
               // this should never happen
-              console.error('mfa already confirmed in verify mfa');
+              log.error('mfa already confirmed in verify mfa');
               res.status(500).send({ error: 'Internal Server Error' });
               break;
             case MFAErrorType.MFA_NOT_CONFIRMED:
-              console.log('mfa not confirmed');
+              log.debug('mfa not confirmed');
               res.status(400).send({ error: 'MFA not confirmed' });
               break;
           }
         } else {
-          console.error(e);
+          log.error(e);
           res.status(500).send({ error: 'Internal Server Error' });
         }
         return;
       }
     } catch (e) {
-      console.error(e);
+      log.error(e);
       res.status(500).send({ error: 'Internal server error' });
     }
   }

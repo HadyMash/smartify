@@ -3,6 +3,7 @@ import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import { DatabaseRepository } from '../repo';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { HouseholdDevice } from '../../../schemas/household';
+import { log } from '../../../util/log';
 
 /**
  * Document structure for device information stored in MongoDB
@@ -50,7 +51,7 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
       await this.collection.createIndex({ roomId: 1 });
       await this.collection.createIndex({ householdId: 1, roomId: 1 });
     } catch (e) {
-      console.error('Error configuring device info repo:', e);
+      log.fatal('Error configuring device info repo:', e);
       throw e;
     }
   }

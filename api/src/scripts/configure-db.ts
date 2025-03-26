@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 // eslint-disable-next-line no-restricted-imports
 import { DatabaseService } from '../services/db/db';
+import { log } from '../util/log';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ async function run() {
 
 run()
   .then(() => {
-    console.log('Database collections configured');
+    log.info('Database collections configured');
     process.exit(0);
   })
   .catch((e) => {

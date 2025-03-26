@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { log } from './log';
 
 /**
  * Try's to run a controller, and sends a 500 response if it fails.
@@ -18,8 +19,8 @@ export function tryAPIController(
     if (customErrorHandling && customErrorHandling(err)) {
       return;
     }
-    console.log('err caught in tryAPIController');
-    console.error(err);
+    log.error('err caught in tryAPIController');
+    log.error(err);
     res.status(500).send({ error: 'Internal Server Error' });
   };
   try {

@@ -9,6 +9,7 @@ import { bigIntToHexMiddleware } from './middleware/bigint';
 // eslint-disable-next-line no-restricted-imports
 import { DatabaseService } from './services/db/db';
 import { webhookRouter } from './routes/webhook';
+import { log } from './util/log';
 
 dotenv.config();
 
@@ -44,10 +45,10 @@ async function start() {
     db.srpSessionRepository.loadSessionsToCache(),
   ]);
 
-  console.log('Blacklists loaded');
+  log.info('Blacklists loaded');
 
   app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    log.info(`Server running on port ${port}`);
   });
 }
 

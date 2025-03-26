@@ -1,6 +1,7 @@
 import { DeviceSource } from '../schemas/devices';
 import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
+import { log } from './log';
 
 /**
  * Get a device adapter based on the source
@@ -12,6 +13,8 @@ export function getAdapter(source: DeviceSource): BaseIotAdapter {
     case 'acme':
       return new AcmeIoTAdapter();
     default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      log.error(`Unsupported device source: ${source}`);
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unsupported device source: ${source}`);
   }

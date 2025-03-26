@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { log } from '../util/log';
 
 /**
  * Generates a cryptographically secure random 256-bit key for JWE encryption
@@ -24,7 +25,7 @@ export function generateJweEncryptionKey(): string {
 // When this script is run directly, generate and log a new key
 if (require.main === module) {
   const encryptionKey = generateJweEncryptionKey();
-  console.log('Generated 256-bit JWE Encryption Key:');
-  console.log(encryptionKey);
-  console.log('\nStore this key securely in your environment variables.');
+  log.info('Generated 256-bit JWE Encryption Key:');
+  log.info(encryptionKey);
+  log.info('\nStore this key securely in your environment variables.');
 }

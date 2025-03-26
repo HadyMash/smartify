@@ -27,6 +27,7 @@ import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { MFAFormattedKey } from '../../schemas/auth/auth';
 import { HouseholdMember } from '../../schemas/household';
+import { log } from '../../util/log';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -297,7 +298,7 @@ export class TokenService {
     try {
       user = userSchema.parse(userDoc);
     } catch (e) {
-      console.log('error parsing user:', e);
+      log.error('error parsing user:', e);
       throw new InvalidUserError();
     }
 
@@ -555,12 +556,12 @@ export class TokenService {
 
     const [refreshToken, accessToken, idToken] = await Promise.all([
       this.generateRefreshToken(refreshTokenPayload, secret).catch((e) => {
-        console.error('error generating refresh token:', e);
+        log.error('error generating refresh token:', e);
         return undefined;
       }),
       this.generateAccessToken(accessTokenPayload, secret),
       this.generateIdToken(idTokenPayload, secret).catch((e) => {
-        console.error('error generating refresh token:', e);
+        log.error('error generating refresh token:', e);
         return undefined;
       }),
     ]);

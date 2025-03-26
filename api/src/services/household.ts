@@ -33,6 +33,7 @@ import { ObjectIdOrString } from '../schemas/obj-id';
 import { getAdapter } from '../util/adapter';
 import { validateRooms } from '../util/household';
 import { DatabaseService } from './db/db';
+import { log } from '../util/log';
 
 export class HouseholdService {
   private readonly db: DatabaseService;
@@ -283,7 +284,7 @@ export class HouseholdService {
     // This executes asynchronously after the current function returns
     setTimeout(() => {
       this.unpairDevicesFromExternalServices(devices).catch((error) => {
-        console.error('Error in scheduled device unpairing:', error);
+        log.error('Error in scheduled device unpairing:', error);
       });
     }, 0);
   }
@@ -321,7 +322,7 @@ export class HouseholdService {
           const adapter = getAdapter(source);
           await adapter.unpairDevices(deviceIds);
         } catch (error) {
-          console.error(`Error unpairing ${source} devices:`, error);
+          log.error(`Error unpairing ${source} devices:`, error);
           errors.push({ source, error });
           // Don't rethrow to allow other sources to complete
         }
@@ -333,7 +334,7 @@ export class HouseholdService {
 
     // Log summary of any errors
     if (errors.length > 0) {
-      console.error(
+      log.error(
         `Failed to unpair devices from ${errors.length} sources during external unpairing`,
         errors.map((e) => e.source),
       );
@@ -381,7 +382,7 @@ export class HouseholdService {
           // Commit only if all devices are unpaired and household is deleted
           return remainingDevices.length === 0 && !householdStillExists;
         } catch (e) {
-          console.error('Error in deleteHousehold validator:', e);
+          log.error('Error in deleteHousehold validator:', e);
           return false;
         }
       },
@@ -596,7 +597,7 @@ export class HouseholdService {
             ownerName: owner?.name,
           };
         } catch (e) {
-          console.error('error getting invite:', e);
+          log.error('error getting invite:', e);
           return null;
         }
       }),
@@ -642,7 +643,7 @@ export class HouseholdService {
       try {
         await this.db.householdRepository.revokeInvite(inviteId);
       } catch (e) {
-        console.error('error removing invite:', e);
+        log.error('error removing invite:', e);
       }
       throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
     }
@@ -664,7 +665,7 @@ export class HouseholdService {
       try {
         await this.db.householdRepository.revokeInvite(inviteId);
       } catch (e) {
-        console.error('error removing invite:', e);
+        log.error('error removing invite:', e);
       }
       throw new AlreadyMemberError();
     }
