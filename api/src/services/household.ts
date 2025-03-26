@@ -1,5 +1,6 @@
 import { Email } from '../schemas/auth/auth';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
+import { Device, DeviceSource } from '../schemas/devices';
 import {
   Household,
   HouseholdMember,
@@ -28,7 +29,8 @@ import {
   DeviceAlreadyPairedError,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
-import { validateRooms } from '../util';
+import { getAdapter } from '../util/adapter';
+import { validateRooms } from '../util/household';
 import { DatabaseService } from './db/db';
 
 export class HouseholdService {
@@ -240,6 +242,44 @@ export class HouseholdService {
     }
   }
 
+  public async unpairAllDevices(householdId: ObjectIdOrString): Promise<void> {
+    await this.db.connect();
+    // get all devices first
+    const devices =
+      await this.db.deviceInfoRepository.getHouseholdDevices(householdId);
+
+    // remove them from the household first
+    await this.db.deviceInfoRepository.removeDevicesFromHousehold(
+      householdId,
+      devices.map((d) => d._id),
+    );
+
+    try {
+      // unpair them from the source
+      const deviceSourceMap = new Map<DeviceSource, Device[]>();
+
+      for (const device of devices) {
+        if (!device.source) {
+          continue;
+        }
+        if (!deviceSourceMap.has(device.source)) {
+          deviceSourceMap.set(device.source, []);
+        }
+        deviceSourceMap.get(device.source)?.push({
+          ...device,
+          id: device._id,
+        });
+      }
+
+      for (const [source, devices] of deviceSourceMap) {
+        const adapter = getAdapter(source);
+        await adapter.unpairDevices(devices);
+      }
+    } catch (e) {
+      console.error('error unpairing devices:', e);
+    }
+  }
+
   /**
    * Deletes a household.
    * @param id - The ID of the household to delete.
@@ -269,6 +309,12 @@ export class HouseholdService {
 
     // verify rooms valid
     if (!validateRooms(rooms)) {
+      throw new InvalidRoomsError();
+    }
+
+    // check if there are any devices not reassigned to a room
+    const devices = await this.db.deviceInfoRepository.getHouseholdDevices(id);
+    if (!devices.every((d) => rooms.some((r) => r.id === d.roomId))) {
       throw new InvalidRoomsError();
     }
 
@@ -626,5 +672,10 @@ export class HouseholdService {
       roomId,
       deviceIds,
     );
+  }
+
+  public async getHouseholdDevices(householdId: ObjectIdOrString) {
+    await this.db.connect();
+    return this.db.deviceInfoRepository.getHouseholdDevices(householdId);
   }
 }

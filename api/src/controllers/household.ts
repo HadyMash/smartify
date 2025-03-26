@@ -31,7 +31,8 @@ import {
   objectIdStringSchema,
 } from '../schemas/obj-id';
 import { AuthenticatedRequest } from '../schemas/auth/auth';
-import { tryAPIController, validateSchema } from '../util';
+import { tryAPIController } from '../util/controller';
+import { validateSchema } from '../util/schema';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
@@ -45,6 +46,7 @@ import {
   InvalidAPIKeyError,
   MissingAPIKeyError,
 } from '../schemas/devices';
+import { getAdapter } from '../util/adapter';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -64,7 +66,6 @@ export class HouseholdController {
         owner: req.user!._id,
         members: [],
         invites: [],
-        devices: [],
       };
 
       const d = validateSchema(res, householdSchema, householdData);
@@ -413,6 +414,9 @@ export class HouseholdController {
           res.status(403).send({ error: 'Permission denied' });
           return;
         }
+
+        // unpair all devices first
+        await hs.unpairAllDevices(householdId);
 
         await hs.deleteHousehold(householdId);
 
@@ -863,13 +867,6 @@ export class HouseholdController {
           devicesBySource.get(device.source)!.push(device.id);
         }
 
-        function getAdapter(source: DeviceSource): BaseIotAdapter {
-          switch (source) {
-            case 'acme':
-              return new AcmeIoTAdapter();
-          }
-        }
-
         const mappedDevices: HouseholdDevice[] = [];
         for (const source of devicesBySource.keys()) {
           const adapter: BaseIotAdapter = getAdapter(source);
@@ -897,17 +894,17 @@ export class HouseholdController {
 
         // pair with the household
         const hs = new HouseholdService();
-        const result = await hs.pairDevicesToHousehold(
-          householdId,
-          mappedDevices,
-        );
+        await hs.pairDevicesToHousehold(householdId, mappedDevices);
 
-        if (!result) {
+        // get updated household devices
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        if (!devices) {
           res.status(500).send({ error: 'Failed to pair devices' });
           return;
         }
 
-        res.status(200).send(await hs.transformToUIHousehold(result, true));
+        res.status(200).send({ devices: devices });
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
@@ -991,18 +988,13 @@ export class HouseholdController {
 
         // get household
         const hs = new HouseholdService();
-        const household = await hs.getHousehold(householdId);
-
-        if (!household) {
-          res.status(404).send({ error: 'Household not found' });
-          return;
-        }
+        const householdDevices = await hs.getHouseholdDevices(householdId);
 
         const devicesBySource = new Map<DeviceSource, string[]>();
 
         for (const deviceId of data.devices) {
-          const source = household.devices.find(
-            (d) => d.id === deviceId,
+          const source = householdDevices.find(
+            (d) => d._id === deviceId,
           )?.source;
 
           if (!source) {
@@ -1023,21 +1015,14 @@ export class HouseholdController {
         }
 
         // remove devices from household first
-        const updatedHousehold = await hs.unpairDeviceFromHousehold(
-          householdId,
-          data.devices,
-        );
-
-        if (!updatedHousehold) {
-          res.status(500).send({ error: 'Failed to unpair devices' });
-          return;
-        }
+        await hs.unpairDeviceFromHousehold(householdId, data.devices);
 
         // return, then unpair from the adapter
         try {
+          // get updated devices
           res
             .status(200)
-            .send(await hs.transformToUIHousehold(updatedHousehold, true));
+            .send({ devices: await hs.getHouseholdDevices(householdId) });
         } catch (e) {
           console.error('Failed to map househld:', e);
           res
@@ -1139,15 +1124,12 @@ export class HouseholdController {
         const hs = new HouseholdService();
 
         // update the rooms
-        const updatedHousehold = await hs.changeDeviceRooms(
-          householdId,
-          data.devices,
-        );
+        await hs.changeDeviceRooms(householdId, data.deviceIds, data.roomId);
 
-        if (!updatedHousehold) {
-          res.status(500).send({ error: 'Failed to update rooms' });
-          return;
-        }
+        // return updated devices
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        res.status(200).send({ devices });
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {

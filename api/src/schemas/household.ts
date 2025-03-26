@@ -3,7 +3,7 @@ import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
 import { deviceSchema, deviceSourceSchema } from './devices';
-import { validateRooms } from '../util';
+import { validateRooms } from '../util/household';
 
 /**
  * Coordinates using longitude and latitude
@@ -351,12 +351,8 @@ export const unpairDevicesSchema = z.object({
 });
 
 export const changeDeviceRoomsData = z.object({
-  devices: z.array(
-    z.object({
-      id: z.string().nonempty(),
-      roomId: z.string().nonempty(),
-    }),
-  ),
+  deviceIds: z.array(z.string().nonempty()),
+  roomId: z.string().nonempty(),
 });
 
 /* Error types */
