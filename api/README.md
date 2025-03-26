@@ -25,11 +25,13 @@ To run the API service, run `npm run dev` in the `api` directory.
 
 Below are scripts used to generate certain things needed to run
 
+- `npm run script:configure-db`: Configures the MongoDB db, collections, and indices
+- `npm run script:generate-jew-key`: Generates a valid JWE encryption key to be put in the .env file
 - `npm run script:generate-icons`: Creates an icons directory and populates it with flutter's material icons (no variations)
 - `npm run script:generate-embeddings`: Generate vector embeddings for the icons.
 - `npm run script:load-icon-db`: Populate the icon embeddings db
 
-Please note you shouldn't have to run the first two as the embeddings are already saved, you simply have to copy the embeddings file into the `src/scripts/ai` directory and run the load icons db script.
+Please note you shouldn't have to run the generate icons/embeddings scripts as the embeddings are already saved, you simply have to copy the embeddings file into the `src/scripts/ai` directory and run the load icons db script.
 
 # Conventions
 

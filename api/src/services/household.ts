@@ -1,5 +1,6 @@
 import { Email } from '../schemas/auth/auth';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
+import { DeviceNotFoundError } from '../schemas/devices';
 import {
   Household,
   HouseholdMember,
@@ -24,6 +25,8 @@ import {
   UIInvitedMember,
   InvalidRoomsError,
   UIHouseholdInvite,
+  HouseholdDevice,
+  DeviceAlreadyPairedError,
 } from '../schemas/household';
 import { ObjectIdOrString } from '../schemas/obj-id';
 import { validateRooms } from '../util';
@@ -78,13 +81,32 @@ export class HouseholdService {
   ): Promise<UIHousehold | null> {
     await this.db.connect();
     const household = await this.db.householdRepository.getHouseholdById(id);
+
+    return await this.transformToUIHousehold(household, getMembers);
+  }
+
+  /**
+   * Transform a household into a UI household. It parses the schema before
+   * returning to ensure data is valid and sanitised.
+   * @param household - The household to trnsform
+   * @param getMembers - Whether to get the members and invites of the household
+   * @returns The UI Household if successful
+   */
+  public async transformToUIHousehold(
+    household: Household | undefined | null,
+    getMembers: boolean,
+  ) {
     if (!household) {
       return null;
     }
 
     if (!getMembers) {
       // return household without members
-      return uiHouseholdSchema.parse(household);
+      return uiHouseholdSchema.parse({
+        ...household,
+        members: [],
+        invites: [],
+      });
     }
 
     // get members and invites
@@ -486,6 +508,122 @@ export class HouseholdService {
   }
 
   public async getHouseholdByDevice(deviceId: string) {
+    await this.db.connect();
     return await this.db.householdRepository.getHouseholdByDevice(deviceId);
+  }
+
+  public async getHouseholdsByDevices(
+    deviceIds: string[],
+  ): Promise<Household[]> {
+    await this.db.connect();
+    return await this.db.householdRepository.getHouseholdsByDevices(deviceIds);
+  }
+
+  public async pairDevicesToHousehold(
+    householdId: ObjectIdOrString,
+    devices: HouseholdDevice[],
+  ): Promise<Household | null> {
+    const household = await this.getHousehold(householdId);
+    // check if the household exists
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+    // check if the device is already paired with the household
+    if (household.devices.find((d) => devices.some((dev) => dev.id === d.id))) {
+      return household;
+    }
+
+    // check if it's paired with other households
+    const otherHouseholds: Household[] = await this.getHouseholdsByDevices(
+      devices.map((d) => d.id),
+    );
+
+    // filter out already paired devices
+    const unpairedDevices = devices.filter(
+      (d) =>
+        !otherHouseholds.find((h) => h.devices.some((dev) => dev.id === d.id)),
+    );
+
+    if (unpairedDevices.length === 0) {
+      throw new DeviceAlreadyPairedError();
+    }
+
+    await this.db.connect();
+    const result = await this.db.householdRepository.addDevicesToHousehold(
+      householdId,
+      devices,
+    );
+
+    if (!result) {
+      return null;
+    }
+
+    return householdSchema.parse(result);
+  }
+
+  public async unpairDeviceFromHousehold(
+    householdId: ObjectIdOrString,
+    deviceIds: string[],
+  ): Promise<Household | undefined> {
+    const household = await this.getHousehold(householdId);
+    // check if the household exists
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    // check if the device is paired with the household
+    if (!household.devices.find((d) => deviceIds.some((dev) => dev === d.id))) {
+      return household;
+    }
+    await this.db.connect();
+    const result = await this.db.householdRepository.removeDeviceFromHousehold(
+      householdId,
+      deviceIds,
+    );
+
+    if (!result) {
+      return;
+    }
+    return householdSchema.parse(result);
+  }
+
+  /**
+   * Changes the rooms of devices in a household.
+   * @param householdId - the household id
+   * @param devices - the devices to move
+   * @returns the updated household
+   */
+  public async changeDeviceRooms(
+    householdId: ObjectIdOrString,
+    devices: { id: string; roomId: string }[],
+  ) {
+    await this.db.connect();
+
+    const household = await this.getHousehold(householdId);
+
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    // check the devices are all in the household
+    for (const d of devices) {
+      if (!household.devices.find((hd) => hd.id === d.id)) {
+        throw new DeviceNotFoundError(d.id);
+      }
+    }
+
+    // check the devices are being assigned to rooms that exist
+    const rooms = household.rooms.map((r) => r.id);
+    if (devices.some((d) => !rooms.includes(d.roomId))) {
+      throw new InvalidRoomsError();
+    }
+
+    // update the devices
+    const result = await this.db.householdRepository.changeDeviceRooms(
+      householdId,
+      devices,
+    );
+
+    return householdSchema.parse(result);
   }
 }

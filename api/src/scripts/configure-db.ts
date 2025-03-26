@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 // eslint-disable-next-line no-restricted-imports
-import { DatabaseService } from './services/db/db';
+import { DatabaseService } from '../services/db/db';
+
 dotenv.config();
 
 async function run() {
