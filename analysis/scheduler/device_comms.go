@@ -87,3 +87,4 @@ func FetchDeviceActionFromDB(deviceID string) func() {
 		log.Printf("[Device %s] Executed DB-defined action '%s' via mock API. Status: %s", result.DeviceID, result.Action, resp.Status)
 	}
 }
+//
