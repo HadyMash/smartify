@@ -10,6 +10,27 @@ You need to have Node.js installed. It's recommended you have the latest LTS ver
 
 To run the API service, run `npm run dev` in the `api` directory.
 
+## Other scripts
+
+- `npm run build`: Build the project into the `/dist` directory
+- `npm run start`: Run the build
+- `npm run tests`: Run tests
+- `npm run test:watch`: watch for changes and run tests according to what's changed
+- `npm run format`: Format the code
+- `npm run format:check`: Check if formatting would result in any changes
+- `npm run lint`: Run linting
+- `npm run lint:fix`: Fix any linting errors which can be automatically fixed
+
+### Scripts
+
+Below are scripts used to generate certain things needed to run
+
+- `npm run script:generate-icons`: Creates an icons directory and populates it with flutter's material icons (no variations)
+- `npm run script:generate-embeddings`: Generate vector embeddings for the icons.
+- `npm run script:load-icon-db`: Populate the icon embeddings db
+
+Please note you shouldn't have to run the first two as the embeddings are already saved, you simply have to copy the embeddings file into the `src/scripts/ai` directory and run the load icons db script.
+
 # Conventions
 
 All code should be written in TypeScript and be well documented using JSDoc comments. You should also comment your code as needed. Don't write unnecessary comments, and don't write comments that just repeat the code. Your comments should explain the logic behind the code or why you wrote something or do something, so it's easy to follow and understand your reasoning.
