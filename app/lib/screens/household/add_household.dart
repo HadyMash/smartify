@@ -24,8 +24,7 @@ class _AddHouseholdScreenState extends State<AddHouseholdScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ConfigureFloorsScreen(
-          householdName: householdName, // Pass the household name
-        ),
+          householdName: householdName),
       ),
     );
   }

@@ -9,12 +9,18 @@ class ConfigureRoomScreen extends StatefulWidget {
   final int floorCount;
   final int finalOffset;
   final String householdName;
+  final List<HouseholdRoom>? rooms;
+  final bool isEditing; // Flag to differentiate edit vs create mode
+  final String? householdId; // Optional household ID for editing
 
   const ConfigureRoomScreen({
     super.key,
     required this.floorCount,
     required this.finalOffset,
     required this.householdName,
+    this.rooms,
+    this.isEditing = false, // Default to false (create mode)
+    this.householdId, // Nullable, required only in edit mode
   });
 
   @override
@@ -31,25 +37,50 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
   int _selectedFloorIndex = 0;
   late Map<int, List<HouseholdRoom>> floorRooms;
   bool _isSidebarOpen = false;
-  bool _isLoading = false; // Track loading state
-  HouseholdService? _householdService; // HouseholdService instance
+  bool _isLoading = false;
+  HouseholdService? _householdService;
 
   @override
   void initState() {
     super.initState();
-    floorRooms = {
-      for (int i = 0; i < widget.floorCount; i++)
-        i: [
-          HouseholdRoom(
-            id: 'room_${i}_0',
-            name: "Main Room",
-            type: "living",
-            floor: i,
-            connectedRooms: const RoomConnections(), // Ensure this uses the imported RoomConnections from household.dart
-          ),
-        ]
-    };
-    _initializeHouseholdService(); // Initialize HouseholdService
+    _initializeFloorRooms();
+    _initializeHouseholdService();
+  }
+
+  void _initializeFloorRooms() {
+    if (widget.rooms != null && widget.rooms!.isNotEmpty) {
+      // If rooms are provided, group them by floor
+      floorRooms = {};
+      for (int i = 0; i < widget.floorCount; i++) {
+        floorRooms[i] = widget.rooms!.where((room) => room.floor == i).toList();
+        // If no rooms exist for this floor, add a default "Main Room"
+        if (floorRooms[i]!.isEmpty) {
+          floorRooms[i] = [
+            HouseholdRoom(
+              id: 'room_${i}_0',
+              name: "Main Room",
+              type: "living",
+              floor: i,
+              connectedRooms: const RoomConnections(),
+            ),
+          ];
+        }
+      }
+    } else {
+      // Default behavior: one "Main Room" per floor
+      floorRooms = {
+        for (int i = 0; i < widget.floorCount; i++)
+          i: [
+            HouseholdRoom(
+              id: 'room_${i}_0',
+              name: "Main Room",
+              type: "living",
+              floor: i,
+              connectedRooms: const RoomConnections(),
+            ),
+          ]
+      };
+    }
   }
 
   Future<void> _initializeHouseholdService() async {
@@ -73,139 +104,136 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
     return floorNames;
   }
 
-void _showAddRoomDialog(String connectingRoomId, String connectingSide) {
-  String roomName = "";
-  String roomType = "kitchen"; // Default to a valid backend value
-  List<String> roomTypes = [
-    "living",
-    "kitchen",
-    "bathroom",
-    "bedroom",
-    "other"
-  ];
+  void _showAddRoomDialog(String connectingRoomId, String connectingSide) {
+    String roomName = "";
+    String roomType = "kitchen"; // Default to a valid backend value
+    List<String> roomTypes = [
+      "living",
+      "kitchen",
+      "bathroom",
+      "bedroom",
+      "other"
+    ];
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("Add Room"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            decoration: InputDecoration(
-              labelText: "Room Name",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Add Room"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                labelText: "Room Name",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onChanged: (value) => roomName = value,
             ),
-            onChanged: (value) => roomName = value,
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: "Type",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              value: roomType,
+              items: roomTypes.map((type) {
+                return DropdownMenuItem(value: type, child: Text(type));
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  roomType = value;
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              labelText: "Type",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            value: roomType,
-            items: roomTypes.map((type) {
-              return DropdownMenuItem(value: type, child: Text(type));
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                roomType = value;
+          ElevatedButton(
+            onPressed: () {
+              if (roomName.isNotEmpty) {
+                _addRoom(connectingRoomId, connectingSide, roomName, roomType);
+                Navigator.pop(context);
               }
             },
+            child: const Text("Add Room"),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
+    );
+  }
+
+  void _showEditRoomDialog(int index) {
+    TextEditingController roomNameController =
+        TextEditingController(text: floorRooms[_selectedFloorIndex]![index].name);
+    String roomType = floorRooms[_selectedFloorIndex]![index].type;
+    List<String> roomTypes = [
+      "living",
+      "kitchen",
+      "bathroom",
+      "bedroom",
+      "other"
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Change Room Details"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: roomNameController,
+              decoration: InputDecoration(
+                labelText: "Room Name",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: "Type",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              value: roomType,
+              items: roomTypes.map((type) {
+                return DropdownMenuItem(value: type, child: Text(type));
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  roomType = value;
+                }
+              },
+            ),
+          ],
         ),
-        ElevatedButton(
-          onPressed: () {
-            if (roomName.isNotEmpty) {
-              _addRoom(connectingRoomId, connectingSide, roomName, roomType);
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                floorRooms[_selectedFloorIndex]![index] = HouseholdRoom(
+                  id: floorRooms[_selectedFloorIndex]![index].id,
+                  name: roomNameController.text,
+                  type: roomType,
+                  floor: floorRooms[_selectedFloorIndex]![index].floor,
+                  connectedRooms: floorRooms[_selectedFloorIndex]![index].connectedRooms,
+                );
+              });
               Navigator.pop(context);
-            }
-          },
-          child: const Text("Add Room"),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showEditRoomDialog(int index) {
-  TextEditingController roomNameController =
-      TextEditingController(text: floorRooms[_selectedFloorIndex]![index].name);
-  String roomType = floorRooms[_selectedFloorIndex]![index].type;
-  List<String> roomTypes = [
-    "living",
-    "kitchen",
-    "bathroom",
-    "bedroom",
-    "other"
-  ];
-
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("Change Room Details"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: roomNameController,
-            decoration: InputDecoration(
-              labelText: "Room Name",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              labelText: "Type",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            value: roomType,
-            items: roomTypes.map((type) {
-              return DropdownMenuItem(value: type, child: Text(type));
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                roomType = value;
-              }
             },
+            child: const Text("Save Changes"),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              floorRooms[_selectedFloorIndex]![index] = HouseholdRoom(
-                id: floorRooms[_selectedFloorIndex]![index].id,
-                name: roomNameController.text,
-                type: roomType,
-                floor: floorRooms[_selectedFloorIndex]![index].floor,
-                connectedRooms: floorRooms[_selectedFloorIndex]![index].connectedRooms,
-              );
-            });
-            Navigator.pop(context);
-          },
-          child: const Text("Save Changes"),
-        ),
-      ],
-    ),
-  );
-}
-
-
-
+    );
+  }
 
   void _addRoom(String connectingRoomId, String connectingSide, String roomName, String roomType) {
     setState(() {
@@ -290,7 +318,7 @@ void _showEditRoomDialog(int index) {
   }
 
   Map<String, double> _calculateRoomPosition(HouseholdRoom room, List<HouseholdRoom> rooms) {
-    if (room.name == "Main Room") {
+    if (room.name == "Main Room" && rooms.indexOf(room) == 0) {
       return {"dx": 0.0, "dy": 0.0};
     }
 
@@ -335,30 +363,63 @@ void _showEditRoomDialog(int index) {
 
     setState(() => _isLoading = true);
 
-    final rooms = floorRooms.values.expand((r) => r).toList();
-    final household = await _householdService!.createHousehold(
-      widget.householdName,
-      widget.floorCount,
-      rooms,
-      widget.finalOffset,
-    );
+    try {
+      final rooms = floorRooms.values.expand((r) => r).toList();
 
-    setState(() => _isLoading = false);
+      if (widget.isEditing) {
+        // Edit mode: Update rooms only
+        if (widget.householdId == null) {
+          throw Exception("Household ID is required in edit mode");
+        }
+        final updated = await _householdService!.updateRooms(
+          widget.householdId!,
+          rooms,
+        );
 
-    if (household != null) {
+        setState(() => _isLoading = false);
+
+        if (updated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Rooms updated successfully!")),
+          );
+          Navigator.pop(context); // Return to HouseholdScreen
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to update rooms")),
+          );
+        }
+      } else {
+        // Create mode: Create new household
+        final household = await _householdService!.createHousehold(
+          widget.householdName,
+          widget.floorCount,
+          rooms,
+          widget.finalOffset,
+        );
+
+        setState(() => _isLoading = false);
+
+        if (household != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Household '${household.name}' created successfully!")),
+          );
+          final authService = Provider.of<AuthService>(context, listen: false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DashboardScreen(authService: authService),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to create household")),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Household '${household.name}' created successfully!")),
-      );
-      final authService = Provider.of<AuthService>(context, listen: false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DashboardScreen(authService: authService),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to create household")),
+        SnackBar(content: Text("Error: $e")),
       );
     }
   }
@@ -443,7 +504,7 @@ void _showEditRoomDialog(int index) {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: _isLoading ? null : _confirmAndCreateHousehold,
-          child: const Text('Confirm'),
+          child: Text(widget.isEditing ? 'Save' : 'Confirm'),
         ),
       ),
     );
@@ -541,8 +602,7 @@ class RoomBox extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(room.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(room.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                   Text(room.type, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
@@ -626,11 +686,7 @@ class AddButton extends StatelessWidget {
   }
 }
 
-// Removed duplicate HouseholdRoom class. Use the one from household.dart.
-
-// Removed duplicate RoomConnections class. Use the one from household.dart.
-
-// Placeholder classes for Household (adjust as per your actual implementation)
+// Placeholder classes (assuming these are defined in services/household.dart)
 class Household {
   final String id;
   final String name;
@@ -694,3 +750,4 @@ class HouseholdInvite {
     required this.senderName,
   });
 }
+

@@ -1,162 +1,3 @@
-// import 'package:flutter/cupertino.dart';
-// import 'package:flutter/material.dart';
-// import 'package:smartify/screens/household/configure_room.dart'; // Ensure this import is correct
-
-// class ConfigureFloorsScreen extends StatefulWidget {
-//   const ConfigureFloorsScreen({super.key});
-
-//   @override
-//   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
-// }
-
-// class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen> {
-//   int _selectedFloorIndex = 2; // G floor is selected by default
-//   final List<String> _floors = ['L2', 'L1', 'G', 'B1', 'B2'];
-
-//   void _incrementFloors() {
-//     setState(() {
-//       int gIndex = _floors.indexOf('G');
-
-//       if (_selectedFloorIndex <= gIndex) {
-//         // If at or above G, add more L floors at the top
-//         int newLNumber = (_floors.first.startsWith('L'))
-//             ? int.tryParse(_floors.first.substring(1)) ?? 2
-//             : 0;
-//         _floors.insert(0, 'L${newLNumber + 1}');
-//         _selectedFloorIndex++;
-//       } else {
-//         // If below G (Basements), add more B floors at the bottom
-//         int newBNumber = (_floors.last.startsWith('B'))
-//             ? int.tryParse(_floors.last.substring(1)) ?? 2
-//             : 0;
-//         _floors.add('B${newBNumber + 1}');
-//       }
-//     });
-//   }
-
-//   void _decrementFloors() {
-//     setState(() {
-//       int gIndex = _floors.indexOf('G');
-
-//       if (_selectedFloorIndex <= gIndex) {
-//         // If at or above G, remove the first L floor
-//         if (_floors.first.startsWith('L')) {
-//           _floors.removeAt(0);
-//           _selectedFloorIndex =
-//               (_selectedFloorIndex > 0) ? _selectedFloorIndex - 1 : 0;
-//         }
-//       } else {
-//         // If below G (Basements), remove the last B floor
-//         if (_floors.last.startsWith('B')) {
-//           _floors.removeLast();
-//           _selectedFloorIndex =
-//               (_selectedFloorIndex > gIndex) ? _selectedFloorIndex - 1 : gIndex;
-//         }
-//       }
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.textTheme;
-
-//     return Scaffold(
-//       body: SafeArea(
-//         child: Padding(
-//           padding: const EdgeInsets.all(24.0),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Text(
-//                 'Configure Floors',
-//                 style: textTheme.displayMedium,
-//               ),
-//               const SizedBox(height: 40),
-//               Expanded(
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: [
-//                     Expanded(
-//                       child: CupertinoPicker(
-//                         itemExtent: 50.0,
-//                         scrollController: FixedExtentScrollController(
-//                             initialItem: _selectedFloorIndex),
-//                         onSelectedItemChanged: (int index) {
-//                           setState(() {
-//                             _selectedFloorIndex = index;
-//                           });
-//                         },
-//                         children: _floors
-//                             .map((floor) => Center(
-//                                   child: Text(
-//                                     floor,
-//                                     style: textTheme.bodyLarge,
-//                                   ),
-//                                 ))
-//                             .toList(),
-//                       ),
-//                     ),
-//                     const SizedBox(width: 24),
-//                     Column(
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       children: [
-//                         IconButton(
-//                           onPressed: _incrementFloors,
-//                           icon: const Icon(Icons.add),
-//                           style: ButtonStyle(
-//                             backgroundColor: WidgetStateProperty.all(
-//                                 theme.colorScheme.surface),
-//                             padding: WidgetStateProperty.all(
-//                                 const EdgeInsets.all(12)),
-//                           ),
-//                         ),
-//                         Text(
-//                           _floors.length.toString(),
-//                           style: textTheme.bodyLarge,
-//                         ),
-//                         IconButton(
-//                           onPressed: _decrementFloors,
-//                           icon: const Icon(Icons.remove),
-//                           style: ButtonStyle(
-//                             backgroundColor: WidgetStateProperty.all(
-//                                 theme.colorScheme.surface),
-//                             padding: WidgetStateProperty.all(
-//                                 const EdgeInsets.all(12)),
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               const SizedBox(height: 24),
-//               ElevatedButton(
-//                 onPressed: () {
-//                   Navigator.push(
-//                     context,
-//                     MaterialPageRoute(
-//                       builder: (context) => const ConfigureRoomScreen(),
-//                       // ConfigureRoomScreen(floors: _floors),
-//                     ),
-//                   );
-//                 },
-//                 child: Text(
-//                   'Next',
-//                   style: textTheme.bodyLarge?.copyWith(
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:math';
 import 'dart:ui';
 
@@ -164,9 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:smartify/screens/household/configure_room.dart';
 
 class ConfigureFloorsScreen extends StatefulWidget {
-  final String householdName; // Add householdName as a parameter
+  final String householdName;
+  final int? floorCount; // Nullable, defaults to 1 if null
+  final int? finalOffset; // Nullable, defaults to 0 if null
 
-  const ConfigureFloorsScreen({super.key, required this.householdName});
+  const ConfigureFloorsScreen({
+    super.key,
+    required this.householdName,
+    this.floorCount,
+    this.finalOffset,
+  });
 
   @override
   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
@@ -177,9 +25,7 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   static const double minSizeMultiplier = 0.4;
   static const double maxMomentumDuration = 1.5; // maximum seconds for momentum
   static const double minMomentumDuration = 0.3; // minimum seconds for momentum
-  static const double velocityMultiplier =
-      0.0008; // adjusts velocity to duration
-
+  static const double velocityMultiplier = 0.0008; // adjusts velocity to duration
   static const double floorHeightMultiplier = 0.35;
 
   late double selectedHeight;
@@ -188,7 +34,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   double? _lastVelocity;
   final Set<int> _selectedFloorIndices = {};
 
-  int numberOfFloors = 2;
+  late int numberOfFloors; // Will be initialized from widget.floorCount
+  late int floorOffset; // Will be initialized from widget.finalOffset
 
   final List<_FloorData> _floors = [];
 
@@ -216,6 +63,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   @override
   void initState() {
     super.initState();
+    // Initialize with defaults if null
+    numberOfFloors = widget.floorCount ?? 1;
+    floorOffset = widget.finalOffset ?? 0;
+
     _snapController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -239,7 +90,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     if (_lastVelocity == null) return;
 
     final double progress = _momentumController.value;
-    // Apply easing to the velocity
     final double currentVelocity = _lastVelocity! * (1 - progress);
 
     setState(() {
@@ -247,7 +97,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         item.position += currentVelocity * (1 / 60); // Assuming 60fps
       }
 
-      // Check for new floors needed during momentum scroll
       if (_floors.first.position > 150) {
         _addItemToTop();
       }
@@ -262,55 +111,44 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // set the selected height to 20% of the smallest device axis
     selectedHeight =
         MediaQuery.sizeOf(context).shortestSide * floorHeightMultiplier;
 
     final height = MediaQuery.sizeOf(context).height;
     final numOfFloors = height ~/ (selectedHeight * 0.9);
     _initialiseFloors(numOfFloors, height);
+    _snapToCenter(); // Snap to center based on floorOffset after initialization
   }
 
   void _initialiseFloors(int visibleFloors, double screenHeight) {
     if (_floors.isNotEmpty) return;
-    // get nearest odd number
-    final nearestOdd = visibleFloors.isEven ? visibleFloors + 1 : visibleFloors;
 
-    // make list so that it's -N, -N+1, ..., G, 1, 2, ..., N
+    // Ensure we have at least enough floors to cover the visible area and selected count
+    final nearestOdd = max(
+      visibleFloors.isEven ? visibleFloors + 1 : visibleFloors,
+      numberOfFloors + 2, // Ensure enough floors around the offset
+    );
 
-    // add positive floors
-    _floors.addAll(List.generate(
-      (nearestOdd - 1) ~/ 2,
-      (index) {
-        final int floor = ((nearestOdd - 1) ~/ 2 - index);
-        return _FloorData(
-          floor,
-          (screenHeight / 2) - selectedHeight * floor,
-        );
-      },
-    ));
-    // add ground floor
-    _floors.add(_FloorData(0, screenHeight / 2));
+    // Calculate the range of floors based on floorOffset and numberOfFloors
+    final int highestFloor = floorOffset + numberOfFloors - 1;
+    final int lowestFloor = floorOffset;
 
-    // add basement floors
-    _floors.addAll(List.generate(
-      (nearestOdd - 1) ~/ 2,
-      (index) {
-        final int floor = index + 1;
-        return _FloorData(
-          -floor,
-          (screenHeight / 2) + selectedHeight * (index + 1),
-        );
-      },
-    ));
+    // Generate floors starting from highest to lowest
+    for (int floor = highestFloor + (nearestOdd - numberOfFloors) ~/ 2;
+        floor >= lowestFloor - (nearestOdd - numberOfFloors) ~/ 2;
+        floor--) {
+      _floors.add(_FloorData(
+        floor,
+        screenHeight / 2 + selectedHeight * (floorOffset - floor),
+      ));
+    }
 
-    // Set the middle floor (ground floor) as selected initially
-    // Initialize selected floors: middle floor and (numberOfFloors - 1) above it
+    // Initialize selected floors starting from floorOffset upwards
     _selectedFloorIndices.clear();
-    final middleIndex = (nearestOdd - 1) ~/ 2; // Index of the ground floor
     for (int i = 0; i < numberOfFloors; i++) {
-      if (middleIndex - i >= 0) {
-        _selectedFloorIndices.add(middleIndex - i);
+      final index = _floors.indexWhere((f) => f.floor == floorOffset + i);
+      if (index != -1) {
+        _selectedFloorIndices.add(index);
       }
     }
   }
@@ -320,16 +158,10 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
 
     final screenCenter = MediaQuery.sizeOf(context).height / 2;
 
-    // Find the floor closest to center
-    int closestIndex = 0;
-    double smallestDistance = double.infinity;
-
-    for (int i = 0; i < _floors.length; i++) {
-      final distance = (_floors[i].position - screenCenter).abs();
-      if (distance < smallestDistance) {
-        smallestDistance = distance;
-        closestIndex = i;
-      }
+    // Find the floor that matches floorOffset (or closest to it)
+    int closestIndex = _floors.indexWhere((f) => f.floor == floorOffset);
+    if (closestIndex == -1) {
+      closestIndex = 0; // Fallback to first floor if offset not found
     }
 
     // Update selected floors based on the closest index
@@ -341,7 +173,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
       }
     }
 
-    // Store initial positions using floor number as key instead of floor object
     final initialPositions = {
       for (var floor in _floors) floor.floor: floor.position
     };
@@ -350,7 +181,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     final startingPosition = _floors[closestIndex].position;
     final totalOffset = targetCenter - startingPosition;
 
-    // Create and configure animation
     final Animation<double> animation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -377,22 +207,16 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     _snapController.stop();
     _momentumController.stop();
     setState(() {
-      //_scrollPosition += details.primaryDelta!;
-
       for (var item in _floors) {
         item.position += details.primaryDelta!;
       }
 
-      // check if items need to be added to the top
       if (_floors.first.position > 150) {
         _addItemToTop();
       }
-
-      // check if items need to be added to the bottom
       if (_floors.last.position < MediaQuery.sizeOf(context).height - 200) {
         _addItemToBottom();
       }
-
       _removeOffscreenWidgets();
     });
   }
@@ -414,7 +238,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     final newFloor =
         _FloorData(firstItem.floor + 1, firstItem.position - selectedHeight);
 
-    //_floors.add(newFloor);
     _floors.insert(0, newFloor);
   }
 
@@ -429,17 +252,16 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     final height = MediaQuery.sizeOf(context).height;
 
     void updateSelectedFloors() {
-      // Ensure indices are in order
-      final lowestIndex =
-          _selectedFloorIndices.first; // Get the lowest selected floor index
+      final lowestIndex = _selectedFloorIndices.isNotEmpty
+          ? _selectedFloorIndices.reduce((a, b) => a < b ? a : b)
+          : 0;
 
-      _selectedFloorIndices.clear(); // Reset selected floors
-
+      _selectedFloorIndices.clear();
       for (int i = 0; i < numberOfFloors; i++) {
         if (lowestIndex + i < _floors.length) {
-          _selectedFloorIndices.add(lowestIndex - i);
+          _selectedFloorIndices.add(lowestIndex + i);
         } else {
-          break; // Stop if we reach the end of the list
+          break;
         }
       }
     }
@@ -498,7 +320,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
           color: Theme.of(context).scaffoldBackgroundColor,
           child: Row(
             children: [
-              // Expanded to keep the main content flexible
               Expanded(
                 child: Stack(
                   children: [
@@ -538,7 +359,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
                         ),
                       );
                     }),
-                    // top and bottom gradients
                     Positioned(
                       top: 0,
                       left: 0,
@@ -584,7 +404,6 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
                   ],
                 ),
               ),
-              // Column with buttons on the right side
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
@@ -625,22 +444,19 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: ElevatedButton(
           onPressed: () {
-            // Get the actual floor numbers of selected floors
             final selectedFloors = _selectedFloorIndices
                 .map((index) => _floors[index].floor)
                 .toList();
-
-            // Find the lowest floor number (e.g., -2 for B2, 0 for G, etc.)
-            final floorOffset = selectedFloors.reduce((a, b) => a < b ? a : b);
+            final floorOffset =
+                selectedFloors.reduce((a, b) => a < b ? a : b);
 
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ConfigureRoomScreen(
                   floorCount: numberOfFloors,
-                  finalOffset:
-                      floorOffset, 
-                      householdName: widget.householdName,// Pass the actual floor number (e.g., -2, 0, 1)
+                  finalOffset: floorOffset,
+                  householdName: widget.householdName,
                 ),
               ),
             );
@@ -678,7 +494,6 @@ class _Floor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      //duration: const Duration(milliseconds: 50),
       width: size,
       height: size,
       decoration: BoxDecoration(

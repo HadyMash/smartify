@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/screens/household/household_screen.dart';
 import 'package:smartify/widgets/nav_bar.dart';
 import 'package:smartify/screens/energy/energy_screen.dart'; // Import the EnergyScreen
 // Import the HouseholdScreen
@@ -25,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _screens = [
       const EnergyScreen(),
-      //const HouseholdScreen(),
+      const HouseholdScreen(),
       const DashboardContent(), // Display Dashboard Content first (home)
       SettingsScreen(authService: widget.authService),
       // Energy screen

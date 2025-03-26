@@ -369,7 +369,39 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
           .toList(),
     );
   }
-}
+
+
+    
+
+    Future<bool> updateRooms(String householdId, List<HouseholdRoom> rooms) async {
+    try {
+      final response = await _dio.put(
+        '/households/$householdId/rooms', // Adjust endpoint as per your backend
+        data: {
+          'householdId': householdId,
+          'rooms': rooms.map((room) => room.toMap()).toList(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return true; // Successfully updated
+      }
+      return false; // Unexpected response
+    } on DioError catch (e) {
+      print('Dio Error updating rooms: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        final error = e.response!.data as Map<String, dynamic>;
+        print('error response data: ${e.response!.data}');
+        print('Error updating rooms: ${error['error'] ?? error['error']}');
+        print('Error updating rooms details: ${error['details']}');
+      }
+      return false; // Return false instead of null to indicate failure
+    } catch (e) {
+      print('Error updating rooms: $e');
+      return false;
+    }
+  }
+  }
 
 class HouseholdInfo {
   final String id;
