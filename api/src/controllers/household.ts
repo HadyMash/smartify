@@ -1138,4 +1138,50 @@ export class HouseholdController {
       },
     );
   }
+
+  public static getHouseholdDevices(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        // Check if user has access to this household
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        // Get household devices
+        const hs = new HouseholdService();
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        if (!devices) {
+          res.status(404).send({ error: 'No devices found' });
+          return;
+        }
+
+        res.status(200).send({ devices });
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+        return false;
+      },
+    );
+  }
 }

@@ -69,3 +69,7 @@ householdRouter.delete('/:householdId/unpair', (req, res) =>
 householdRouter.patch('/:householdId/device', (req, res) =>
   HouseholdController.changeDeviceRooms(req, res),
 );
+
+householdRouter.get('/:householdId/devices', (req, res) =>
+  HouseholdController.getHouseholdDevices(req, res),
+);
