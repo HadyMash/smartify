@@ -12,7 +12,6 @@ To run the app, you will need to have the following installed:
 - Node.js
 - Docker
 - Go
-- Python
 - MongoDB
 - Redis
 - LM Studio/VLLM/llama.cpp (or similar)
