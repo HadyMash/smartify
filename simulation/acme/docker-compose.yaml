@@ -1,0 +1,13 @@
+services:
+  node-app:
+    build: .
+    container_name: manufacturer-api-sim
+    ports:
+      - '3001:3001'
+    restart: 'on-failure'
+    working_dir: /app
+    volumes:
+      - ~/.tmp/smartify/manufacturer-api-sim/data:/app/data
+
+volumes:
+  app-data:

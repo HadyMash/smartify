@@ -1,214 +1,115 @@
-import 'dart:io';
+// ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/account/sign_in_screen.dart';
 
-import 'services/mfa.dart';
-import 'widgets/mfa_code.dart';
+// import 'models/mfa.dart';
+// import 'models/user.dart';
+// import 'services/mfa.dart';
+// import 'widgets/mfa_code.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
-
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter App',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
-      ),
-      home: const MFATest(),
-    );
-  }
-}
-
-class MFATest extends StatefulWidget {
-  const MFATest({super.key});
-
-  @override
-  State<MFATest> createState() => _MFATestState();
-}
-
-class _MFATestState extends State<MFATest> {
-  final userIdController = TextEditingController();
-  final totpController = TextEditingController();
-  bool isVerify = false;
-  MFAFormattedKey? mfaSetup;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MFA Test'),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextField(
-                  controller: userIdController,
-                  decoration: const InputDecoration(
-                    labelText: 'User ID',
-                  ),
-                ),
-                TextField(
-                  controller: totpController,
-                  decoration: const InputDecoration(
-                    labelText: 'TOTP',
-                  ),
-                ),
-                // checkbox
-                const Text('Tick for verify, untick for confirm init:'),
-                Checkbox(
-                  value: isVerify,
-                  onChanged: (bool? val) {
-                    setState(() {
-                      isVerify = val ?? false;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (userIdController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('User ID cannot be empty'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    final User user =
-                        User(userIdController.text, 'example@domain.com');
-                    final mfa = MFAService();
-
-                    if (totpController.text.isEmpty) {
-                      try {
-                        final result = await mfa.initMFA(user);
-
-                        print('result: $result');
-
-                        if (result != null) {
-                          setState(() {
-                            mfaSetup = result;
-                          });
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to initialize MFA'),
-                            ),
-                          );
-                        }
-                      } on SocketException {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Error: No internet connection'),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: $e'),
-                            ),
-                          );
-                        }
-                      }
-                    } else {
-                      // either confirm init or verify
-                      try {
-                        var func =
-                            isVerify ? mfa.verifyCode : mfa.confirmInitMFA;
-
-                        final confirmed = await func(user, totpController.text);
-
-                        print('confirmed: $confirmed');
-
-                        if (confirmed) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('code is correct'),
-                              ),
-                            );
-                          }
-                          if (!isVerify) {
-                            setState(() {
-                              isVerify = true;
-                            });
-                          }
-                        } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('code is incorrect'),
-                              ),
-                            );
-                          }
-                        }
-                      } on SocketException {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Error: No internet connection'),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: $e'),
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
-                  child: const Text('Submit'),
-                ),
-                const SizedBox(height: 20),
-                Visibility(
-                  visible: mfaSetup != null,
-                  child: mfaSetup == null
-                      ? const SizedBox()
-                      : MFASetup(
-                          mfaSetup: mfaSetup!,
-                        ),
-                ),
-              ],
-            ),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            height: 38 / 32,
+          ),
+          displayMedium: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            height: 29 / 24,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
+            height: 19 / 16,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.normal,
+            height: 24 / 14,
           ),
         ),
+        colorScheme: ColorScheme(
+          brightness: Brightness.light,
+          primary: Colors.white,
+          onPrimary: Colors.black,
+          secondary: Colors.black,
+          onSecondary: Colors.white,
+          surface: Colors.grey[200]!,
+          onSurface: Colors.black,
+          error: Colors.red,
+          onError: Colors.white,
+        ),
+        scaffoldBackgroundColor: Colors.white,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50),
+            ),
+            elevation: 4,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.black, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.grey, width: 1),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        datePickerTheme: const DatePickerThemeData(
+          backgroundColor: Colors.white,
+          headerBackgroundColor: Colors.black,
+          headerForegroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          dayStyle: TextStyle(color: Colors.black),
+          yearStyle: TextStyle(color: Colors.black),
+          weekdayStyle: TextStyle(color: Colors.black),
+          headerHeadlineStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+          headerHelpStyle: TextStyle(color: Colors.white),
+        ),
       ),
+      home: const SignInScreen(),
     );
   }
 }

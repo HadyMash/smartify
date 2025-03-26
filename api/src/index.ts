@@ -3,6 +3,12 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
+import { householdRouter } from './routes/household';
+import { parseAuth } from './middleware/auth';
+import { bigIntToHexMiddleware } from './middleware/bigint';
+// eslint-disable-next-line no-restricted-imports
+import { DatabaseService } from './services/db/db';
+import { webhookRouter } from './routes/webhook';
 
 dotenv.config();
 
@@ -12,17 +18,38 @@ const port = process.env.PORT ?? 3000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(logMiddleware);
+app.use(parseAuth);
+app.use(bigIntToHexMiddleware);
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.send('Hello World!');
+router.get('/health', (_, res) => {
+  res.send('OK');
 });
 
 router.use('/auth', authRouter);
+router.use('/households', householdRouter);
+router.use('/webhooks', webhookRouter);
 
 app.use('/api', router);
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+async function start() {
+  const db = new DatabaseService();
+
+  await db.connect();
+
+  await Promise.all([
+    db.accessBlacklistRepository.loadBlacklistToCache(),
+    db.mfaBlacklistRepository.loadBlacklistToCache(),
+    db.srpSessionRepository.loadSessionsToCache(),
+  ]);
+
+  console.log('Blacklists loaded');
+
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+start();

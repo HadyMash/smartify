@@ -10,6 +10,27 @@ You need to have Node.js installed. It's recommended you have the latest LTS ver
 
 To run the API service, run `npm run dev` in the `api` directory.
 
+## Other scripts
+
+- `npm run build`: Build the project into the `/dist` directory
+- `npm run start`: Run the build
+- `npm run tests`: Run tests
+- `npm run test:watch`: watch for changes and run tests according to what's changed
+- `npm run format`: Format the code
+- `npm run format:check`: Check if formatting would result in any changes
+- `npm run lint`: Run linting
+- `npm run lint:fix`: Fix any linting errors which can be automatically fixed
+
+### Scripts
+
+Below are scripts used to generate certain things needed to run
+
+- `npm run script:generate-icons`: Creates an icons directory and populates it with flutter's material icons (no variations)
+- `npm run script:generate-embeddings`: Generate vector embeddings for the icons.
+- `npm run script:load-icon-db`: Populate the icon embeddings db
+
+Please note you shouldn't have to run the first two as the embeddings are already saved, you simply have to copy the embeddings file into the `src/scripts/ai` directory and run the load icons db script.
+
 # Conventions
 
 All code should be written in TypeScript and be well documented using JSDoc comments. You should also comment your code as needed. Don't write unnecessary comments, and don't write comments that just repeat the code. Your comments should explain the logic behind the code or why you wrote something or do something, so it's easy to follow and understand your reasoning.
@@ -79,3 +100,33 @@ export type templateType = z.infer<typeof templateSchema>;
 ```
 
 You should also document your schemas and explain what each field is, what it does, what it should be, etc.
+
+# Environment variables
+
+Below are the environment variables
+
+**`PORT`:** The port the Express server will listen to
+
+**`JWT_SECRET`:** The JWT secret used to sign jwt tokens. This is a temporary
+field until rotations are implemented.
+
+**`JWT_ENCRYPTION_KEY`:** The encryption key used to encrypt the JWT tokens. It should be a A256GCM key.
+
+**`AUTH_TOKEN_ACCESS_EXPIRY_SECONDS`:** The time in seconds for the access token expiry (how long it lives). This should be a short duration, typically 30 mins to a few hours.
+
+**`AUTH_TOKEN_REFRESH_EXPIRY_SECONDS`:** The time in seconds for the refresh token expiry (how long it lives). The refresh token is used to refresh/create new access tokens.
+
+**`AUTH_TOKEN_MFA_EXPIRY_SECONDS`:** The time in seconds for the MFA token to expire (how long it lives). This should be a very short duration, typically around 5 minutes.
+
+**`MONGODB_URL`:** The MongoDB connection URL
+
+**`REDIS_URL`:** The Redis cache server URL
+
+**`ACME_API_URL`:** The Acme API URL. This should be the complete endpoint and
+without a trailing slash (e.g https://website.com/api/v3)
+
+**`ACME_API_KEY`:** The Acme API Key
+
+**`INFERENCE_URL`:** The OpenAI like API url. This can be for llamaa.cpp, ollama, vllm, lm studio, etc.
+
+**`INFERENCE_API_KEY`:** The api key for the `INFERENCE_URL`

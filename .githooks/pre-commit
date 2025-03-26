@@ -84,10 +84,10 @@ fi
 # 1. Previously staged, and
 # 2. Modified by eslint, prettier, dart fix, or dart format (based on timestamp)
 for file in $staged_files; do
-  mod_time_before=$(echo -e "\n$mod_times_before" | tr ' ' '\n' | grep "^$file:\n" | cut -d: -f2)
+  mod_time_before=$(echo "$mod_times_before" | tr ' ' '\n' | grep "^$file:" | cut -d: -f2)
   mod_time_after=$(get_mod_time "$file")
 
-  if [ "$mod_time_after" -gt "$mod_time_before" ]; then
+  if [ -n "$mod_time_before" ] && [ -n "$mod_time_after" ] && [ "$mod_time_after" -gt "$mod_time_before" ]; then
     git add "$file"
     echo -e "\n✅ Re-staged modified file: $file\n"
   fi

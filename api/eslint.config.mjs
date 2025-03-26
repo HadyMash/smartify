@@ -6,21 +6,28 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
+    ignores: ['src/schemas/icon.ts'],
+  },
+  {
     files: ['**/*.{js,mjs,cjs,ts}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          paths: [
+          patterns: [
             {
-              name: '*/services/db',
+              group: [
+                '../services/db/**',
+                'src/services/db/**',
+                './services/db/**',
+              ],
               message:
-                'Direct imports from db service are not allowed outside of services directory.',
+                'Direct imports from db services are not allowed outside of the services directory.',
             },
             {
-              name: '*/services/db/*',
+              group: ['src/services/db/repo.ts'],
               message:
-                'Direct imports from db service are not allowed outside of services directory.',
+                'Direct imports from repo.ts are not allowed anywhere except within the db directory.',
             },
           ],
         },
@@ -29,15 +36,32 @@ export default [
         'error',
         {
           argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_', // Add this line
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
     },
   },
   {
-    files: ['src/services/**/*.{js,mjs,cjs,ts}'],
+    files: ['src/services/db/**/*.{js,mjs,cjs,ts}'],
     rules: {
       'no-restricted-imports': 'off',
+    },
+  },
+  {
+    files: ['src/services/**/*.{js,mjs,cjs,ts}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['src/services/db/repo.ts'],
+              message:
+                'Direct imports from repo.ts are not allowed anywhere except within the db directory.',
+            },
+          ],
+        },
+      ],
     },
   },
   {
