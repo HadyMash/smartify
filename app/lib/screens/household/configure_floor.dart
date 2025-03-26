@@ -164,7 +164,9 @@ import 'package:flutter/material.dart';
 import 'package:smartify/screens/household/configure_room.dart';
 
 class ConfigureFloorsScreen extends StatefulWidget {
-  const ConfigureFloorsScreen({super.key});
+  final String householdName; // Add householdName as a parameter
+
+  const ConfigureFloorsScreen({super.key, required this.householdName});
 
   @override
   State<ConfigureFloorsScreen> createState() => _ConfigureFloorsScreenState();
@@ -637,7 +639,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
                 builder: (context) => ConfigureRoomScreen(
                   floorCount: numberOfFloors,
                   finalOffset:
-                      floorOffset, // Pass the actual floor number (e.g., -2, 0, 1)
+                      floorOffset, 
+                      householdName: widget.householdName,// Pass the actual floor number (e.g., -2, 0, 1)
                 ),
               ),
             );

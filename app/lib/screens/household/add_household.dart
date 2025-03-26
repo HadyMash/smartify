@@ -18,10 +18,14 @@ class _AddHouseholdScreenState extends State<AddHouseholdScreen> {
   }
 
   void _navigateToConfigureFloors() {
+    final householdName = _nameController.text.trim(); // Get the entered household name
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ConfigureFloorsScreen(),
+        builder: (context) => ConfigureFloorsScreen(
+          householdName: householdName, // Pass the household name
+        ),
       ),
     );
   }
