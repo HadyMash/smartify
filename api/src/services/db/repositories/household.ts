@@ -11,12 +11,9 @@ import {
   MemberPermissions,
   MemberRole,
   MissingPermissionsError,
+  HouseholdDevice,
 } from '../../../schemas/household';
-import {
-  ObjectIdOrString,
-  objectIdOrStringSchema,
-  objectIdSchema,
-} from '../../../schemas/obj-id';
+import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { InvalidUserError, InvalidUserType } from '../../../schemas/auth/user';
 
 type HouseholdDoc = Household;
@@ -94,8 +91,8 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     return await this.collection
       .find({
         $or: [
-          { 'members.id': objectIdOrStringSchema.parse(userId) },
-          { owner: objectIdOrStringSchema.parse(userId) },
+          { 'members.id': objectIdSchema.parse(userId) },
+          { owner: objectIdSchema.parse(userId) },
         ],
       })
       .toArray();
@@ -190,7 +187,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     }
 
     const result = await this.collection.findOneAndUpdate(
-      { _id: objectIdOrStringSchema.parse(householdId) },
+      { _id: objectIdSchema.parse(householdId) },
       { $push: { rooms: { $each: newRooms } } },
       { returnDocument: 'after' },
     );
@@ -331,7 +328,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   public async getUserInvites(
     userId: ObjectIdOrString,
   ): Promise<HouseholdInvite[]> {
-    const parsedUserId = objectIdOrStringSchema.parse(userId);
+    const parsedUserId = objectIdSchema.parse(userId);
     console.log('Fetching invites for user:', parsedUserId);
     const households = await this.collection
       .find(
@@ -384,6 +381,12 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     return household;
   }
 
+  /**
+   * Invite a member to a household
+   * @param householdId - The household id
+   * @param member - The new member's id
+   * @returns The updated household
+   */
   public async addMember(
     householdId: ObjectIdOrString,
     member: HouseholdMember,
@@ -397,10 +400,16 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     return result;
   }
 
+  /**
+   * Transfer a household's ownership to another member
+   * @param householdId - The household Id
+   * @param to - The new owner's id
+   * @returns The new household
+   */
   public async transferOwnership(
     householdId: ObjectIdOrString,
     to: ObjectIdOrString,
-  ) {
+  ): Promise<HouseholdDoc | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: objectIdSchema.parse(householdId) },
       // pull new owner from members, add old owner to members, and update owner fieldj
@@ -415,12 +424,50 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     console.log('Transferred ownership:', result);
     return result;
   }
+
+  /**
+   * Get a household by a device id
+   * @param deviceId - The device id
+   * @returns The household if it exists
+   */
   public async getHouseholdByDevice(
     deviceId: string,
   ): Promise<Household | null> {
     const household = await this.collection.findOne({
       'devices.id': deviceId,
     });
-    return household ? household : null;
+    return household;
+  }
+
+  /**
+   * Add a device to a household
+   * @param householdId - Household id
+   * @param device - The device to add
+   */
+  public async addDeviceToHousehold(
+    householdId: ObjectIdOrString,
+    device: HouseholdDevice,
+  ): Promise<HouseholdDoc | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: objectIdSchema.parse(householdId) },
+      { $addToSet: { devices: device } },
+      { returnDocument: 'after' },
+    );
+
+    console.log('Added device to household:', result);
+    return result;
+  }
+
+  public async removeDeviceFromHousehold(
+    householdId: ObjectIdOrString,
+    deviceId: string,
+  ): Promise<HouseholdDoc | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: objectIdSchema.parse(householdId) },
+      { $pull: { devices: { id: deviceId } } },
+      { returnDocument: 'after' },
+    );
+    console.log('Removed device from household:', result);
+    return result;
   }
 }

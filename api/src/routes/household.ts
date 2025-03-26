@@ -57,3 +57,5 @@ householdRouter.post('/:householdId/leave', (req, res) =>
 householdRouter.post('/:householdId/transfer', (req, res) =>
   HouseholdController.transferOwnership(req, res),
 );
+
+//householdRouter.

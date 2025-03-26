@@ -16,6 +16,8 @@ import {
   InvalidInviteError,
   transferSchema,
   InvalidRoomsError,
+  uiHouseholdSchema,
+  householdInviteSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -59,16 +61,21 @@ export class HouseholdController {
       const hs = new HouseholdService();
       const createdHousehold = await hs.createHousehold(householdData);
 
-      // validate and sanitize response
-      let sanitizedHousehold: Household;
       try {
-        sanitizedHousehold = householdSchema.parse(createdHousehold);
+        const uiHousehold = await hs.transformToUIHousehold(
+          createdHousehold,
+          true,
+        );
+        if (!uiHousehold) {
+          res.status(500).send({ error: 'Failed to create household' });
+          return;
+        }
+        res.status(201).send(uiHousehold);
+        return;
       } catch (_) {
         res.status(500).send({ error: 'Failed to create household' });
         return;
       }
-
-      res.status(201).send(sanitizedHousehold);
     });
   }
 
@@ -109,7 +116,7 @@ export class HouseholdController {
           return;
         }
 
-        res.status(200).send(household);
+        res.status(200).send(uiHouseholdSchema.parse(household));
         return;
       },
       (e) => {
@@ -135,8 +142,17 @@ export class HouseholdController {
           return;
         }
 
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+        if (!householdId) {
+          return;
+        }
+
         // get perms
-        const perms = req.user!.households[data.householdId.toString()];
+        const perms = req.user!.households[householdId.toString()];
         // check user is an owner or admin
         if (
           !(
@@ -151,15 +167,15 @@ export class HouseholdController {
         }
 
         const hs = new HouseholdService();
-        const updatedHousehold = await hs.inviteMember(
-          data.householdId,
+        const invite = await hs.inviteMember(
+          householdId,
           {
             role: data.role,
             permissions: data.permissions,
           },
           data.email,
         );
-        res.status(200).send(householdSchema.parse(updatedHousehold));
+        res.status(200).send(householdInviteSchema.parse(invite));
         return;
       },
       (e) => {
@@ -233,6 +249,15 @@ export class HouseholdController {
           data.response,
         );
 
+        const isPrivileged =
+          inv.role === memberRoleSchema.enum.admin ||
+          inv.role === memberRoleSchema.enum.owner;
+
+        const uiHousehold = await hs.transformToUIHousehold(
+          updatedHousehold,
+          isPrivileged,
+        );
+
         // update the user's tokens
         try {
           const ts = new TokenService();
@@ -250,7 +275,7 @@ export class HouseholdController {
           console.error('Failed to revoke tokens:', e);
         }
 
-        res.status(200).send(updatedHousehold);
+        res.status(200).send(uiHousehold);
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
@@ -298,7 +323,7 @@ export class HouseholdController {
           res,
           objectIdStringSchema,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          req.body.householdId,
+          req.params.householdId,
         );
         if (!householdId) {
           return;
@@ -321,7 +346,7 @@ export class HouseholdController {
         const hs = new HouseholdService();
         const household = await hs.removeMember(householdId, userId);
 
-        res.status(200).send(household);
+        res.status(200).send(await hs.transformToUIHousehold(household, true));
 
         try {
           const ts = new TokenService();
@@ -437,13 +462,23 @@ export class HouseholdController {
         if (!data) {
           return;
         }
-        const hs = new HouseholdService();
-        const updatedHousehold = await hs.updateRooms(
-          data.householdId,
-          data.rooms,
+
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
         );
 
-        res.status(200).send(updatedHousehold);
+        if (!householdId) {
+          return;
+        }
+
+        const hs = new HouseholdService();
+        const updatedHousehold = await hs.updateRooms(householdId, data.rooms);
+
+        res
+          .status(200)
+          .send(await hs.transformToUIHousehold(updatedHousehold, true));
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
@@ -507,14 +542,38 @@ export class HouseholdController {
         if (!data) {
           return;
         }
+
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        // check if user has the permissions to change permissions
+        const perms = req.user!.households[householdId.toString()];
+        if (perms.role === memberRoleSchema.enum.dweller) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
         const hs = new HouseholdService();
         const updatedHousehold = await hs.changeUserRole(
-          data.householdId,
+          householdId,
           data.memberId,
           data.role,
           data.permissions,
         );
-        res.status(200).send(updatedHousehold);
+        if (!updatedHousehold) {
+          res.status(500).send({ error: 'Failed to update household' });
+          return;
+        }
+        res
+          .status(200)
+          .send(await hs.transformToUIHousehold(updatedHousehold, true));
       },
       (e) => {
         if (e instanceof MissingPermissionsError) {
@@ -746,4 +805,29 @@ export class HouseholdController {
       },
     );
   }
+
+  //public static pairDevice(req: AuthenticatedRequest, res: Response) {
+  //  tryAPIController(res, async () => {
+  //    const hs = new HouseholdService();
+  //    const household = await hs.getHousehold(req.params.householdId);
+  //    if (!household) {
+  //      res.status(404).send({ error: 'Household not found' });
+  //      return;
+  //    }
+  //    if (!household.members.find((m) => m.id === req.user!._id)) {
+  //      res.status(403).send({ error: 'Permission denied' });
+  //      return;
+  //    }
+  //    const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+  //    const device = await adapter.pairDevice(
+  //      req.params.householdId,
+  //      req.body.deviceId,
+  //    );
+  //    if (!device) {
+  //      res.status(400).send({ error: 'Failed to pair device' });
+  //      return;
+  //    }
+  //    res.status(200).send({ device });
+  //  });
+  //}
 }

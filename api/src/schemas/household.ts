@@ -178,6 +178,8 @@ export const householdDeviceSchema = deviceSchema.extend({
   roomId: z.string(),
 });
 
+export type HouseholdDevice = z.infer<typeof householdDeviceSchema>;
+
 const defaultRoom: HouseholdRoom = {
   id: randomUUID(),
   type: 'living',
@@ -288,7 +290,6 @@ export function householdToInfo(h: Household) {
 
 export const roomRequestDataSchema = z.object({
   rooms: z.array(householdRoomSchema).min(1),
-  householdId: objectIdOrStringSchema,
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
@@ -303,6 +304,7 @@ const _invMemberSchema = z.object({
 export const inviteMemberSchema = _invMemberSchema
   .omit({
     memberId: true,
+    householdId: true,
   })
   .refine(
     ({ role, permissions }) => {
@@ -320,6 +322,7 @@ export type InviteMember = z.infer<typeof inviteMemberSchema>;
 
 export const modifyMemberSchema = _invMemberSchema
   .omit({
+    householdId: true,
     email: true,
   })
   .refine(
@@ -402,5 +405,13 @@ export class InvalidRoomsError extends Error {
     super('Invalid rooms');
     this.name = 'InvalidRoomsError';
     Object.setPrototypeOf(this, InvalidRoomsError.prototype);
+  }
+}
+
+export class DeviceAlreadyPairedError extends Error {
+  constructor() {
+    super('Device is already paired to another household');
+    this.name = 'DeviceAlreadyPairError';
+    Object.setPrototypeOf(this, DeviceAlreadyPairedError.prototype);
   }
 }
