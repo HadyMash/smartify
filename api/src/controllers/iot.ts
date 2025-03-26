@@ -27,11 +27,9 @@ export class IoTController {
         !household._id ||
         !(household._id.toString() in req.user!.households)
       ) {
-        return res
-          .status(403)
-          .send({
-            message: 'Unauthorized: Device not linked to your household',
-          });
+        return res.status(403).send({
+          message: 'Unauthorized: Device not linked to your household',
+        });
       }
 
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
