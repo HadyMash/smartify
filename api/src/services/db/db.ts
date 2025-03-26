@@ -7,6 +7,7 @@ import {
 import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
+import { DeviceInfoRepository } from './repositories/device-info';
 
 const DB_NAME: string = 'smartify';
 
@@ -23,6 +24,7 @@ export class DatabaseService {
   private _accessBlacklistRepository!: AccessBlacklistRepository;
   private _mfaBlacklistRepository!: MFABlacklistRepository;
   private _householdRepository!: HouseholdRepository;
+  private _deviceInfoRepository!: DeviceInfoRepository;
 
   constructor() {
     //// Start connection process in constructor
@@ -273,6 +275,15 @@ export class DatabaseService {
     return this._householdRepository;
   }
 
+  get deviceInfoRepository(): DeviceInfoRepository {
+    if (!this._deviceInfoRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._deviceInfoRepository;
+  }
+
   /** Configures all of the databases collections */
   public async configureCollections(): Promise<void> {
     // Ensure we're connected before configuring collections
@@ -285,6 +296,7 @@ export class DatabaseService {
       this.accessBlacklistRepository.configureCollection(),
       this.mfaBlacklistRepository.configureCollection(),
       this.householdRepository.configureCollection(),
+      this.deviceInfoRepository.configureCollection(),
     ]);
   }
 }
