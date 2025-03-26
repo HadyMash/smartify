@@ -10,7 +10,7 @@ import {
   modifyMemberSchema,
   HouseholdRoom,
 } from '../../schemas/household';
-import { HouseholdService } from '../../services/household';
+import { validateRooms } from '../../util';
 
 describe('Coordinates Schema Validation', () => {
   test('should validate correct coordinates', () => {
@@ -461,11 +461,10 @@ describe('Room adjacency test', () => {
         type: 'living',
         floor: 1,
         connectedRooms: {},
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should accept two connected rooms', () => {
@@ -478,7 +477,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '2',
         },
-        devices: [],
       },
       {
         id: '2',
@@ -488,11 +486,10 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should not accept connected rooms on different floors', () => {
@@ -505,7 +502,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '2',
         },
-        devices: [],
       },
       {
         id: '2',
@@ -515,11 +511,10 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should accept multiple connected rooms', () => {
@@ -533,7 +528,6 @@ describe('Room adjacency test', () => {
           left: 'b',
           right: 'c',
         },
-        devices: [],
       },
       {
         id: 'b',
@@ -544,7 +538,6 @@ describe('Room adjacency test', () => {
           right: 'a',
           top: 'd',
         },
-        devices: [],
       },
       {
         id: 'c',
@@ -555,7 +548,6 @@ describe('Room adjacency test', () => {
           left: 'a',
           top: 'e',
         },
-        devices: [],
       },
       {
         id: 'd',
@@ -565,7 +557,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: 'b',
         },
-        devices: [],
       },
       {
         id: 'e',
@@ -575,11 +566,10 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: 'c',
         },
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(true);
+    expect(validateRooms(rooms)).toBe(true);
   });
 
   test('should not accept multiple rooms connected to the same place', () => {
@@ -593,7 +583,6 @@ describe('Room adjacency test', () => {
           bottom: '2',
           right: '3',
         },
-        devices: [],
       },
       {
         id: '2',
@@ -603,7 +592,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
-        devices: [],
       },
       {
         id: '3',
@@ -613,7 +601,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           left: '1',
         },
-        devices: [],
       },
       {
         id: '4',
@@ -623,7 +610,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '3',
         },
-        devices: [],
       },
       {
         id: '5',
@@ -633,11 +619,10 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           right: '3',
         },
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should not accept overlapping rooms', () => {
@@ -651,7 +636,6 @@ describe('Room adjacency test', () => {
           left: '2',
           top: '5',
         },
-        devices: [],
       },
       {
         id: '2',
@@ -662,7 +646,6 @@ describe('Room adjacency test', () => {
           right: '1',
           top: '3',
         },
-        devices: [],
       },
       {
         id: '3',
@@ -673,7 +656,6 @@ describe('Room adjacency test', () => {
           bottom: '2',
           right: '4',
         },
-        devices: [],
       },
       {
         id: '4',
@@ -683,7 +665,6 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           left: '3',
         },
-        devices: [],
       },
       {
         id: '5',
@@ -693,11 +674,10 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '1',
         },
-        devices: [],
       },
     ];
 
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 
   test('should not accept disconnected rooms', () => {
@@ -708,7 +688,6 @@ describe('Room adjacency test', () => {
         type: 'living',
         floor: 1,
         connectedRooms: {},
-        devices: [],
       },
       {
         id: '2',
@@ -716,9 +695,8 @@ describe('Room adjacency test', () => {
         type: 'kitchen',
         floor: 1,
         connectedRooms: {},
-        devices: [],
       },
     ];
-    expect(HouseholdService.validateRooms(rooms)).toBe(false);
+    expect(validateRooms(rooms)).toBe(false);
   });
 });

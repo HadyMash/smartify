@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
@@ -52,4 +51,5 @@ async function start() {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 start();

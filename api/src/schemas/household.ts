@@ -3,6 +3,7 @@ import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
 import { deviceSchema } from './devices';
+import { validateRooms } from '../util';
 
 /**
  * Coordinates using longitude and latitude
@@ -185,7 +186,7 @@ const defaultRoom: HouseholdRoom = {
   connectedRooms: {},
 };
 
-export const householdSchema = householdCreateRequestDataSchema.extend({
+const _householdSchema = householdCreateRequestDataSchema.extend({
   _id: objectIdOrStringSchema.optional(),
   owner: objectIdOrStringSchema,
   members: z.array(memberSchema),
@@ -196,9 +197,47 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   devices: z.array(householdDeviceSchema).default([]),
 });
 
+export const householdSchema = _householdSchema.superRefine((data, ctx) => {
+  // room configuration
+  if (!validateRooms(data.rooms)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Invalid room configuration',
+      path: ['rooms'],
+      fatal: true,
+    });
+  }
+
+  const roomMap = new Map<string, HouseholdRoom>();
+
+  data.rooms.forEach((room) => {
+    roomMap.set(room.id, room);
+    if (room.floor < 0 || room.floor >= data.floors) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid room floor',
+        path: ['rooms', room.id],
+        fatal: true,
+      });
+    }
+  });
+
+  // check devices
+  for (const device of data.devices) {
+    if (!roomMap.has(device.roomId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Device is assigned to a non-existent room',
+        fatal: true,
+        path: ['devices', device.id],
+      });
+    }
+  }
+});
+
 export type Household = z.infer<typeof householdSchema>;
 
-export const householdInfoSchema = householdSchema
+export const householdInfoSchema = _householdSchema
   .pick({
     _id: true,
     name: true,
@@ -228,7 +267,7 @@ export const uiInvitedMember = uiMemberSchema.extend({
 
 export type UIInvitedMember = z.infer<typeof uiInvitedMember>;
 
-export const uiHouseholdSchema = householdSchema.extend({
+export const uiHouseholdSchema = _householdSchema.extend({
   members: z.array(uiMemberSchema).optional(),
   invites: z.array(uiInvitedMember).optional(),
 });
