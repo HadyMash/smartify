@@ -559,21 +559,23 @@ export class HouseholdService {
 
   public async unpairDeviceFromHousehold(
     householdId: ObjectIdOrString,
-    deviceId: string,
-  ) {
+    deviceIds: string[],
+  ): Promise<Household | undefined> {
     const household = await this.getHousehold(householdId);
     // check if the household exists
     if (!household) {
       throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
     }
+
     // check if the device is paired with the household
-    if (!household.devices.find((d) => d.id === deviceId)) {
+    if (!household.devices.find((d) => deviceIds.some((dev) => dev === d.id))) {
       return household;
     }
     const result = await this.db.householdRepository.removeDeviceFromHousehold(
       householdId,
-      deviceId,
+      deviceIds,
     );
+
     if (!result) {
       return;
     }

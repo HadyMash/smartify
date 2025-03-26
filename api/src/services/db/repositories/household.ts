@@ -471,11 +471,11 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
 
   public async removeDeviceFromHousehold(
     householdId: ObjectIdOrString,
-    deviceId: string,
+    deviceIds: string[],
   ): Promise<HouseholdDoc | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: objectIdSchema.parse(householdId) },
-      { $pull: { devices: { id: deviceId } } },
+      { $pull: { devices: { id: { $in: deviceIds } } } },
       { returnDocument: 'after' },
     );
     console.log('Removed device from household:', result);

@@ -349,7 +349,7 @@ export const transferSchema = z.object({
   newOwnerId: objectIdOrStringSchema,
 });
 
-export const pairDeviceSchema = z.object({
+export const pairDevicesSchema = z.object({
   devices: z.array(
     z.object({
       id: z.string().nonempty(),
@@ -357,6 +357,10 @@ export const pairDeviceSchema = z.object({
       roomId: z.string().nonempty(),
     }),
   ),
+});
+
+export const unpairDevicesSchema = z.object({
+  devices: z.array(z.string().nonempty()),
 });
 
 /* Error types */

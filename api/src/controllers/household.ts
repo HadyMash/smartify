@@ -19,8 +19,9 @@ import {
   uiHouseholdSchema,
   householdInviteSchema,
   DeviceAlreadyPairedError,
-  pairDeviceSchema,
+  pairDevicesSchema,
   HouseholdDevice,
+  unpairDevicesSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -829,7 +830,7 @@ export class HouseholdController {
           return;
         }
 
-        const data = validateSchema(res, pairDeviceSchema, req.body);
+        const data = validateSchema(res, pairDevicesSchema, req.body);
 
         if (!data) {
           return;
@@ -906,6 +907,152 @@ export class HouseholdController {
         }
 
         res.status(200).send(await hs.transformToUIHousehold(result, true));
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+        if (e instanceof DeviceAlreadyPairedError) {
+          res.status(409).send({ error: 'Device already paired' });
+          return true;
+        }
+        if (e instanceof MissingAPIKeyError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof InvalidAPIKeyError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof ExternalServerError) {
+          res.status(502).send({ error: 'External Server Error' });
+          return true;
+        }
+        if (e instanceof BadRequestToDeviceError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof DeviceNotFoundError) {
+          res.status(404).send({ error: 'Device not found' });
+          return true;
+        }
+        if (e instanceof DeviceOfflineError) {
+          res.status(503).send({ error: 'Device offline' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  public static unpairDevices(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        const data = validateSchema(res, unpairDevicesSchema, req.body);
+
+        if (!data) {
+          return;
+        }
+
+        // check the user has permission to add devices (owner or admin)
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+        if (
+          !(
+            [
+              memberRoleSchema.enum.owner,
+              memberRoleSchema.enum.admin,
+            ] as string[]
+          ).includes(req.user!.households[householdId.toString()].role)
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        // get household
+        const hs = new HouseholdService();
+        const household = await hs.getHousehold(householdId);
+
+        if (!household) {
+          res.status(404).send({ error: 'Household not found' });
+          return;
+        }
+
+        const devicesBySource = new Map<DeviceSource, string[]>();
+
+        for (const deviceId of data.devices) {
+          const source = household.devices.find(
+            (d) => d.id === deviceId,
+          )?.source;
+
+          if (!source) {
+            continue;
+          }
+
+          if (!devicesBySource.has(source)) {
+            devicesBySource.set(source, []);
+          }
+          devicesBySource.get(source)!.push(deviceId);
+        }
+
+        function getAdapter(source: DeviceSource): BaseIotAdapter {
+          switch (source) {
+            case 'acme':
+              return new AcmeIoTAdapter();
+          }
+        }
+
+        // remove devices from household first
+        const updatedHousehold = await hs.unpairDeviceFromHousehold(
+          householdId,
+          data.devices,
+        );
+
+        if (!updatedHousehold) {
+          res.status(500).send({ error: 'Failed to unpair devices' });
+          return;
+        }
+
+        // return, then unpair from the adapter
+        try {
+          res
+            .status(200)
+            .send(await hs.transformToUIHousehold(updatedHousehold, true));
+        } catch (e) {
+          console.error('Failed to map househld:', e);
+          res
+            .status(500)
+            .send({ error: 'Unpaired devices but failed to return household' });
+        }
+
+        for (const source of devicesBySource.keys()) {
+          try {
+            const adapter: BaseIotAdapter = getAdapter(source);
+            // unpair
+            await adapter.unpairDevices(devicesBySource.get(source)!);
+          } catch (e) {
+            console.error(`Failed to unpair ${source} devices:`, e);
+          }
+        }
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {

@@ -61,3 +61,7 @@ householdRouter.post('/:householdId/transfer', (req, res) =>
 householdRouter.post('/:householdId/pair', (req, res) =>
   HouseholdController.pairDevices(req, res),
 );
+
+householdRouter.delete('/:householdId/unpair', (req, res) =>
+  HouseholdController.unpairDevices(req, res),
+);
