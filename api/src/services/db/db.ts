@@ -8,6 +8,7 @@ import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
 import { DeviceInfoRepository } from './repositories/device-info';
+import { log } from '../../util/log';
 
 const DB_NAME: string = 'smartify';
 
@@ -92,11 +93,11 @@ export class DatabaseService {
 
       try {
         await client.connect();
-        console.log('Connected to MongoDB');
+        log.info('Connected to MongoDB');
         DatabaseService.client = client;
         DatabaseService.db = client.db(DB_NAME);
       } catch (err) {
-        console.error('Error connecting to MongoDB', err);
+        log.fatal('Error connecting to MongoDB', err);
         throw new Error('Error connecting to MongoDB');
       }
     }
@@ -128,7 +129,7 @@ export class DatabaseService {
       // Create a promise that will reject if a connection error occurs
       const errorPromise = new Promise<void>((_, reject) => {
         const errorHandler = (err: Error) => {
-          console.error('Redis connection error:', err);
+          log.fatal('Redis connection error:', err);
           reject(new Error(`Failed to connect to Redis: ${err.message}`));
         };
 
@@ -136,17 +137,17 @@ export class DatabaseService {
 
         // Remove the error handler once connected successfully
         DatabaseService.redis.once('connect', () => {
-          console.log('Connected to Redis');
+          log.info('Connected to Redis');
           DatabaseService.redis.removeListener('error', errorHandler);
         });
       });
 
       DatabaseService.redis
         .on('end', () => {
-          console.log('Disconnected from Redis');
+          log.warn('Disconnected from Redis');
         })
         .on('reconnecting', () => {
-          console.log('Reconnecting to Redis');
+          log.info('Reconnecting to Redis');
         });
 
       try {
@@ -157,9 +158,9 @@ export class DatabaseService {
           }),
           errorPromise,
         ]);
-        console.log('Redis client connected');
+        log.info('Redis client connected');
       } catch (err) {
-        console.error('Error connecting to Redis client:', err);
+        log.error('Error connecting to Redis client:', err);
         // Clean up the failed Redis client
         await DatabaseService.redis.disconnect().catch(() => {});
         // Reset Redis client in a type-safe way

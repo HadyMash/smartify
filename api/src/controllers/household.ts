@@ -46,6 +46,7 @@ import {
   MissingAPIKeyError,
 } from '../schemas/devices';
 import { getAdapter } from '../util/adapter';
+import { log } from '../util/log';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -69,7 +70,7 @@ export class HouseholdController {
 
       const d = validateSchema(res, householdSchema, householdData);
       if (!d) {
-        console.log('data invalid');
+        log.debug('data invalid');
         return;
       }
 
@@ -207,7 +208,7 @@ export class HouseholdController {
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.DOES_NOT_EXIST) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            console.log('Faking invite sent to:', req.body.email);
+            log.debug('Faking invite sent to:', req.body.email);
             res.status(200).send();
             return true;
           } else {
@@ -284,7 +285,7 @@ export class HouseholdController {
             idToken,
           );
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
 
         res.status(200).send(uiHousehold);
@@ -304,7 +305,7 @@ export class HouseholdController {
           return true;
         }
         if (e instanceof InvalidUserError) {
-          console.error('invalid system generated user id:', e);
+          log.error('invalid system generated user id:', e);
           res.status(500).send({ error: 'Internal Server Error' });
           return true;
         }
@@ -363,7 +364,7 @@ export class HouseholdController {
           const ts = new TokenService();
           await ts.revokeAccessTokens(userId);
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
       },
       (e) => {
@@ -433,7 +434,7 @@ export class HouseholdController {
             idToken,
           );
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
 
         res.status(200).json({ message: 'Household deleted' });
@@ -447,7 +448,7 @@ export class HouseholdController {
 
           await Promise.all(promises);
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
       },
       (e) => {
@@ -603,7 +604,7 @@ export class HouseholdController {
         }
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.INVALID_ID) {
-            console.error('invalid system generated user id:', e);
+            log.error('invalid system generated user id:', e);
             res.status(500).send({ error: 'Internal Server Error' });
             return true;
           } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
@@ -669,7 +670,7 @@ export class HouseholdController {
             idToken,
           );
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
 
         res.status(200).send({ message: 'Left household' });
@@ -688,7 +689,7 @@ export class HouseholdController {
 
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.INVALID_ID) {
-            console.error('invalid system generated user id:', e);
+            log.error('invalid system generated user id:', e);
             res.status(500).send({ error: 'Internal Server Error' });
             return true;
           } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
@@ -778,7 +779,7 @@ export class HouseholdController {
             idToken,
           );
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
 
         res.status(200).send(updatedHousehold);
@@ -786,7 +787,7 @@ export class HouseholdController {
         try {
           await ts.revokeAccessTokens(data.newOwnerId);
         } catch (e) {
-          console.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke tokens:', e);
         }
       },
       (e) => {
@@ -801,7 +802,7 @@ export class HouseholdController {
         }
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.INVALID_ID) {
-            console.error('invalid system generated user id:', e);
+            log.error('invalid system generated user id:', e);
             res.status(500).send({ error: 'Internal Server Error' });
             return true;
           } else if (e.type === InvalidUserType.DOES_NOT_EXIST) {
@@ -1013,7 +1014,7 @@ export class HouseholdController {
             .status(200)
             .send({ devices: await hs.getHouseholdDevices(householdId) });
         } catch (e) {
-          console.error('Failed to map household:', e);
+          log.error('Failed to map household:', e);
           res
             .status(500)
             .send({ error: 'Unpaired devices but failed to return household' });
@@ -1025,7 +1026,7 @@ export class HouseholdController {
             // unpair
             await adapter.unpairDevices(devicesBySource.get(source)!);
           } catch (e) {
-            console.error(`Failed to unpair ${source} devices:`, e);
+            log.error(`Failed to unpair ${source} devices:`, e);
           }
         }
       },

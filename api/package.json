@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node --no-assertions dist/index.js",
+    "start": "node --enable-source-maps dist/index.js",
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
     "test": "jest --coverage",
@@ -36,6 +36,7 @@
     "openai": "^4.89.0",
     "redis": "^4.7.0",
     "sqlite-vec": "^0.1.7-alpha.2",
+    "tslog": "^4.9.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {

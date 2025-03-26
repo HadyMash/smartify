@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { DeviceSource, deviceSourceSchema } from '../schemas/devices';
+import { log } from '../util/log';
 
 export class WebhookController {
   /**
@@ -24,11 +25,12 @@ export class WebhookController {
         const changes: Record<string, any> | undefined = req.body.changes;
 
         if (!apiKey || !deviceId || !changes) {
+          log.debug('Invalid request:', req.body);
           res.status(400).json({ error: 'Invalid request' });
           return;
         }
 
-        console.log(deviceId, 'changed:', changes);
+        log.debug(deviceId, 'changed:', changes);
 
         // TODO: do something with the webhook data
         break;

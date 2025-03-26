@@ -4,6 +4,7 @@ import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
 import { TokenService } from '../../auth/token';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
+import { log } from '../../../util/log';
 
 /**
  * Document representing a blacklisted access token in the database
@@ -135,11 +136,11 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
         this.collection.createIndex({ created: 1 }),
       ]);
 
-      console.log(
+      log.info(
         `Configured ${TOKENS_COLLECTION_NAME} collection with required indices`,
       );
     } catch (error) {
-      console.error(
+      log.error(
         `Failed to configure ${TOKENS_COLLECTION_NAME} collection:`,
         error,
       );
@@ -271,7 +272,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
   private async cacheGenIDBlacklist(
     docs: Pick<TokenGenIdDoc, 'tokenGenerationId' | 'expiry'>[],
   ) {
-    console.log('adding blacklisted genids to cache');
+    log.debug('adding blacklisted genids to cache');
 
     await Promise.all(
       docs.map(async (doc) => {
@@ -338,7 +339,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
         { upsert: false },
       )
       .then((result) => {
-        console.log(
+        log.debug(
           'Acknowledged:',
           result.acknowledged,
           ', Blacklisted',
@@ -388,7 +389,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
         return true;
       }
     } catch (e) {
-      console.error('Error checking redis cache', e);
+      log.error('Error checking redis cache', e);
     }
 
     // not found in redis, check db
@@ -406,7 +407,7 @@ export class TokenRepository extends DatabaseRepository<TokenGenIdDoc> {
     // this should be non blocking so don't await
 
     this.cacheGenIDBlacklist([doc]).catch((e) =>
-      console.warn('Error blacklisting gen id:', e),
+      log.warn('Error blacklisting gen id:', e),
     );
 
     // and return
@@ -438,7 +439,7 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
       .toArray();
 
     if (docs.length > 0) {
-      console.log(
+      log.info(
         `Loading ${docs.length} access token revocation times to Redis cache`,
       );
 
@@ -448,7 +449,7 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
 
       await Promise.all(promises);
     } else {
-      console.log('No access token revocation times to load into cache');
+      log.info('No access token revocation times to load into cache');
     }
   }
 
@@ -480,11 +481,11 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
         ),
       ]);
 
-      console.log(
+      log.info(
         `Configured ${ACCESS_BLACKLIST_COLLECTION_NAME} collection with required indices`,
       );
     } catch (error) {
-      console.error(
+      log.fatal(
         `Failed to configure ${ACCESS_BLACKLIST_COLLECTION_NAME} collection:`,
         error,
       );
@@ -577,7 +578,7 @@ export class AccessBlacklistRepository extends DatabaseRepository<BlacklistedAcc
         new Date(tokenCreatedAtSeconds * 1000),
       );
     } catch (e) {
-      console.error(
+      log.error(
         'Error checking redis cache for access token revocation time',
         e,
       );
@@ -629,7 +630,7 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
       })
       .toArray();
 
-    console.log(`Loading ${docs.length} MFA tokens to Redis blacklist cache`);
+    log.info(`Loading ${docs.length} MFA tokens to Redis blacklist cache`);
 
     const promises = docs.map((doc) => {
       const ttlSeconds = Math.ceil((doc.expiry.getTime() - Date.now()) / 1000);
@@ -672,11 +673,11 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
         ),
       ]);
 
-      console.log(
+      log.info(
         `Configured ${MFA_BLACKLIST_COLLECTION_NAME} collection with required indices`,
       );
     } catch (error) {
-      console.error(
+      log.fatal(
         `Failed to configure ${MFA_BLACKLIST_COLLECTION_NAME} collection:`,
         error,
       );
@@ -715,7 +716,7 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
       .set(key, '1', {
         EX: ttlSeconds,
       })
-      .catch((e) => console.warn('Error caching MFA token blacklist', e));
+      .catch((e) => log.warn('Error caching MFA token blacklist', e));
 
     // add to db in case Redis fails
     const dbPromise = this.collection.insertOne(doc).then((result) => {
@@ -740,7 +741,7 @@ export class MFABlacklistRepository extends DatabaseRepository<BlacklistedMFATok
       const existsInCache = await this.redis.get(key);
       return existsInCache !== null;
     } catch (e) {
-      console.error('Error checking redis cache for MFA token blacklist', e);
+      log.error('Error checking redis cache for MFA token blacklist', e);
       return false;
     }
   }

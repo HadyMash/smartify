@@ -22,6 +22,7 @@ import {
   State,
 } from '../../schemas/devices';
 import { BaseIotAdapter, HealthCheck } from './base-adapter';
+import { log } from '../../util/log';
 
 const source = deviceSourceSchema.enum.acme;
 
@@ -48,17 +49,17 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     try {
       // Use the configured axiosInstance with the API key instead of plain axios
       const response = await this.axiosInstance.get(`/health`);
-      console.log('Health check response:', response.status);
+      log.debug('Health check response:', response.status);
       return response.status === 200;
     } catch (error) {
-      console.error('Health check failed:', error);
+      log.error('Health check failed:', error);
       return false;
     }
   }
 
   public mapCapability(capability: any): DeviceCapability | undefined {
     if (!capability?.type) {
-      console.error('Invalid capability type');
+      log.error('Invalid capability type');
       return undefined;
     }
 
@@ -126,11 +127,11 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           return deviceCapabilitySchema.parse(mc);
         }
         default:
-          console.error(`Unsupported capability type: ${capability.type}`);
+          log.error(`Unsupported capability type: ${capability.type}`);
           return undefined;
       }
     } catch (error) {
-      console.error('Error mapping capability:', error);
+      log.error('Error mapping capability:', error);
       return undefined;
     }
   }
@@ -143,7 +144,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
    */
   private mapCapabilities(capabilities: any[]): DeviceCapability[] {
     if (!Array.isArray(capabilities)) {
-      console.warn('Capabilities is not an array, returning empty array');
+      log.warn('Capabilities is not an array, returning empty array');
       return [];
     }
 
@@ -159,14 +160,14 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   public mapDevice(device: any): Device | undefined {
     try {
       if (!device?.id) {
-        console.error('Device mapping failed: missing ID');
+        log.error('Device mapping failed: missing ID');
         throw new Error('Device mapping failed: missing ID');
       }
 
       if (!device.capabilities || !Array.isArray(device.capabilities)) {
         // Try to get capabilities from the device type if capabilities not provided
         // This uses the deviceCapabilityMap from the simulation schema
-        console.warn(
+        log.warn(
           `Device ${device.id} has no capabilities, attempting to infer from type`,
         );
         if (!device.type) {
@@ -187,7 +188,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         );
 
       if (mappedCapabilities.length === 0) {
-        console.warn(`No valid capabilities mapped for device ${device.id}`);
+        log.warn(`No valid capabilities mapped for device ${device.id}`);
         return;
       }
 
@@ -199,7 +200,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       return deviceSchema.parse(d);
     } catch (error) {
-      console.warn('Failed to map device:', error);
+      log.warn('Failed to map device:', error);
       throw error;
     }
   }
@@ -207,7 +208,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   public mapDeviceWithState(device: any): DeviceWithState | undefined {
     try {
       if (!device?.id) {
-        console.error('Device with state mapping failed: missing ID');
+        log.error('Device with state mapping failed: missing ID');
         return undefined;
       }
 
@@ -220,7 +221,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         );
 
       if (mappedCapabilities.length === 0) {
-        console.warn(`No valid capabilities mapped for device ${device.id}`);
+        log.warn(`No valid capabilities mapped for device ${device.id}`);
         return;
       }
 
@@ -237,7 +238,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // Validate against schema and return
       return deviceWithStateSchema.parse(mappedDevice);
     } catch (error) {
-      console.error('Error mapping device with state:', error);
+      log.error('Error mapping device with state:', error);
       return undefined;
     }
   }
@@ -247,7 +248,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   ): DeviceWithPartialState | undefined {
     try {
       if (!device?.id) {
-        console.error('Device with partial state mapping failed: missing ID');
+        log.error('Device with partial state mapping failed: missing ID');
         return undefined;
       }
 
@@ -260,7 +261,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         );
 
       if (mappedCapabilities.length === 0) {
-        console.error(`No valid capabilities mapped for device ${device.id}`);
+        log.error(`No valid capabilities mapped for device ${device.id}`);
         return;
       }
 
@@ -277,7 +278,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // Validate against schema and return
       return deviceWithPartialStateSchema.parse(mappedDevice);
     } catch (error) {
-      console.error('Error mapping device with partial state:', error);
+      log.error('Error mapping device with partial state:', error);
       return undefined;
     }
   }
@@ -340,9 +341,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
   }
 
   public async discoverDevices(): Promise<Device[] | undefined> {
-    // Call the external API to discover devices
-    console.log('DISCOVER API KEY:', this.apiKey);
-
     try {
       const response = await this.axiosInstance.get('/discover');
       if (response.status !== 200) {
@@ -375,7 +373,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
             };
             return mc;
           } catch (_) {
-            console.warn('Failed to map device:');
+            log.warn('Failed to map device:');
             return undefined;
           }
         })
@@ -383,10 +381,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        log.error(e.message);
         return;
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
       }
     }
   }
@@ -427,10 +425,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        log.error(e.message);
         return;
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
       }
     }
   }
@@ -476,10 +474,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        log.error(e.message);
         return;
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
       }
     }
   }
@@ -525,7 +523,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       const device = response.data;
 
-      console.log('response data:', device);
+      log.debug('response data:', device);
 
       // Map and filter capabilities
       const mappedCapabilities: DeviceCapability[] = device.capabilities
@@ -536,7 +534,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         );
 
       if (mappedCapabilities.length === 0) {
-        console.error(`No valid capabilities mapped for device ${device.id}`);
+        log.error(`No valid capabilities mapped for device ${device.id}`);
         return;
       }
 
@@ -554,10 +552,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.error(e.message);
+        log.error(e.message);
         return;
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
         throw e;
       }
     }
@@ -609,9 +607,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
             );
 
           if (mappedCapabilities.length === 0) {
-            console.error(
-              `No valid capabilities mapped for device ${device.id}`,
-            );
+            log.error(`No valid capabilities mapped for device ${device.id}`);
             return;
           }
 
@@ -633,10 +629,10 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        log.error(e.message);
         return;
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
       }
     }
   }
@@ -649,7 +645,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       // Get current device state to check readonly fields
       const device = await this.getDevice(deviceId);
       if (!device) {
-        console.log('device not found throwing error');
+        log.error('device not found throwing error');
         throw new Error('Device not found');
       }
 
@@ -693,7 +689,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       return;
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        console.log(e.message);
+        log.error(e.message);
         switch (e.status) {
           case 503:
             throw new DeviceOfflineError(deviceId);
@@ -713,7 +709,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
             throw e;
         }
       } else {
-        console.log('non axios error:', e);
+        log.error('non axios error:', e);
         throw e;
       }
     }
@@ -740,7 +736,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       // Skip updates for non-existing devices
       if (validUpdates.length === 0) {
-        console.warn('No valid devices to update.');
+        log.warn('No valid devices to update.');
         return;
       }
 
@@ -766,7 +762,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       );
       return;
     } catch (e) {
-      console.log('Failed to set device states:', e);
+      log.error('Failed to set device states:', e);
       throw e;
     }
   }
@@ -798,7 +794,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
 
       return this.getDevice(deviceId);
     } catch (error) {
-      console.error('Error starting action:', error);
+      log.error('Error starting action:', error);
       return undefined;
     }
   }
@@ -820,7 +816,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         (result): result is DeviceWithState => result !== undefined,
       );
     } catch (error) {
-      console.error('Error starting multiple actions:', error);
+      log.error('Error starting multiple actions:', error);
       return undefined;
     }
   }*/

@@ -14,6 +14,7 @@ import {
 } from '../../../schemas/household';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { InvalidUserError, InvalidUserType } from '../../../schemas/auth/user';
+import { log } from '../../../util/log';
 
 type HouseholdDoc = Household;
 
@@ -41,9 +42,9 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       await this.collection.createIndex({ 'invites.inviteId': 1 });
       await this.collection.createIndex({ 'invites.id': 1, _id: 1 });
 
-      console.log('Indexes created for households collection.');
+      log.info('Indexes created for households collection.');
     } catch (error) {
-      console.error('Error configuring households collection:', error);
+      log.error('Error configuring households collection:', error);
       throw error;
     }
   }
@@ -125,7 +126,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { returnDocument: 'after' },
     );
 
-    console.log('Updated household after removing member:', result);
+    log.debug('Updated household after removing member:', result);
     return result;
   }
 
@@ -192,7 +193,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { $push: { rooms: { $each: newRooms } } },
       { returnDocument: 'after' },
     );
-    console.log('Updated household with new rooms:', result);
+    log.debug('Updated household with new rooms:', result);
     return result;
   }
 
@@ -245,10 +246,11 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       },
     );
 
-    console.log('Updated Household After Role Change:', updatedHousehold); // Debugging log
+    log.debug('Updated Household After Role Change:', updatedHousehold); // Debugging log
 
     if (!updatedHousehold) {
-      console.error('Update failed: No matching document found.');
+      log.error('Update failed: No matching document found.');
+      return null;
     }
 
     return updatedHousehold;
@@ -341,7 +343,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     userId: ObjectIdOrString,
   ): Promise<HouseholdInvite[]> {
     const parsedUserId = objectIdSchema.parse(userId);
-    console.log('Fetching invites for user:', parsedUserId);
+    log.debug('Fetching invites for user:', parsedUserId);
     const households = await this.collection
       .find(
         { 'invites.id': parsedUserId },
@@ -349,7 +351,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       )
       .toArray();
 
-    console.log('Households with invites:', households);
+    log.debug('Households with invites:', households);
 
     const userInvites = households.flatMap(
       (h) =>
@@ -358,7 +360,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
         ) ?? [],
     );
 
-    console.log('Filtered invites:', userInvites);
+    log.debug('Filtered invites:', userInvites);
 
     return userInvites;
   }
@@ -411,7 +413,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { _id: objectIdSchema.parse(householdId) },
       { $addToSet: { members: member } },
     );
-    console.log('Added member to household:', result);
+    log.debug('Added member to household:', result);
 
     return result;
   }
@@ -439,7 +441,10 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { returnDocument: 'after', session },
     );
 
-    console.log('Transferred ownership:', result);
+    log.info(
+      `Transferred ownership household ${householdId.toString()} to ${to.toString()}:`,
+      result,
+    );
     return result;
   }
 }

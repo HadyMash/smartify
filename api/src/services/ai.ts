@@ -6,6 +6,7 @@ import { validMaterialIcon } from '../schemas/icon';
 import SQDB from 'better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
 import path from 'path';
+import { log } from '../util/log';
 
 const DEVICE_MODEL = 'qwen2.5-3b-instruct-ml';
 const VLM_MODEL = 'gemma-3-4b-it';
@@ -41,7 +42,7 @@ export class AIService {
   public async pickDeviceIcon(
     device: Omit<Device, 'icon'>,
   ): Promise<string | undefined> {
-    console.log('device:', device);
+    log.info('picking icon for:', device);
 
     const example1device: Omit<Device, 'icon'> = {
       id: randomUUID(),
@@ -191,7 +192,7 @@ air. An icon showing air, or curvy lines, or a fan, or temperature. air, fan, te
       temperature: 0.1,
     });
 
-    console.log(`Response content: ${response.choices[0].message.content}`);
+    log.debug(`Response content: ${response.choices[0].message.content}`);
 
     const iconContent = response.choices[0].message.content;
 
@@ -205,6 +206,7 @@ air. An icon showing air, or curvy lines, or a fan, or temperature. air, fan, te
     if (!validMaterialIcon(iconName)) {
       throw new Error(`Invalid icon name: ${iconName}`);
     }
+    log.info('Selected icon:', iconName);
     return iconName;
   }
 
@@ -299,7 +301,7 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
       // Load the extension if not already loaded
       const sqliteVec = await import('sqlite-vec');
       sqliteVec.load(this.db);
-      console.log('Loaded sqlite-vec extension');
+      log.debug('Loaded sqlite-vec extension');
     }
 
     // Prepare query to search for the most similar icon
@@ -322,7 +324,7 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
       };
 
       if (!result) {
-        console.warn('No matching icon found in the database');
+        log.warn('No matching icon found in the database');
         return 'lightbulb'; // Default fallback icon
       }
 
@@ -335,7 +337,7 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
       return result.name;
       //return result.name;
     } catch (error) {
-      console.error('Error during vector search:', error);
+      log.error('Error during vector search:', error);
       return 'help_outline'; // Default fallback icon
     }
   }

@@ -1,4 +1,5 @@
 import { HouseholdRoom } from '../schemas/household';
+import { log } from './log';
 
 export function validateRooms(rooms: HouseholdRoom[]): boolean {
   /**
@@ -263,7 +264,7 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
   const result = validateRoomGrid(rooms);
 
   if (!result.valid) {
-    console.log('invalid rooms:', result.errors);
+    log.debug('invalid rooms:', result.errors);
   }
   return result.valid;
 }

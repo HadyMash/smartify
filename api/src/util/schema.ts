@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import { log } from './log';
 
 /**
  * Validates the schema in a request, and returns the parsed object.
@@ -16,7 +17,7 @@ export function validateSchema<T extends z.ZodType>(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(data);
   } catch (_) {
-    console.log(_);
+    log.silly(_);
 
     res.status(400).send({ error: 'Invalid Request' });
     return undefined;

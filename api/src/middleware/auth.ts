@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
 import { AccessTokenPayload, tokenTypeSchema } from '../schemas/auth/tokens';
 import { AuthController } from '../controllers/auth';
+import { log } from '../util/log';
 
 // TODO: auto refresh tokens if access is about to expire
 // TODO: finish implementation and testing
@@ -82,7 +83,7 @@ export const parseAuth = async (
 
     next();
   } catch (e) {
-    console.error(e);
+    log.error(e);
     res.status(500).send({ error: 'Internal Server Error' });
     return;
   }
