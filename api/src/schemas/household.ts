@@ -363,6 +363,15 @@ export const unpairDevicesSchema = z.object({
   devices: z.array(z.string().nonempty()),
 });
 
+export const changeDeviceRoomsData = z.object({
+  devices: z.array(
+    z.object({
+      id: z.string().nonempty(),
+      roomId: z.string().nonempty(),
+    }),
+  ),
+});
+
 /* Error types */
 
 export enum InvalidHouseholdType {

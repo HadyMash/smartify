@@ -1,5 +1,6 @@
 import { Email } from '../schemas/auth/auth';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
+import { DeviceNotFoundError } from '../schemas/devices';
 import {
   Household,
   HouseholdMember,
@@ -507,12 +508,14 @@ export class HouseholdService {
   }
 
   public async getHouseholdByDevice(deviceId: string) {
+    await this.db.connect();
     return await this.db.householdRepository.getHouseholdByDevice(deviceId);
   }
 
   public async getHouseholdsByDevices(
     deviceIds: string[],
   ): Promise<Household[]> {
+    await this.db.connect();
     return await this.db.householdRepository.getHouseholdsByDevices(deviceIds);
   }
 
@@ -545,6 +548,7 @@ export class HouseholdService {
       throw new DeviceAlreadyPairedError();
     }
 
+    await this.db.connect();
     const result = await this.db.householdRepository.addDevicesToHousehold(
       householdId,
       devices,
@@ -571,6 +575,7 @@ export class HouseholdService {
     if (!household.devices.find((d) => deviceIds.some((dev) => dev === d.id))) {
       return household;
     }
+    await this.db.connect();
     const result = await this.db.householdRepository.removeDeviceFromHousehold(
       householdId,
       deviceIds,
@@ -579,6 +584,46 @@ export class HouseholdService {
     if (!result) {
       return;
     }
+    return householdSchema.parse(result);
+  }
+
+  /**
+   * Changes the rooms of devices in a household.
+   * @param householdId - the household id
+   * @param devices - the devices to move
+   * @returns the updated household
+   */
+  public async changeDeviceRooms(
+    householdId: ObjectIdOrString,
+    devices: { id: string; roomId: string }[],
+  ) {
+    await this.db.connect();
+
+    const household = await this.getHousehold(householdId);
+
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+
+    // check the devices are all in the household
+    for (const d of devices) {
+      if (!household.devices.find((hd) => hd.id === d.id)) {
+        throw new DeviceNotFoundError(d.id);
+      }
+    }
+
+    // check the devices are being assigned to rooms that exist
+    const rooms = household.rooms.map((r) => r.id);
+    if (devices.some((d) => !rooms.includes(d.roomId))) {
+      throw new InvalidRoomsError();
+    }
+
+    // update the devices
+    const result = await this.db.householdRepository.changeDeviceRooms(
+      householdId,
+      devices,
+    );
+
     return householdSchema.parse(result);
   }
 }

@@ -22,6 +22,7 @@ import {
   pairDevicesSchema,
   HouseholdDevice,
   unpairDevicesSchema,
+  changeDeviceRoomsData,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -1090,6 +1091,76 @@ export class HouseholdController {
         }
         if (e instanceof DeviceOfflineError) {
           res.status(503).send({ error: 'Device offline' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  public static changeDeviceRooms(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        // check user has permissions to change device rooms
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+        if (
+          !(
+            [
+              memberRoleSchema.enum.owner,
+              memberRoleSchema.enum.admin,
+            ] as string[]
+          ).includes(req.user!.households[householdId.toString()].role)
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        const data = validateSchema(res, changeDeviceRoomsData, req.body);
+
+        if (!data) {
+          return;
+        }
+
+        // get household
+        const hs = new HouseholdService();
+
+        // update the rooms
+        const updatedHousehold = await hs.changeDeviceRooms(
+          householdId,
+          data.devices,
+        );
+
+        if (!updatedHousehold) {
+          res.status(500).send({ error: 'Failed to update rooms' });
+          return;
+        }
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+        if (e instanceof DeviceNotFoundError) {
+          res.status(404).send({ error: 'Device not found' });
           return true;
         }
         return false;

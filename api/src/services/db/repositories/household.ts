@@ -481,4 +481,40 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     console.log('Removed device from household:', result);
     return result;
   }
+
+  public async changeDeviceRooms(
+    householdId: ObjectIdOrString,
+    devices: { id: string; roomId: string }[],
+  ): Promise<HouseholdDoc | null> {
+    const result = await this.collection.findOneAndUpdate(
+      {
+        _id: objectIdSchema.parse(householdId),
+      },
+      {
+        $set: {
+          'devices.$[device].roomId': {
+            $arrayElemAt: [
+              devices
+                .filter((d) => d.id)
+                .map((d) => ({
+                  k: d.id,
+                  v: d.roomId,
+                })),
+              0,
+            ],
+          },
+        },
+      },
+      {
+        arrayFilters: [
+          {
+            'device.id': { $in: devices.map((d) => d.id) },
+          },
+        ],
+        returnDocument: 'after',
+      },
+    );
+    console.log('Changed device rooms:', result);
+    return result;
+  }
 }
