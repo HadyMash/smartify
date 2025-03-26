@@ -37,13 +37,12 @@ class QRSetupScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Status Bar and Back Button
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: 40, // Fixed width for the back button
-                    child:
-                        CustomBackButton(), // Use the custom back button widget
+                    child: CustomBackButton(), // Use the custom back button widget
                   ),
                 ],
               ),
@@ -80,9 +79,9 @@ class QRSetupScreen extends StatelessWidget {
 
               // Manual Code Section
               const SizedBox(height: 32),
-              Text(
-                'Or paste this code manually: $mfaSecret', // Corrected string interpolation
-                style: const TextStyle(
+              const Text(
+                'Or paste this code manually:',
+                style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
                 ),
@@ -91,24 +90,28 @@ class QRSetupScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 32),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      mfaSecret,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1,
+                    // Scrollable mfaSecret
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          mfaSecret,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    // Copy Icon aligned to the right
                     IconButton(
                       icon: const Icon(Icons.copy, size: 20),
                       onPressed: () => _copyToClipboard(context),

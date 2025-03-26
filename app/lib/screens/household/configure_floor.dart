@@ -64,8 +64,8 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   void initState() {
     super.initState();
     // Initialize with defaults if null
-    numberOfFloors = widget.floorCount ?? 1;
-    floorOffset = widget.finalOffset ?? 0;
+    numberOfFloors = widget.floorCount ?? 1; // Default to 1 if floorCount is null
+    floorOffset = widget.finalOffset ?? 0;  // Default to 0 if finalOffset is null
 
     _snapController = AnimationController(
       vsync: this,
@@ -117,41 +117,36 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     final height = MediaQuery.sizeOf(context).height;
     final numOfFloors = height ~/ (selectedHeight * 0.9);
     _initialiseFloors(numOfFloors, height);
-    _snapToCenter(); // Snap to center based on floorOffset after initialization
   }
 
-  void _initialiseFloors(int visibleFloors, double screenHeight) {
-    if (_floors.isNotEmpty) return;
+void _initialiseFloors(int visibleFloors, double screenHeight) {
+  if (_floors.isNotEmpty) return;
+  final nearestOdd = visibleFloors.isEven ? visibleFloors + 1 : visibleFloors;
 
-    // Ensure we have at least enough floors to cover the visible area and selected count
-    final nearestOdd = max(
-      visibleFloors.isEven ? visibleFloors + 1 : visibleFloors,
-      numberOfFloors + 2, // Ensure enough floors around the offset
-    );
+  _floors.addAll(List.generate(
+    (nearestOdd - 1) ~/ 2,
+    (index) => _FloorData(
+      ((nearestOdd - 1) ~/ 2 - index),
+      (screenHeight / 2) - selectedHeight * ((nearestOdd - 1) ~/ 2 - index),
+    ),
+  ));
+  _floors.add(_FloorData(0, screenHeight / 2));
+  _floors.addAll(List.generate(
+    (nearestOdd - 1) ~/ 2,
+    (index) => _FloorData(
+      -(index + 1),
+      (screenHeight / 2) + selectedHeight * (index + 1),
+    ),
+  ));
 
-    // Calculate the range of floors based on floorOffset and numberOfFloors
-    final int highestFloor = floorOffset + numberOfFloors - 1;
-    final int lowestFloor = floorOffset;
-
-    // Generate floors starting from highest to lowest
-    for (int floor = highestFloor + (nearestOdd - numberOfFloors) ~/ 2;
-        floor >= lowestFloor - (nearestOdd - numberOfFloors) ~/ 2;
-        floor--) {
-      _floors.add(_FloorData(
-        floor,
-        screenHeight / 2 + selectedHeight * (floorOffset - floor),
-      ));
-    }
-
-    // Initialize selected floors starting from floorOffset upwards
-    _selectedFloorIndices.clear();
-    for (int i = 0; i < numberOfFloors; i++) {
-      final index = _floors.indexWhere((f) => f.floor == floorOffset + i);
-      if (index != -1) {
-        _selectedFloorIndices.add(index);
-      }
+  _selectedFloorIndices.clear();
+  final middleIndex = (nearestOdd - 1) ~/ 2;
+  for (int i = 0; i < numberOfFloors; i++) {
+    if (middleIndex - i >= 0) {
+      _selectedFloorIndices.add(middleIndex - i);
     }
   }
+}
 
   void _snapToCenter() {
     if (_floors.isEmpty) return;
@@ -159,10 +154,15 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
     final screenCenter = MediaQuery.sizeOf(context).height / 2;
 
     // Find the floor that matches floorOffset (or closest to it)
-    int closestIndex = _floors.indexWhere((f) => f.floor == floorOffset);
-    if (closestIndex == -1) {
-      closestIndex = 0; // Fallback to first floor if offset not found
-    }
+    int closestIndex = 0;
+double smallestDistance = double.infinity;
+for (int i = 0; i < _floors.length; i++) {
+  final distance = (_floors[i].position - screenCenter).abs();
+  if (distance < smallestDistance) {
+    smallestDistance = distance;
+    closestIndex = i;
+  }
+}
 
     // Update selected floors based on the closest index
     _selectedFloorIndices.clear();
@@ -251,38 +251,42 @@ class _ConfigureFloorsScreenState extends State<ConfigureFloorsScreen>
   Widget build(BuildContext context) {
     final height = MediaQuery.sizeOf(context).height;
 
-    void updateSelectedFloors() {
-      final lowestIndex = _selectedFloorIndices.isNotEmpty
-          ? _selectedFloorIndices.reduce((a, b) => a < b ? a : b)
-          : 0;
+ void updateSelectedFloors() {
+  final lowestFloor = _selectedFloorIndices.isNotEmpty
+      ? _selectedFloorIndices.reduce((a, b) => a < b ? a : b)
+      : floorOffset;
 
-      _selectedFloorIndices.clear();
-      for (int i = 0; i < numberOfFloors; i++) {
-        if (lowestIndex + i < _floors.length) {
-          _selectedFloorIndices.add(lowestIndex + i);
-        } else {
-          break;
-        }
-      }
-    }
+  _selectedFloorIndices.clear();
+  for (int i = 0; i < numberOfFloors; i++) {
+    _selectedFloorIndices.add(lowestFloor + i);
+  }
+  print('Updated Selected Floor Indices: $_selectedFloorIndices');
+}
 
-    void incrementFloors() {
-      setState(() {
-        if (numberOfFloors < _floors.length) {
-          numberOfFloors++;
-          updateSelectedFloors();
-        }
-      });
+void incrementFloors() {
+  setState(() {
+    final highestFloor = _selectedFloorIndices.isNotEmpty
+        ? _selectedFloorIndices.reduce((a, b) => a > b ? a : b)
+        : floorOffset;
+    numberOfFloors++;
+    _selectedFloorIndices.add(highestFloor + 1); // Add the next floor up
+    if (_floors.isNotEmpty && _floors.first.floor < highestFloor + 1) {
+      _addItemToTop(); // Ensure the new floor exists
     }
+  });
+}
 
-    void decrementFloors() {
-      setState(() {
-        if (numberOfFloors > 1) {
-          numberOfFloors--;
-          updateSelectedFloors();
-        }
-      });
+void decrementFloors() {
+  setState(() {
+    if (numberOfFloors > 1) {
+      final highestFloor = _selectedFloorIndices.reduce((a, b) => a > b ? a : b);
+      numberOfFloors--;
+      _selectedFloorIndices.remove(highestFloor); // Remove the top floor
+      // Ensure the new top floor is visible
+      _snapToCenter(); // Re-align the view to the lowest selected floor
     }
+  });
+}
 
     final theme = Theme.of(context);
     return Scaffold(
