@@ -162,4 +162,37 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
       { $set: { roomId } },
     );
   }
+
+  public async getDevicePairedHousehold(
+    deviceId: string,
+  ): Promise<ObjectId | null> {
+    const device = await this.collection.findOne(
+      { _id: deviceId },
+      {
+        projection: { householdId: 1 },
+      },
+    );
+    if (!device) {
+      return null;
+    }
+    return device.householdId;
+  }
+
+  public async getDevicesPairedHousehlds(
+    deviceIds: string[],
+  ): Promise<ObjectId[]> {
+    const devices = await this.collection
+      .find({ _id: { $in: deviceIds } }, { projection: { householdId: 1 } })
+      .toArray();
+    return devices.map((device) => device.householdId);
+  }
+
+  public async getHouseholdsByDeviceIds(
+    deviceIds: string[],
+  ): Promise<ObjectId[]> {
+    const devices = await this.collection
+      .find({ _id: { $in: deviceIds } }, { projection: { householdId: 1 } })
+      .toArray();
+    return devices.map((device) => device.householdId);
+  }
 }

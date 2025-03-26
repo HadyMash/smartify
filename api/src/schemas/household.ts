@@ -196,7 +196,6 @@ const _householdSchema = householdCreateRequestDataSchema.extend({
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
-  devices: z.array(householdDeviceSchema).default([]),
 });
 
 export const householdSchema = _householdSchema.superRefine((data, ctx) => {
@@ -223,18 +222,6 @@ export const householdSchema = _householdSchema.superRefine((data, ctx) => {
       });
     }
   });
-
-  // check devices
-  for (const device of data.devices) {
-    if (!roomMap.has(device.roomId)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Device is assigned to a non-existent room',
-        fatal: true,
-        path: ['devices', device.id],
-      });
-    }
-  }
 });
 
 export type Household = z.infer<typeof householdSchema>;

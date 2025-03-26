@@ -11,7 +11,6 @@ import {
   MemberPermissions,
   MemberRole,
   MissingPermissionsError,
-  HouseholdDevice,
 } from '../../../schemas/household';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { InvalidUserError, InvalidUserType } from '../../../schemas/auth/user';
@@ -41,9 +40,6 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       await this.collection.createIndex({ 'invites.id': 1 });
       await this.collection.createIndex({ 'invites.inviteId': 1 });
       await this.collection.createIndex({ 'inivtes.id': 1, _id: 1 });
-      await this.collection.createIndex({ 'devices.id': 1 });
-      // compound index for device id and household id
-      await this.collection.createIndex({ 'devices.deviceId': 1, _id: 1 });
 
       console.log('Indexes created for households collection.');
     } catch (error) {
@@ -422,99 +418,6 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     );
 
     console.log('Transferred ownership:', result);
-    return result;
-  }
-
-  /**
-   * Get a household by a device id
-   * @param deviceId - The device id
-   * @returns The household if it exists
-   */
-  public async getHouseholdByDevice(
-    deviceId: string,
-  ): Promise<Household | null> {
-    const household = await this.collection.findOne({
-      'devices.id': deviceId,
-    });
-    return household;
-  }
-
-  /**
-   * Get households by device ids
-   * @param deviceIds - The device ids
-   * @returns The households that contain the devices
-   */
-  public async getHouseholdsByDevices(
-    deviceIds: string[],
-  ): Promise<Household[]> {
-    return this.collection.find({ 'devices.id': { $in: deviceIds } }).toArray();
-  }
-
-  /**
-   * Add a device to a household
-   * @param householdId - Household id
-   * @param device - The device to add
-   */
-  public async addDevicesToHousehold(
-    householdId: ObjectIdOrString,
-    devices: HouseholdDevice[],
-  ): Promise<HouseholdDoc | null> {
-    const result = await this.collection.findOneAndUpdate(
-      { _id: objectIdSchema.parse(householdId) },
-      { $push: { devices: { $each: devices } } },
-      { returnDocument: 'after' },
-    );
-
-    console.log('Added device to household:', result);
-    return result;
-  }
-
-  public async removeDeviceFromHousehold(
-    householdId: ObjectIdOrString,
-    deviceIds: string[],
-  ): Promise<HouseholdDoc | null> {
-    const result = await this.collection.findOneAndUpdate(
-      { _id: objectIdSchema.parse(householdId) },
-      { $pull: { devices: { id: { $in: deviceIds } } } },
-      { returnDocument: 'after' },
-    );
-    console.log('Removed device from household:', result);
-    return result;
-  }
-
-  public async changeDeviceRooms(
-    householdId: ObjectIdOrString,
-    devices: { id: string; roomId: string }[],
-  ): Promise<HouseholdDoc | null> {
-    const result = await this.collection.findOneAndUpdate(
-      {
-        _id: objectIdSchema.parse(householdId),
-      },
-      {
-        $set: {
-          'devices.$[device].roomId': {
-            $arrayElemAt: [
-              devices
-                .filter((d) => d.id)
-                .map((d) => ({
-                  k: d.id,
-                  v: d.roomId,
-                })),
-              0,
-            ],
-          },
-        },
-      },
-      {
-        arrayFilters: [
-          {
-            'device.id': { $in: devices.map((d) => d.id) },
-          },
-        ],
-        returnDocument: 'after',
-      },
-    );
-    console.log('Changed device rooms:', result);
     return result;
   }
 }
