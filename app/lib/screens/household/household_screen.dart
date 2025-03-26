@@ -171,14 +171,14 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => InviteMemberScreen(
-                              onMemberInvited: _addNewMember,
+                            builder: (context) => InviteMemberScreen( householdId: _selectedHouseholdId!,
+                             // onMemberInvited: _addNewMember,
                             ),
                           ),
                         );
                       },
                       child: Text(
-                        'Add Member',
+                        'Invite Member',
                         style: textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSecondary,

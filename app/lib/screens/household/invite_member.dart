@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '/widgets/back_button.dart';
-import 'package:intl/intl.dart';
+import 'package:smartify/services/household.dart'; // Import HouseholdService
 
 class InviteMemberScreen extends StatefulWidget {
-  final Function(String) onMemberInvited;
+  final String householdId; // Required to pass household ID
 
   const InviteMemberScreen({
     super.key,
-    required this.onMemberInvited,
+    required this.householdId,
   });
 
   @override
@@ -16,28 +16,70 @@ class InviteMemberScreen extends StatefulWidget {
 
 class _InviteMemberScreenState extends State<InviteMemberScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  DateTime? _selectedDate;
+  String _role = 'dweller'; // Default role
+  bool _appliances = false; // Default permissions (all unselected for dweller)
+  bool _health = false;
+  bool _security = false;
+  bool _energy = false;
+  bool _isLoading = false;
+  late HouseholdService _householdService;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeService();
+  }
+
+  Future<void> _initializeService() async {
+    _householdService = await HouseholdService.create();
+  }
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+  bool _isRoleLocked() {
+    // Permissions are locked (all enabled) for owner and admin
+    return _role == 'owner' || _role == 'admin';
+  }
+
+  Future<void> _inviteMember() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      try {
+        final invite = await _householdService.inviteMember(
+          widget.householdId,
+          _role,
+          HouseholdPermissions(
+            appliances: _appliances,
+            health: _health,
+            security: _security,
+            energy: _energy,
+          ),
+          _emailController.text,
+        );
+
+        setState(() => _isLoading = false);
+
+        if (invite != null) {
+          Navigator.pop(context); // Pop back to HouseholdScreen
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Member invited successfully!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to invite member')),
+          );
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
@@ -82,50 +124,51 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
+                // Role Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: theme.colorScheme.secondary),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    return null;
-                  },
+                  child: DropdownButton<String>(
+                    value: _role,
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    elevation: 16,
+                    style: textTheme.bodyLarge,
+                    underline: Container(height: 0),
+                    onChanged: (String? value) {
+                      if (value != null) {
+                        setState(() {
+                          _role = value;
+                          if (_isRoleLocked()) {
+                            // Lock permissions to true for admin
+                            _appliances = true;
+                            _health = true;
+                            _security = true;
+                            _energy = true;
+                          } else {
+                            // Set all to false for dweller
+                            _appliances = false;
+                            _health = false;
+                            _security = false;
+                            _energy = false;
+                          }
+                        });
+                      }
+                    },
+                    items: ['admin', 'dweller'] // Removed 'owner' from the list
+                        .map<DropdownMenuItem<String>>((String role) {
+                      return DropdownMenuItem<String>(
+                        value: role,
+                        child: Text(role.capitalize()),
+                      );
+                    }).toList(),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                InkWell(
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: theme.colorScheme.secondary),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _selectedDate == null
-                              ? 'Date Of Birth'
-                              : DateFormat('MMMM d, y').format(_selectedDate!),
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: _selectedDate == null
-                                ? theme.colorScheme.onSurface.withOpacity(0.6)
-                                : theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        Icon(
-                          Icons.calendar_today,
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                // Email Field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -136,26 +179,65 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter an email';
                     }
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                      return 'Please enter a valid email';
+                    }
                     return null;
                   },
                 ),
+                const SizedBox(height: 16),
+                // Permissions Checkboxes with black border and black checkmark
+                _buildCheckboxTile(
+                  title: 'Appliances',
+                  value: _appliances,
+                  onChanged: _isRoleLocked()
+                      ? null
+                      : (value) => setState(() => _appliances = value ?? false),
+                  enabled: !_isRoleLocked(),
+                  theme: theme,
+                ),
+                _buildCheckboxTile(
+                  title: 'Health',
+                  value: _health,
+                  onChanged: _isRoleLocked()
+                      ? null
+                      : (value) => setState(() => _health = value ?? false),
+                  enabled: !_isRoleLocked(),
+                  theme: theme,
+                ),
+                _buildCheckboxTile(
+                  title: 'Security',
+                  value: _security,
+                  onChanged: _isRoleLocked()
+                      ? null
+                      : (value) => setState(() => _security = value ?? false),
+                  enabled: !_isRoleLocked(),
+                  theme: theme,
+                ),
+                _buildCheckboxTile(
+                  title: 'Energy',
+                  value: _energy,
+                  onChanged: _isRoleLocked()
+                      ? null
+                      : (value) => setState(() => _energy = value ?? false),
+                  enabled: !_isRoleLocked(),
+                  theme: theme,
+                ),
                 const SizedBox(height: 32),
+                // Confirm Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        widget.onMemberInvited(_nameController.text);
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Text(
-                      'Confirm',
-                      style: textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSecondary,
-                      ),
-                    ),
+                    onPressed: _isLoading ? null : _inviteMember,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : Text(
+                            'Confirm',
+                            style: textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSecondary,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -164,5 +246,56 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
         ),
       ),
     );
+  }
+
+  // Custom CheckboxTile with black border and black checkmark
+  Widget _buildCheckboxTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool?>? onChanged,
+    required bool enabled,
+    required ThemeData theme,
+  }) {
+    return ListTile(
+      title: Text(title),
+      leading: Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: enabled ? Colors.black : Colors.grey, // Black for enabled, gray for disabled
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Checkbox(
+          value: value,
+          onChanged: onChanged,
+          checkColor: Colors.black, // Black checkmark for all states
+          fillColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.disabled)) {
+              return Colors.grey.withOpacity(0.5); // Gray fill for disabled state
+            }
+            return Colors.transparent; // Transparent fill for other states
+          }),
+          side: MaterialStateBorderSide.resolveWith((states) {
+            if (states.contains(MaterialState.disabled)) {
+              return const BorderSide(color: Colors.grey, width: 2); // Gray border for disabled state
+            }
+            return const BorderSide(color: Colors.black, width: 2); // Black border for enabled state
+          }),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+    );
+  }
+}
+
+// Extension to capitalize the first letter of role strings
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

@@ -285,17 +285,16 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   }
 
   // Invite Member
-  Future<Household> inviteMember({
-    required String householdId,
-    required String email,
-    required String role,
-    required HouseholdPermissions permissions,
-  }) async {
+Future<HouseholdInvite?> inviteMember(
+    String householdId,
+    String role,
+    HouseholdPermissions permissions,
+    String email,
+  ) async {
     try {
-      final res = await _dio.post(
+      final response = await _dio.post(
         '/households/$householdId/invite',
         data: {
-          'email': email,
           'role': role,
           'permissions': {
             'appliances': permissions.appliances,
@@ -303,22 +302,52 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
             'security': permissions.security,
             'energy': permissions.energy,
           },
+          'email': email,
         },
       );
-      return _parseHousehold(res.data);
-    } on DioError catch (e) {
-      switch (e.response?.statusCode) {
-        case 400:
-          throw Exception(e.response?.data['error'] ?? 'Invalid request');
-        case 403:
-          throw Exception('Only owners/admins can invite');
-        case 404:
-          throw Exception('Household not found');
-        case 409:
-          throw Exception(e.response?.data['error'] ?? 'User already invited');
-        default:
-          throw Exception('Failed to send invitation');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        // Assuming the response is parsed by householdInviteSchema in backend
+        return HouseholdInvite(
+          inviteId: data['inviteId'].toString(),
+          userId: data['id'].toString(), // Assuming 'id' is the user ID
+          householdName: '', // Not provided in response; fetch separately if needed
+          senderName: '', // Not provided in response; fetch separately if needed
+        );
       }
+      return null; // Unexpected response
+    } on DioError catch (e) {
+      print('Dio Error inviting member: ${e.message}');
+      if (e.response != null && e.response!.data != null) {
+        final error = e.response!.data as Map<String, dynamic>;
+        print('error response data: ${e.response!.data}');
+        print('Error inviting member: ${error['error'] ?? error['error']}');
+        print('Error inviting member details: ${error['details']}');
+
+        // Handle specific error cases based on backend response
+        switch (e.response!.statusCode) {
+          case 403:
+            throw Exception('Permission denied: You must be an owner or admin');
+          case 404:
+            throw Exception('Household not found');
+          case 400:
+            throw Exception('Invalid request: ${error['error']}');
+          case 409:
+            if (error['error'] == 'User is already a member') {
+              throw Exception('User is already a member');
+            } else if (error['error'] == 'User is already invited') {
+              throw Exception('User is already invited');
+            }
+            throw Exception('Conflict: ${error['error']}');
+          default:
+            return null;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error inviting member: $e');
+      throw e; // Re-throw to handle in UI
     }
   }
 

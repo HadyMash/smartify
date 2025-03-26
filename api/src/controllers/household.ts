@@ -16,6 +16,7 @@ import {
   InvalidInviteError,
   transferSchema,
   InvalidRoomsError,
+  householdInviteSchema,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -183,7 +184,7 @@ export class HouseholdController {
           },
           data.email,
         );
-        res.status(200).send(householdSchema.parse(updatedHousehold));
+        res.status(200).send(householdInviteSchema.parse(updatedHousehold));
         return;
       },
       (e) => {
