@@ -304,13 +304,22 @@ export const inviteMemberSchema = _invMemberSchema
       path: ['permissions'],
       message: 'Permissions are required for dweller role',
     },
-  );
+  )
+  .refine(({ role }) => role !== 'owner', {
+    message: 'Cannot invite owner role',
+    path: ['role'],
+  });
+
 export type InviteMember = z.infer<typeof inviteMemberSchema>;
 
 export const modifyMemberSchema = _invMemberSchema
   .omit({
     householdId: true,
     email: true,
+  })
+  .refine(({ role }) => role !== 'owner', {
+    message: 'Cannot set member to owner',
+    path: ['role'],
   })
   .refine(
     ({ role, permissions }) => {

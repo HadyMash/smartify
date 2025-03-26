@@ -16,8 +16,11 @@ export function validateSchema<T extends z.ZodType>(
   try {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(data);
-  } catch (_) {
-    log.silly(_);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      log.debug(e.errors);
+    }
+    log.silly(e);
 
     res.status(400).send({ error: 'Invalid Request' });
     return undefined;

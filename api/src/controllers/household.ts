@@ -228,6 +228,7 @@ export class HouseholdController {
 
   public static getUserInvites(req: AuthenticatedRequest, res: Response) {
     tryAPIController(res, async () => {
+      log.debug('getting user invites for:');
       const hs = new HouseholdService();
       const invites = await hs.getUserInvites(req.user!._id);
       res.status(200).send(invites);

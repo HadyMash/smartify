@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { HouseholdController } from '../controllers/household';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireDeviceId } from '../middleware/auth';
 
 export const householdRouter = Router();
 
 householdRouter.use(requireAuth);
+householdRouter.use(requireDeviceId);
 
 householdRouter.get('/', (req, res) =>
   HouseholdController.getUserHouseholds(req, res),
@@ -12,6 +13,14 @@ householdRouter.get('/', (req, res) =>
 
 householdRouter.post('/new', (req, res) =>
   HouseholdController.createHousehold(req, res),
+);
+
+householdRouter.get('/invites', (req, res) =>
+  HouseholdController.getUserInvites(req, res),
+);
+
+householdRouter.post('/invite/respond', (req, res) =>
+  HouseholdController.respondToInvite(req, res),
 );
 
 householdRouter.get('/:householdId', (req, res) =>
@@ -40,14 +49,6 @@ householdRouter.get('/:householdId/info', (req, res) =>
 
 householdRouter.patch('/:householdId/change-permissions', (req, res) =>
   HouseholdController.changeUserPermissions(req, res),
-);
-
-householdRouter.post('/invite/respond', (req, res) =>
-  HouseholdController.respondToInvite(req, res),
-);
-
-householdRouter.get('/invites', (req, res) =>
-  HouseholdController.getUserInvites(req, res),
 );
 
 householdRouter.post('/:householdId/leave', (req, res) =>

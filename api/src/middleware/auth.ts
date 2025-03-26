@@ -64,6 +64,8 @@ export const parseAuth = async (
       const ts = new TokenService();
       const { valid, payload } = await ts.verifyToken(refreshToken, true);
 
+      log.debug('Refresh token valid:', valid);
+
       if (valid && payload!.type === tokenTypeSchema.enum.REFRESH) {
         req.refreshToken = refreshToken;
       }
@@ -100,6 +102,7 @@ export const requireDeviceId = (
   next: NextFunction,
 ) => {
   if (!req.deviceId || req.deviceId.length === 0) {
+    log.debug('Device ID required');
     res.status(400).send({ error: 'Device ID required' });
     return;
   }
@@ -117,6 +120,7 @@ export const requireAuth = (
   next: NextFunction,
 ) => {
   if (!req.user) {
+    log.debug('Unauthorized');
     res.status(401).send('Unauthorized');
     return;
   }
