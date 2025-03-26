@@ -198,7 +198,25 @@ export class HouseholdService {
     memberId: ObjectIdOrString,
   ): Promise<Household | null> {
     await this.db.connect();
-    return this.db.householdRepository.removeMember(householdId, memberId);
+    // check if the user is a member or invited (or neither)
+    const household =
+      await this.db.householdRepository.getHouseholdById(householdId);
+    if (!household) {
+      throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
+    }
+    if (
+      household.members.find((m) => m.id.toString() === memberId.toString())
+    ) {
+      return this.db.householdRepository.removeMember(householdId, memberId);
+    } else if (
+      household.invites?.find((i) => i.id.toString() === memberId.toString())
+    ) {
+      await this.db.householdRepository.revokeInvite(memberId);
+      // get the updated household
+      return this.db.householdRepository.getHouseholdById(householdId);
+    } else {
+      throw new InvalidUserError({ type: InvalidUserType.DOES_NOT_EXIST });
+    }
   }
 
   /**
