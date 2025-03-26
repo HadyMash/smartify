@@ -38,8 +38,8 @@ async function start() {
   console.log('parsed:', parsed['abc'][0]['embedding']);
   console.log('embeddings:', embeddings['abc']);
 
-  //const db = new Database(path.join('src', 'scripts', 'ai', 'icons.db'));
-  const db = new Database(':memory:');
+  const db = new Database(path.join('src', 'scripts', 'ai', 'icons.db'));
+  //const db = new Database(':memory:');
   sqliteVec.load(db);
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -118,17 +118,17 @@ async function start() {
 
     console.log(
       'Test search (abc):',
-      await new AIService().vectorSearchIcon(db, 'abc'),
+      await new AIService().vectorSearchIcon('abc'),
     );
 
     console.log(
       'Test search (snowflake):',
-      await new AIService().vectorSearchIcon(db, 'snowflake'),
+      await new AIService().vectorSearchIcon('snowflake'),
     );
 
     console.log(
       'Test search (heart monitor):',
-      await new AIService().vectorSearchIcon(db, 'heart monitor'),
+      await new AIService().vectorSearchIcon('heart monitor'),
     );
   } catch (error) {
     console.error('Error creating or populating database:', error);

@@ -39,37 +39,37 @@ async function test() {
     source: 'acme',
     name: 'ACME Fan',
     capabilities: [
+      {
+        id: 'heartrate',
+        type: 'number',
+        name: 'Heart Rate',
+        unit: 'bpm',
+        readonly: true,
+      },
+      {
+        id: 'bloodpressure',
+        type: 'number',
+        unit: 'mmHg',
+        readonly: true,
+      },
       //{
-      //  id: 'heartrate',
-      //  type: 'number',
-      //  name: 'Heart Rate',
-      //  unit: 'bpm',
-      //  readonly: true,
+      //  id: 'on',
+      //  type: 'switch',
       //},
       //{
-      //  id: 'bloodpressure',
-      //  type: 'number',
-      //  unit: 'mmHg',
-      //  readonly: true,
+      //  id: 'speed',
+      //  type: 'mode',
+      //  modes: ['low', 'medium', 'high'],
       //},
-      {
-        id: 'on',
-        type: 'switch',
-      },
-      {
-        id: 'speed',
-        type: 'mode',
-        modes: ['low', 'medium', 'high'],
-      },
-      {
-        id: 'swing',
-        type: 'switch',
-        name: 'Horizontal Swing',
-      },
+      //{
+      //  id: 'swing',
+      //  type: 'switch',
+      //  name: 'Horizontal Swing',
+      //},
     ],
   };
   deviceSchema.parse(device);
-  await ai.pickDeviceIcon(device);
+  console.log('icon:', await ai.pickDeviceIcon(device));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises

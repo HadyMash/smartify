@@ -4,6 +4,8 @@ import { Device, deviceSchema } from '../schemas/devices';
 import { randomUUID } from 'crypto';
 import { validMaterialIcon } from '../schemas/icon';
 import SQDB from 'better-sqlite3';
+import * as sqliteVec from 'sqlite-vec';
+import path from 'path';
 
 const DEVICE_MODEL = 'qwen2.5-3b-instruct-ml';
 const VLM_MODEL = 'gemma-3-4b-it';
@@ -12,6 +14,9 @@ const EMBEDDING_MODEL = 'text-embedding-nomic-embed-text-v1.5';
 export class AIService {
   private static _client: OpenAI;
   protected readonly client: OpenAI;
+  protected static _db: SQDB.Database;
+  protected readonly db: SQDB.Database;
+
   constructor() {
     if (!AIService._client) {
       AIService._client = new OpenAI({
@@ -20,6 +25,11 @@ export class AIService {
       });
     }
     this.client = AIService._client;
+    if (!AIService._db) {
+      AIService._db = new SQDB(path.join('src', 'scripts', 'ai', 'icons.db'));
+      sqliteVec.load(AIService._db);
+    }
+    this.db = AIService._db;
   }
 
   /**
@@ -152,7 +162,7 @@ RULES:
 4. The device may sometimes include optional name and/or description fields. You may use these to help you select the most suitable icon, but they might not be included.
 5. You must consider what the icon looks like, but also what it may mean/represent.
 6. Respond with the icon name and a very brief description of what it may look lile. You should include possible names for the icon/tags at the end of your response.
-7. EXAMPLES: below are examples of inputs and possible icon choices:
+8. EXAMPLES: below are examples of inputs and possible icon choices:
 Example 1:
 INPUT:
 ${JSON.stringify(example1device)}
@@ -175,54 +185,27 @@ air. An icon showing air, or curvy lines, or a fan, or temperature. air, fan, te
       content: JSON.stringify(device),
     });
 
-    // Try up to 3 times to get a valid icon
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const response = await this.client.chat.completions.create({
-        model: DEVICE_MODEL,
-        messages,
-        temperature: 0.1,
-      });
+    const response = await this.client.chat.completions.create({
+      model: DEVICE_MODEL,
+      messages,
+      temperature: 0.1,
+    });
 
-      console.log(`Attempt ${attempt}:`, response);
-      console.log(`Response content: ${response.choices[0].message.content}`);
+    console.log(`Response content: ${response.choices[0].message.content}`);
 
-      const iconContent = response.choices[0].message.content;
-      if (!iconContent) {
-        console.log('No icon content');
-        continue;
-      }
+    const iconContent = response.choices[0].message.content;
 
-      // embed response
-      const embedding = await this.genereteTextEmbedding(iconContent);
-      // TODO: vector search for similar icons
-      // TODO: return icon
-      return;
-
-      //// If we have content and it's a valid icon, return it
-      //if (iconContent && validMaterialIcon(iconContent.trim())) {
-      //  return iconContent.trim();
-      //}
-      //
-      //// If we reach the max retries, give up
-      //if (attempt === maxRetries) {
-      //  console.log(`Failed to get valid icon after ${maxRetries} attempts`);
-      //  return;
-      //}
-      //
-      //// Add feedback about invalid icon for next attempt
-      //messages.push({
-      //  role: 'assistant',
-      //  content: iconContent || '',
-      //});
-      //messages.push({
-      //  role: 'user',
-      //  content:
-      //    'Invalid icon. Please provide a valid Material icon name only.',
-      //});
+    if (!iconContent) {
+      throw new Error('Failed to generate icon');
     }
 
-    return;
+    // get an icon name from the embedding
+    const iconName = await this.vectorSearchIcon(iconContent);
+
+    if (!validMaterialIcon(iconName)) {
+      throw new Error(`Invalid icon name: ${iconName}`);
+    }
+    return iconName;
   }
 
   public async generateIconDescription(iconName: string, imagePath: string) {
@@ -302,10 +285,7 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
     return response.data;
   }
 
-  public async vectorSearchIcon(
-    db: SQDB.Database,
-    description: string,
-  ): Promise<string> {
+  public async vectorSearchIcon(description: string): Promise<string> {
     const embedding = await this.genereteTextEmbedding(description);
 
     // convert open ai embedding to number[]
@@ -314,16 +294,16 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
     // Make sure sqlite-vec extension is loaded
     try {
       // Check if vec_version function exists
-      db.prepare('SELECT vec_version() as version').get();
+      this.db.prepare('SELECT vec_version() as version').get();
     } catch (_) {
       // Load the extension if not already loaded
       const sqliteVec = await import('sqlite-vec');
-      sqliteVec.load(db);
+      sqliteVec.load(this.db);
       console.log('Loaded sqlite-vec extension');
     }
 
     // Prepare query to search for the most similar icon
-    const searchQuery = db.prepare(`
+    const searchQuery = this.db.prepare(`
       SELECT name, distance
       FROM icons 
       WHERE embedding MATCH ?

@@ -1,4 +1,4 @@
 icons/
 embeddings*.json
-icon-db.db
+*.db
 log*
