@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -224,7 +225,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         throw new Error('Failed to discover devices');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return response.data
         .map((device: any): Device | undefined => {
           try {
@@ -379,7 +379,6 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           return deviceWithStateSchema.parse(mappedDevice);
         });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return mappedDevices;
     } catch (e) {
       // TODO: Handle errors
@@ -535,4 +534,62 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       return undefined;
     }
   }*/
+
+  public async getDevicesByHousehold(
+    householdId: string,
+  ): Promise<DeviceWithState[] | undefined> {
+    try {
+      const response = await this.axiosInstance.get(
+        `/households/${householdId}/devices`,
+      );
+
+      if (response.status !== 200) {
+        throw new Error('Failed to retrieve devices for household');
+      }
+
+      return response.data
+        .map((device: any): DeviceWithState | undefined => {
+          try {
+            return this.mapDeviceWithState(device);
+          } catch (_) {
+            console.warn('Failed to map device for household:', device.id);
+            return undefined;
+          }
+        })
+        .filter((d: DeviceWithState | undefined) => d !== undefined);
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e)) {
+        console.error('Axios error:', e.message);
+      } else {
+        console.error('Unexpected error:', e);
+      }
+      return undefined;
+    }
+  }
+  public async addDevicesToHousehold(
+    householdId: string,
+    deviceIds: string[],
+  ): Promise<DeviceWithState[] | undefined> {
+    try {
+      const response = await this.axiosInstance.post(
+        `/households/${householdId}/devices`,
+        {
+          devices: deviceIds,
+        },
+      );
+
+      if (response.status !== 200) {
+        throw new Error('Failed to add devices to household');
+      }
+
+      return this.getDevicesByHousehold(householdId);
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e)) {
+        console.error('Failed to add devices:', e.message);
+      } else {
+        console.error('Unexpected error:', e);
+      }
+      throw e;
+    }
+  }
 }

@@ -27,6 +27,7 @@ import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { tryAPIController, validateSchema } from '../util';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
+import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -46,6 +47,7 @@ export class HouseholdController {
         owner: req.user!._id,
         members: [],
         invites: [],
+        devices: [],
       };
 
       const d = validateSchema(res, householdSchema, householdData);
@@ -441,6 +443,15 @@ export class HouseholdController {
           data.householdId,
           data.rooms,
         );
+        if (data.devices && data.devices.length > 0) {
+          const acmeAdapter = new AcmeIoTAdapter();
+          const deviceIds = data.devices.map((device) => device.id);
+          await acmeAdapter.addDevicesToHousehold(
+            data.householdId.toString(),
+            deviceIds,
+          );
+        }
+
         res.status(200).send(updatedHousehold);
       },
       (e) => {
@@ -480,8 +491,12 @@ export class HouseholdController {
         res.status(404).send({ error: 'Household not found' });
         return;
       }
+      const acmeAdapter = new AcmeIoTAdapter();
+      const devices = await acmeAdapter.getDevicesByHousehold(
+        householdId.toString(),
+      );
 
-      res.status(200).send(household);
+      res.status(200).send({ ...household, devices: devices || [] });
     });
   }
 

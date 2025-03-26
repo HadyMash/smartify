@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
+import { deviceSchema } from './devices';
 
 /**
  * Coordinates using longitude and latitude
@@ -109,6 +110,7 @@ export const householdRoomSchema = z.object({
   type: householdRoomTypeSchema,
   /** Room floor */
   floor: z.number().int(),
+  devices: z.array(deviceSchema),
   /**
    * Rooms connected to this room. This is used for laying out rooms in the app
    */
@@ -177,6 +179,7 @@ const defaultRoom: HouseholdRoom = {
   floor: 0,
   name: 'Living Room',
   connectedRooms: {},
+  devices: [],
 };
 
 export const householdSchema = householdCreateRequestDataSchema.extend({
@@ -187,6 +190,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
+  devices: z.array(deviceSchema),
 });
 
 export type Household = z.infer<typeof householdSchema>;
@@ -243,6 +247,7 @@ export function householdToInfo(h: Household) {
 export const roomRequestDataSchema = z.object({
   rooms: z.array(householdRoomSchema).min(1),
   householdId: objectIdOrStringSchema,
+  devices: z.array(deviceSchema),
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 

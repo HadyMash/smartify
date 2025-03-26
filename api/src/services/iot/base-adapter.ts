@@ -179,4 +179,19 @@ export abstract class BaseIotAdapter {
       { actionId: string; args: Record<string, unknown> }
     >,
   ): Promise<DeviceWithState[] | undefined>;*/
+
+  /**
+   * Gets all devices associated with a specific household.
+   *
+   * @param householdId - The household's unique identifier
+   * @returns Promise containing an array of devices with their current states or undefined
+   * @throws Error if the request fails or if the response is not as expected
+   */
+  public abstract getDevicesByHousehold(
+    householdId: string,
+  ): Promise<DeviceWithState[] | undefined>;
+  public abstract addDevicesToHousehold(
+    householdId: string,
+    deviceIds: string[],
+  ): Promise<DeviceWithState[] | undefined>;
 }

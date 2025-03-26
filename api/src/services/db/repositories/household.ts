@@ -410,4 +410,12 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     console.log('Transferred ownership:', result);
     return result;
   }
+  public async getHouseholdByDevice(
+    deviceId: string,
+  ): Promise<Household | null> {
+    const household = await this.collection.findOne({
+      'devices.deviceId': deviceId,
+    });
+    return household ? household : null;
+  }
 }

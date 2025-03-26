@@ -754,4 +754,8 @@ export class HouseholdService {
     }
     return this.db.householdRepository.transferOwnership(householdId, newOwner);
   }
+
+  public async getHouseholdByDevice(deviceId: string) {
+    return await this.db.householdRepository.getHouseholdByDevice(deviceId);
+  }
 }

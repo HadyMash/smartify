@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
 import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
+import { HouseholdService } from '../services/household';
 
 export class IoTController {
   public static async updateDevice(req: AuthenticatedRequest, res: Response) {
@@ -18,6 +19,20 @@ export class IoTController {
           .send({ message: 'deviceId and state are required' });
       }
       // TODO: check device info in db to figure out adapter type etc and make sure it exists
+
+      const hs = new HouseholdService();
+      const household = await hs.getHouseholdByDevice(deviceId);
+      if (
+        !household ||
+        !household._id ||
+        !(household._id.toString() in req.user!.households)
+      ) {
+        return res
+          .status(403)
+          .send({
+            message: 'Unauthorized: Device not linked to your household',
+          });
+      }
 
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
 
@@ -169,6 +184,30 @@ export class IoTController {
       const adapter: BaseIotAdapter = new AcmeIoTAdapter();
       await adapter.unpairDevices([deviceId]);
       res.status(200).send({ message: 'Device unpaired successfully' });
+    } catch (e) {
+      console.error(e);
+      res.status(500).send({ message: 'Internal Server Error' });
+    }
+  }
+
+  public static async getHouseholdDevices(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
+    try {
+      const { householdId } = req.params;
+      if (!(householdId in req.user!.households)) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized: Not part of this household' });
+      }
+      const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+      const devices = await adapter.getDevicesByHousehold(householdId);
+      if (!Array.isArray(devices) || devices.length === 0) {
+        return res.status(400).send({ message: 'deviceIds are required' });
+      }
+
+      res.status(200).send({ message: 'Household devices retrieved', devices });
     } catch (e) {
       console.error(e);
       res.status(500).send({ message: 'Internal Server Error' });
