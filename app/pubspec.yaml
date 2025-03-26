@@ -42,6 +42,10 @@ dependencies:
   flutter_svg: ^2.0.9
   intl: ^0.18.1
   gesture_x_detector: ^1.1.1
+  flutter_iconpicker: ^4.0.1
+ 
+
+
 
 dev_dependencies:
   flutter_test:
