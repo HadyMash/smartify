@@ -40,7 +40,7 @@ describe('AcmeIoTAdapter (with simulation)', () => {
         child!.stdout.on('data', (data) => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           const output = data.toString().trim();
-          console.log(`[Simulator stdout]: ${output}`);
+          //console.log(`[Simulator stdout]: ${output}`);
 
           // Resolve once server has started
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
