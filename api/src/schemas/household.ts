@@ -110,7 +110,6 @@ export const householdRoomSchema = z.object({
   type: householdRoomTypeSchema,
   /** Room floor */
   floor: z.number().int(),
-  devices: z.array(deviceSchema),
   /**
    * Rooms connected to this room. This is used for laying out rooms in the app
    */
@@ -173,13 +172,17 @@ export type HouseholdRequestData = z.infer<
   typeof householdCreateRequestDataSchema
 >;
 
+export const householdDeviceSchema = deviceSchema.extend({
+  /** The room the device is assigned to */
+  roomId: z.string(),
+});
+
 const defaultRoom: HouseholdRoom = {
   id: randomUUID(),
   type: 'living',
   floor: 0,
   name: 'Living Room',
   connectedRooms: {},
-  devices: [],
 };
 
 export const householdSchema = householdCreateRequestDataSchema.extend({
@@ -190,7 +193,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   rooms: z.array(householdRoomSchema).default([defaultRoom]),
   floors: z.number().int().min(1).max(500),
   floorsOffset: z.number().int().optional(),
-  devices: z.array(deviceSchema).default([]),
+  devices: z.array(householdDeviceSchema).default([]),
 });
 
 export type Household = z.infer<typeof householdSchema>;
@@ -247,7 +250,6 @@ export function householdToInfo(h: Household) {
 export const roomRequestDataSchema = z.object({
   rooms: z.array(householdRoomSchema).min(1),
   householdId: objectIdOrStringSchema,
-  devices: z.array(deviceSchema),
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 

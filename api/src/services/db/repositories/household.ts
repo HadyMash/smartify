@@ -40,8 +40,13 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
 
       await this.collection.createIndex({ owner: 1 });
       await this.collection.createIndex({ 'members.id': 1 });
+      await this.collection.createIndex({ 'members.id': 1, _id: 1 });
       await this.collection.createIndex({ 'invites.id': 1 });
       await this.collection.createIndex({ 'invites.inviteId': 1 });
+      await this.collection.createIndex({ 'inivtes.id': 1, _id: 1 });
+      await this.collection.createIndex({ 'devices.id': 1 });
+      // compound index for device id and household id
+      await this.collection.createIndex({ 'devices.deviceId': 1, _id: 1 });
 
       console.log('Indexes created for households collection.');
     } catch (error) {
@@ -414,7 +419,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     deviceId: string,
   ): Promise<Household | null> {
     const household = await this.collection.findOne({
-      'devices.deviceId': deviceId,
+      'devices.id': deviceId,
     });
     return household ? household : null;
   }
