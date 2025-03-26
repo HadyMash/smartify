@@ -103,59 +103,76 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
     // Check if the grid forms a connected component
     if (rooms.length === 0) return;
 
-    // Use BFS to check connectivity
-    const visited = new Set<string>();
-    const queue: string[] = [rooms[0].id];
-    visited.add(rooms[0].id);
+    // Group rooms by floor
+    const floorRooms = new Map<number, HouseholdRoom[]>();
+    for (const room of rooms) {
+      if (!floorRooms.has(room.floor)) {
+        floorRooms.set(room.floor, []);
+      }
+      floorRooms.get(room.floor)!.push(room);
+    }
 
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      const currentRoom = roomMap.get(currentId)!;
+    // Check connectivity within each floor separately
+    for (const [floor, roomsOnFloor] of floorRooms.entries()) {
+      if (roomsOnFloor.length === 0) continue;
 
-      // Add all connected rooms to the queue
-      for (const connectedId of Object.values(currentRoom.connectedRooms)) {
-        if (connectedId && !visited.has(connectedId)) {
-          visited.add(connectedId);
-          queue.push(connectedId);
+      // Use BFS to check connectivity within this floor
+      const visited = new Set<string>();
+      const queue: string[] = [roomsOnFloor[0].id];
+      visited.add(roomsOnFloor[0].id);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const currentRoom = roomMap.get(currentId)!;
+
+        // Add all connected rooms to the queue
+        for (const connectedId of Object.values(currentRoom.connectedRooms)) {
+          if (connectedId && !visited.has(connectedId)) {
+            visited.add(connectedId);
+            queue.push(connectedId);
+          }
         }
       }
-    }
 
-    // Check if all rooms are connected
-    if (visited.size !== rooms.length) {
-      errors.push(
-        `Grid is not fully connected. Only ${visited.size} of ${rooms.length} rooms are connected.`,
-      );
-    }
-
-    // Check for grid consistency (each room's connections should form a proper grid)
-    const roomPositions = new Map<string, { x: number; y: number }>();
-
-    // Assign relative positions starting from an arbitrary room
-    assignGridPositions(
-      rooms[0].id,
-      0,
-      0,
-      roomMap,
-      roomPositions,
-      new Set<string>(),
-    );
-
-    // Check for overlapping positions
-    const positionMap = new Map<string, string>();
-    for (const [roomId, position] of roomPositions.entries()) {
-      const posKey = `${position.x},${position.y}`;
-      if (positionMap.has(posKey)) {
+      // Check if all rooms on this floor are connected
+      if (visited.size !== roomsOnFloor.length) {
         errors.push(
-          `Rooms ${roomId} and ${positionMap.get(posKey)} overlap at position (${position.x}, ${position.y})`,
+          `Grid on floor ${floor} is not fully connected. Only ${visited.size} of ${roomsOnFloor.length} rooms are connected.`,
         );
-      } else {
-        positionMap.set(posKey, roomId);
       }
     }
 
-    // Check for non-grid arrangements (rooms not aligned in a grid)
-    validateGridAlignment(roomPositions, errors);
+    for (const [floor, roomsOnFloor] of floorRooms.entries()) {
+      if (roomsOnFloor.length === 0) continue;
+
+      const roomPositions = new Map<string, { x: number; y: number }>();
+
+      // Assign relative positions starting from the first room on this floor
+      assignGridPositions(
+        roomsOnFloor[0].id,
+        0,
+        0,
+        roomMap,
+        roomPositions,
+        new Set<string>(),
+      );
+
+      // Check for overlapping positions on this floor
+      const positionMap = new Map<string, string>();
+      for (const [roomId, position] of roomPositions.entries()) {
+        const posKey = `${position.x},${position.y}`;
+        if (positionMap.has(posKey)) {
+          errors.push(
+            `Rooms ${roomId} and ${positionMap.get(posKey)} overlap at position (${position.x}, ${position.y}) on floor ${floor}`,
+          );
+        } else {
+          positionMap.set(posKey, roomId);
+        }
+      }
+
+      // Check for non-grid arrangements (rooms not aligned in a grid) on this floor
+      validateGridAlignment(roomPositions, errors, floor);
+    }
   }
 
   /**
@@ -230,6 +247,7 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
   function validateGridAlignment(
     positions: Map<string, { x: number; y: number }>,
     errors: string[],
+    floor?: number,
   ): void {
     // Extract all unique x and y coordinates
     const xCoords = new Set<number>();
@@ -246,16 +264,18 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
     // Check for gaps in the grid
     for (let i = 1; i < xValues.length; i++) {
       if (xValues[i] - xValues[i - 1] > 1) {
+        const floorInfo = floor !== undefined ? ` on floor ${floor}` : '';
         errors.push(
-          `Gap detected in x-axis between positions ${xValues[i - 1]} and ${xValues[i]}`,
+          `Gap detected in x-axis between positions ${xValues[i - 1]} and ${xValues[i]}${floorInfo}`,
         );
       }
     }
 
     for (let i = 1; i < yValues.length; i++) {
       if (yValues[i] - yValues[i - 1] > 1) {
+        const floorInfo = floor !== undefined ? ` on floor ${floor}` : '';
         errors.push(
-          `Gap detected in y-axis between positions ${yValues[i - 1]} and ${yValues[i]}`,
+          `Gap detected in y-axis between positions ${yValues[i - 1]} and ${yValues[i]}${floorInfo}`,
         );
       }
     }

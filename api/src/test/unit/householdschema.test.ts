@@ -517,6 +517,93 @@ describe('Room adjacency test', () => {
     expect(validateRooms(rooms)).toBe(false);
   });
 
+  test('shoudl accept connected sets of rooms on different floors', () => {
+    /*
+     * { "name":"New1",
+   "floors":2,
+   "rooms":[
+      {
+         "id":"room_0_0",
+         "name":"Main Room",
+         "type":"living",
+         "floor":0,
+         "connectedRooms":{
+            "right":"room_0_1"
+         }
+      },
+      {
+         "id":"room_0_1",
+         "name":"Study room",
+         "type":"bathroom",
+         "floor":0,
+         "connectedRooms":{
+            "left":"room_0_0"
+         }
+      },
+      {
+         "id":"room_1_0",
+         "name":"Main Room",
+         "type":"living",
+         "floor":1,
+         "connectedRooms":{
+            "bottom":"room_1_1"
+         }
+      },
+      {
+         "id":"room_1_1",
+         "name":"Kids room",
+         "type":"other",
+         "floor":1,
+         "connectedRooms":{
+            "top":"room_1_0"
+         }
+      }
+   ],
+}
+     */
+
+    const rooms: HouseholdRoom[] = [
+      {
+        id: '1',
+        name: 'Living Room',
+        type: 'living',
+        floor: 0,
+        connectedRooms: {
+          right: '2',
+        },
+      },
+      {
+        id: '2',
+        name: 'Study Room',
+        type: 'bathroom',
+        floor: 0,
+        connectedRooms: {
+          left: '1',
+        },
+      },
+      {
+        id: '3',
+        name: 'Main Room',
+        type: 'living',
+        floor: 1,
+        connectedRooms: {
+          bottom: '4',
+        },
+      },
+      {
+        id: '4',
+        name: 'Kids Room',
+        type: 'other',
+        floor: 1,
+        connectedRooms: {
+          top: '3',
+        },
+      },
+    ];
+
+    expect(validateRooms(rooms)).toBe(true);
+  });
+
   test('should accept multiple connected rooms', () => {
     const rooms: HouseholdRoom[] = [
       {
