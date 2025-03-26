@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { log } from '../util/log';
 
 /**
  * Recursively converts any BigInt values in an object to base-16 strings
@@ -60,7 +61,7 @@ export function bigIntToHexMiddleware(
       // Call the original send with the converted body
       return originalSend.call(this, convertedBody);
     } catch (error) {
-      console.error('Error in bigIntToHexMiddleware:', error);
+      log.error('Error in bigIntToHexMiddleware:', error);
       return originalSend.call(this, body);
     }
   };

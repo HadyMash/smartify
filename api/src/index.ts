@@ -8,6 +8,8 @@ import { parseAuth } from './middleware/auth';
 import { bigIntToHexMiddleware } from './middleware/bigint';
 // eslint-disable-next-line no-restricted-imports
 import { DatabaseService } from './services/db/db';
+import { webhookRouter } from './routes/webhook';
+import { log } from './util/log';
 
 dotenv.config();
 
@@ -28,6 +30,7 @@ router.get('/health', (_, res) => {
 
 router.use('/auth', authRouter);
 router.use('/households', householdRouter);
+router.use('/webhooks', webhookRouter);
 
 app.use('/api', router);
 
@@ -42,11 +45,10 @@ async function start() {
     db.srpSessionRepository.loadSessionsToCache(),
   ]);
 
-  console.log('Blacklists loaded');
+  log.info('Blacklists loaded');
 
   app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-    console.log('\n\n\n');
+    log.info(`Server running on port ${port}`);
   });
 }
 

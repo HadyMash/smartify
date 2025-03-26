@@ -57,3 +57,19 @@ householdRouter.post('/:householdId/leave', (req, res) =>
 householdRouter.post('/:householdId/transfer', (req, res) =>
   HouseholdController.transferOwnership(req, res),
 );
+
+householdRouter.post('/:householdId/pair', (req, res) =>
+  HouseholdController.pairDevices(req, res),
+);
+
+householdRouter.delete('/:householdId/unpair', (req, res) =>
+  HouseholdController.unpairDevices(req, res),
+);
+
+householdRouter.patch('/:householdId/device', (req, res) =>
+  HouseholdController.changeDeviceRooms(req, res),
+);
+
+householdRouter.get('/:householdId/devices', (req, res) =>
+  HouseholdController.getHouseholdDevices(req, res),
+);

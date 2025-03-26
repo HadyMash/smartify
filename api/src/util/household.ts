@@ -1,13 +1,6 @@
 import { HouseholdRoom } from '../schemas/household';
+import { log } from './log';
 
-/**
- * Validates a room configuration is valid and doesn't contain any errors
- * or things which don't make sense like overlaps, gaps, and connections across
- * floors
- *
- * @param rooms - List of rooms to validate
- * @returns A boolean indicating if the rooms are valid
- */
 export function validateRooms(rooms: HouseholdRoom[]): boolean {
   /**
    * Validates if a list of rooms forms a correct grid structure
@@ -110,75 +103,37 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
     // Check if the grid forms a connected component
     if (rooms.length === 0) return;
 
-    // Map of floor number to rooms on that floor
-    const floorToRooms = new Map<number, HouseholdRoom[]>();
+    // Use BFS to check connectivity
+    const visited = new Set<string>();
+    const queue: string[] = [rooms[0].id];
+    visited.add(rooms[0].id);
 
-    // Group rooms by floor
-    for (const room of rooms) {
-      if (!floorToRooms.has(room.floor)) {
-        floorToRooms.set(room.floor, []);
-      }
-      floorToRooms.get(room.floor)!.push(room);
-    }
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const currentRoom = roomMap.get(currentId)!;
 
-    // Validate connectivity per floor
-    for (const [floor, floorRooms] of floorToRooms.entries()) {
-      if (floorRooms.length === 0) continue;
-
-      // Skip connectivity check if there's only one room on this floor
-      if (floorRooms.length === 1) continue;
-
-      // Use BFS to check connectivity within this floor
-      const visited = new Set<string>();
-      const queue: string[] = [floorRooms[0].id];
-      visited.add(floorRooms[0].id);
-
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        const currentRoom = roomMap.get(currentId)!;
-
-        // Add all connected rooms to the queue
-        for (const connectedId of Object.values(currentRoom.connectedRooms)) {
-          if (connectedId && !visited.has(connectedId)) {
-            const connectedRoom = roomMap.get(connectedId)!;
-            // Only add connected rooms on the same floor
-            if (connectedRoom.floor === floor) {
-              visited.add(connectedId);
-              queue.push(connectedId);
-            }
-          }
+      // Add all connected rooms to the queue
+      for (const connectedId of Object.values(currentRoom.connectedRooms)) {
+        if (connectedId && !visited.has(connectedId)) {
+          visited.add(connectedId);
+          queue.push(connectedId);
         }
       }
-
-      // Check if all rooms on this floor are connected
-      if (visited.size !== floorRooms.length) {
-        errors.push(
-          `Floor ${floor} is not fully connected. Only ${visited.size} of ${floorRooms.length} rooms are connected.`,
-        );
-      }
-
-      // For each floor, validate grid layout
-      validateFloorGridLayout(floorRooms, roomMap, floor, errors);
     }
-  }
 
-  /**
-   * Validates the grid layout for a specific floor
-   */
-  function validateFloorGridLayout(
-    floorRooms: HouseholdRoom[],
-    roomMap: Map<string, HouseholdRoom>,
-    floor: number,
-    errors: string[],
-  ): void {
-    if (floorRooms.length <= 1) return; // No need to validate single room
+    // Check if all rooms are connected
+    if (visited.size !== rooms.length) {
+      errors.push(
+        `Grid is not fully connected. Only ${visited.size} of ${rooms.length} rooms are connected.`,
+      );
+    }
 
     // Check for grid consistency (each room's connections should form a proper grid)
     const roomPositions = new Map<string, { x: number; y: number }>();
 
     // Assign relative positions starting from an arbitrary room
     assignGridPositions(
-      floorRooms[0].id,
+      rooms[0].id,
       0,
       0,
       roomMap,
@@ -189,10 +144,6 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
     // Check for overlapping positions
     const positionMap = new Map<string, string>();
     for (const [roomId, position] of roomPositions.entries()) {
-      const room = roomMap.get(roomId)!;
-      // Only check rooms on the current floor
-      if (room.floor !== floor) continue;
-
       const posKey = `${position.x},${position.y}`;
       if (positionMap.has(posKey)) {
         errors.push(
@@ -313,7 +264,7 @@ export function validateRooms(rooms: HouseholdRoom[]): boolean {
   const result = validateRoomGrid(rooms);
 
   if (!result.valid) {
-    console.log('invalid rooms:', result.errors);
+    log.debug('invalid rooms:', result.errors);
   }
   return result.valid;
 }

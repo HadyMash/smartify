@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smartify/dashboard_screen.dart';
-import 'dart:math' show Random;
 import 'package:smartify/services/auth.dart';
 import 'package:smartify/services/household.dart'; // Import HouseholdService, HouseholdRoom, and RoomConnections
 
@@ -125,7 +124,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
             TextField(
               decoration: InputDecoration(
                 labelText: "Room Name",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onChanged: (value) => roomName = value,
             ),
@@ -133,7 +133,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
                 labelText: "Type",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               value: roomType,
               items: roomTypes.map((type) {
@@ -167,8 +168,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
   }
 
   void _showEditRoomDialog(int index) {
-    TextEditingController roomNameController =
-        TextEditingController(text: floorRooms[_selectedFloorIndex]![index].name);
+    TextEditingController roomNameController = TextEditingController(
+        text: floorRooms[_selectedFloorIndex]![index].name);
     String roomType = floorRooms[_selectedFloorIndex]![index].type;
     List<String> roomTypes = [
       "living",
@@ -189,14 +190,16 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
               controller: roomNameController,
               decoration: InputDecoration(
                 labelText: "Room Name",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
                 labelText: "Type",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               value: roomType,
               items: roomTypes.map((type) {
@@ -223,7 +226,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
                   name: roomNameController.text,
                   type: roomType,
                   floor: floorRooms[_selectedFloorIndex]![index].floor,
-                  connectedRooms: floorRooms[_selectedFloorIndex]![index].connectedRooms,
+                  connectedRooms:
+                      floorRooms[_selectedFloorIndex]![index].connectedRooms,
                 );
               });
               Navigator.pop(context);
@@ -235,12 +239,15 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
     );
   }
 
-  void _addRoom(String connectingRoomId, String connectingSide, String roomName, String roomType) {
+  void _addRoom(String connectingRoomId, String connectingSide, String roomName,
+      String roomType) {
     setState(() {
       final currentFloorRooms = floorRooms[_selectedFloorIndex]!;
-      final newRoomId = 'room_${_selectedFloorIndex}_${currentFloorRooms.length}';
+      final newRoomId =
+          'room_${_selectedFloorIndex}_${currentFloorRooms.length}';
 
-      final connectingRoomIndex = currentFloorRooms.indexWhere((r) => r.id == connectingRoomId);
+      final connectingRoomIndex =
+          currentFloorRooms.indexWhere((r) => r.id == connectingRoomId);
       if (connectingRoomIndex != -1) {
         final connectingRoom = currentFloorRooms[connectingRoomIndex];
         RoomConnections updatedConnections;
@@ -317,7 +324,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
     });
   }
 
-  Map<String, double> _calculateRoomPosition(HouseholdRoom room, List<HouseholdRoom> rooms) {
+  Map<String, double> _calculateRoomPosition(
+      HouseholdRoom room, List<HouseholdRoom> rooms) {
     if (room.name == "Main Room" && rooms.indexOf(room) == 0) {
       return {"dx": 0.0, "dy": 0.0};
     }
@@ -401,7 +409,9 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
 
         if (household != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Household '${household.name}' created successfully!")),
+            SnackBar(
+                content: Text(
+                    "Household '${household.name}' created successfully!")),
           );
           final authService = Provider.of<AuthService>(context, listen: false);
           Navigator.pushReplacement(
@@ -426,8 +436,8 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final floorNames = calculateFloorNames(widget.finalOffset, widget.floorCount);
-    final authService = Provider.of<AuthService>(context);
+    final floorNames =
+        calculateFloorNames(widget.finalOffset, widget.floorCount);
 
     return Scaffold(
       appBar: AppBar(
@@ -474,14 +484,16 @@ class _ConfigureRoomScreenState extends State<ConfigureRoomScreen> {
                   },
                   child: Stack(
                     children: floorRooms[_selectedFloorIndex]!.map((room) {
-                      final pos = _calculateRoomPosition(room, floorRooms[_selectedFloorIndex]!);
+                      final pos = _calculateRoomPosition(
+                          room, floorRooms[_selectedFloorIndex]!);
                       return Positioned(
                         left: _x + pos["dx"]!,
                         top: _y + pos["dy"]!,
                         child: RoomBox(
                           room: room,
                           index: floorRooms[_selectedFloorIndex]!.indexOf(room),
-                          onEdit: () => _showEditRoomDialog(floorRooms[_selectedFloorIndex]!.indexOf(room)),
+                          onEdit: () => _showEditRoomDialog(
+                              floorRooms[_selectedFloorIndex]!.indexOf(room)),
                           onAddRoom: _showAddRoomDialog,
                           boxWidth: boxWidth,
                           boxHeight: boxHeight,
@@ -547,8 +559,12 @@ class Sidebar extends StatelessWidget {
                     title: Text(
                       floorNames[i],
                       style: TextStyle(
-                        color: selectedFloorIndex == i ? Colors.blue : Colors.white,
-                        fontWeight: selectedFloorIndex == i ? FontWeight.bold : FontWeight.normal,
+                        color: selectedFloorIndex == i
+                            ? Colors.blue
+                            : Colors.white,
+                        fontWeight: selectedFloorIndex == i
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                     onTap: () => onFloorSelected(i),
@@ -602,7 +618,8 @@ class RoomBox extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(room.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(room.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   Text(room.type, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
@@ -750,4 +767,3 @@ class HouseholdInvite {
     required this.senderName,
   });
 }
-

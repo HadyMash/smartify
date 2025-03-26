@@ -1,6 +1,6 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import {
   Household,
   HouseholdMember,
@@ -12,12 +12,9 @@ import {
   MemberRole,
   MissingPermissionsError,
 } from '../../../schemas/household';
-import {
-  ObjectIdOrString,
-  objectIdOrStringSchema,
-  objectIdSchema,
-} from '../../../schemas/obj-id';
+import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { InvalidUserError, InvalidUserType } from '../../../schemas/auth/user';
+import { log } from '../../../util/log';
 
 type HouseholdDoc = Household;
 
@@ -40,12 +37,14 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
 
       await this.collection.createIndex({ owner: 1 });
       await this.collection.createIndex({ 'members.id': 1 });
+      await this.collection.createIndex({ 'members.id': 1, _id: 1 });
       await this.collection.createIndex({ 'invites.id': 1 });
       await this.collection.createIndex({ 'invites.inviteId': 1 });
+      await this.collection.createIndex({ 'invites.id': 1, _id: 1 });
 
-      console.log('Indexes created for households collection.');
+      log.info('Indexes created for households collection.');
     } catch (error) {
-      console.error('Error configuring households collection:', error);
+      log.error('Error configuring households collection:', error);
       throw error;
     }
   }
@@ -127,21 +126,26 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { returnDocument: 'after' },
     );
 
-    console.log('Updated household after removing member:', result);
+    log.debug('Updated household after removing member:', result);
     return result;
   }
 
   /**
    * Deletes a household.
    * @param householdId - The ID of the household to delete.
-   * @param ownerId - The ID of the household owner.
+   * @param session - Optional MongoDB session for transaction support
+   * @returns Boolean indicating if the household was successfully deleted
    */
   public async deleteHousehold(
     householdId: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<boolean> {
-    const result = await this.collection.deleteOne({
-      _id: objectIdSchema.parse(householdId),
-    });
+    const result = await this.collection.deleteOne(
+      {
+        _id: objectIdSchema.parse(householdId),
+      },
+      { session },
+    );
     //console.log('Household deleted:', result);
     return result.deletedCount === 1;
   }
@@ -185,11 +189,11 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     }
 
     const result = await this.collection.findOneAndUpdate(
-      { _id: objectIdOrStringSchema.parse(householdId) },
+      { _id: objectIdSchema.parse(householdId) },
       { $push: { rooms: { $each: newRooms } } },
       { returnDocument: 'after' },
     );
-    console.log('Updated household with new rooms:', result);
+    log.debug('Updated household with new rooms:', result);
     return result;
   }
 
@@ -242,20 +246,32 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       },
     );
 
-    console.log('Updated Household After Role Change:', updatedHousehold); // Debugging log
+    log.debug('Updated Household After Role Change:', updatedHousehold); // Debugging log
 
     if (!updatedHousehold) {
-      console.error('Update failed: No matching document found.');
+      log.error('Update failed: No matching document found.');
+      return null;
     }
 
     return updatedHousehold;
   }
 
-  public async updateRooms(id: ObjectIdOrString, rooms: HouseholdRoom[]) {
+  /**
+   * Updates the room configuration for a household
+   * @param id - The household ID
+   * @param rooms - The new room configuration
+   * @param session - Optional MongoDB session for transaction support
+   */
+  public async updateRooms(
+    id: ObjectIdOrString,
+    rooms: HouseholdRoom[],
+    session?: ClientSession,
+  ) {
     // TODO: update to include adjacency list
     await this.collection.updateOne(
       { _id: objectIdSchema.parse(id) },
       { $set: { rooms } },
+      { session },
     );
   }
 
@@ -326,8 +342,8 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   public async getUserInvites(
     userId: ObjectIdOrString,
   ): Promise<HouseholdInvite[]> {
-    const parsedUserId = objectIdOrStringSchema.parse(userId);
-    console.log('Fetching invites for user:', parsedUserId);
+    const parsedUserId = objectIdSchema.parse(userId);
+    log.debug('Fetching invites for user:', parsedUserId);
     const households = await this.collection
       .find(
         { 'invites.id': parsedUserId },
@@ -335,7 +351,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       )
       .toArray();
 
-    console.log('Households with invites:', households);
+    log.debug('Households with invites:', households);
 
     const userInvites = households.flatMap(
       (h) =>
@@ -344,7 +360,7 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
         ) ?? [],
     );
 
-    console.log('Filtered invites:', userInvites);
+    log.debug('Filtered invites:', userInvites);
 
     return userInvites;
   }
@@ -372,13 +388,23 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
   public async getHouseholdByInvite(
     inviteId: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<HouseholdDoc | null> {
-    const household = await this.collection.findOne({
-      'invites.inviteId': objectIdSchema.parse(inviteId),
-    });
+    const household = await this.collection.findOne(
+      {
+        'invites.inviteId': objectIdSchema.parse(inviteId),
+      },
+      { session },
+    );
     return household;
   }
 
+  /**
+   * Invite a member to a household
+   * @param householdId - The household id
+   * @param member - The new member's id
+   * @returns The updated household
+   */
   public async addMember(
     householdId: ObjectIdOrString,
     member: HouseholdMember,
@@ -387,27 +413,38 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
       { _id: objectIdSchema.parse(householdId) },
       { $addToSet: { members: member } },
     );
-    console.log('Added member to household:', result);
+    log.debug('Added member to household:', result);
 
     return result;
   }
 
+  /**
+   * Transfers a household's ownership to another member
+   * @param householdId - The household ID
+   * @param to - The new owner's ID
+   * @param session - Optional MongoDB session for transaction support
+   * @returns The updated household document
+   */
   public async transferOwnership(
     householdId: ObjectIdOrString,
     to: ObjectIdOrString,
-  ) {
+    session?: ClientSession,
+  ): Promise<HouseholdDoc | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: objectIdSchema.parse(householdId) },
-      // pull new owner from members, add old owner to members, and update owner fieldj
+      // Remove new owner from members, promote old owner to admin member, update owner field
       {
         $pull: { members: { id: objectIdSchema.parse(to) } },
         $addToSet: { members: { id: objectIdSchema.parse(to), role: 'admin' } },
         $set: { owner: objectIdSchema.parse(to) },
       },
-      { returnDocument: 'after' },
+      { returnDocument: 'after', session },
     );
 
-    console.log('Transferred ownership:', result);
+    log.info(
+      `Transferred ownership household ${householdId.toString()} to ${to.toString()}:`,
+      result,
+    );
     return result;
   }
 }

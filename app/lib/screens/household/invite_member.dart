@@ -263,7 +263,9 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
         height: 24,
         decoration: BoxDecoration(
           border: Border.all(
-            color: enabled ? Colors.black : Colors.grey, // Black for enabled, gray for disabled
+            color: enabled
+                ? Colors.black
+                : Colors.grey, // Black for enabled, gray for disabled
             width: 2,
           ),
           borderRadius: BorderRadius.circular(4),
@@ -272,17 +274,22 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
           value: value,
           onChanged: onChanged,
           checkColor: Colors.black, // Black checkmark for all states
-          fillColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.disabled)) {
-              return Colors.grey.withOpacity(0.5); // Gray fill for disabled state
+          fillColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return Colors.grey
+                  .withOpacity(0.5); // Gray fill for disabled state
             }
             return Colors.transparent; // Transparent fill for other states
           }),
-          side: MaterialStateBorderSide.resolveWith((states) {
-            if (states.contains(MaterialState.disabled)) {
-              return const BorderSide(color: Colors.grey, width: 2); // Gray border for disabled state
+          side: WidgetStateBorderSide.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return const BorderSide(
+                  color: Colors.grey,
+                  width: 2); // Gray border for disabled state
             }
-            return const BorderSide(color: Colors.black, width: 2); // Black border for enabled state
+            return const BorderSide(
+                color: Colors.black,
+                width: 2); // Black border for enabled state
           }),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,

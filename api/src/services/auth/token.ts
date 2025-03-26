@@ -26,7 +26,8 @@ import {
 import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { MFAFormattedKey } from '../../schemas/auth/auth';
-import { HouseholdMember, memberRoleSchema } from '../../schemas/household';
+import { HouseholdMember } from '../../schemas/household';
+import { log } from '../../util/log';
 
 export class TokenService {
   private static _ACCESS_TOKEN_LIFESPAN_SECONDS: number;
@@ -297,29 +298,21 @@ export class TokenService {
     try {
       user = userSchema.parse(userDoc);
     } catch (e) {
-      console.log('error parsing user:', e);
+      log.error('error parsing user:', e);
       throw new InvalidUserError();
     }
 
     const accessUser = accessTokenUserSchema.parse({
       ...user,
       households: households
-        .filter(
-          (h) =>
-            h.members.some((m) => m.id.toString() === userId.toString()) ||
-            h.owner.toString() === userId.toString(),
+        .filter((h) =>
+          h.members.some((m) => m.id.toString() === userId.toString()),
         )
         .reduce(
           (acc, h) => {
-            const m: HouseholdMember =
-              h.owner.toString() === userId.toString()
-                ? {
-                    id: h.owner,
-                    role: memberRoleSchema.enum.owner,
-                  }
-                : h.members.find((m) => m.id.toString() === userId.toString())!;
-
-            acc[h._id!.toString()] = m;
+            acc[h._id!.toString()] = h.members.find(
+              (m) => m.id.toString() === userId.toString(),
+            )!;
             return acc;
           },
           {} as Record<string, HouseholdMember>,
@@ -563,12 +556,12 @@ export class TokenService {
 
     const [refreshToken, accessToken, idToken] = await Promise.all([
       this.generateRefreshToken(refreshTokenPayload, secret).catch((e) => {
-        console.error('error generating refresh token:', e);
+        log.error('error generating refresh token:', e);
         return undefined;
       }),
       this.generateAccessToken(accessTokenPayload, secret),
       this.generateIdToken(idTokenPayload, secret).catch((e) => {
-        console.error('error generating refresh token:', e);
+        log.error('error generating refresh token:', e);
         return undefined;
       }),
     ]);

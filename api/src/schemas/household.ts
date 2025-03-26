@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
+import { deviceSchema, deviceSourceSchema } from './devices';
 import { validateRooms } from '../util/household';
 
 /**
@@ -172,6 +173,13 @@ export type HouseholdRequestData = z.infer<
   typeof householdCreateRequestDataSchema
 >;
 
+export const householdDeviceSchema = deviceSchema.extend({
+  /** The room the device is assigned to */
+  roomId: z.string(),
+});
+
+export type HouseholdDevice = z.infer<typeof householdDeviceSchema>;
+
 const defaultRoom: HouseholdRoom = {
   id: randomUUID(),
   type: 'living',
@@ -190,36 +198,33 @@ const _householdSchema = householdCreateRequestDataSchema.extend({
   floorsOffset: z.number().int().optional(),
 });
 
-export const householdSchema = _householdSchema.refine(
-  ({ floors, rooms }) => {
-    // validate rooms
-    if (!validateRooms(rooms)) {
-      console.log('rooms are not valid in household schema');
+export const householdSchema = _householdSchema.superRefine((data, ctx) => {
+  // room configuration
+  if (!validateRooms(data.rooms)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Invalid room configuration',
+      path: ['rooms'],
+      fatal: true,
+    });
+  }
 
-      return false;
-    }
-    const set = new Set();
-    for (const room of rooms) {
-      if (room.floor < 0 || room.floor >= floors) {
-        console.log('floors not within bounds');
-        return false;
-      }
-      set.add(room.floor);
-    }
-    if (set.size !== floors) {
-      console.log('set.size', set.size, 'floors', floors);
+  const roomMap = new Map<string, HouseholdRoom>();
 
-      return false;
+  data.rooms.forEach((room) => {
+    roomMap.set(room.id, room);
+    if (room.floor < 0 || room.floor >= data.floors) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid room floor',
+        path: ['rooms', room.id],
+        fatal: true,
+      });
     }
-    return true;
-  },
-  {
-    message: 'Invalid rooms',
-    path: ['rooms'],
-  },
-);
+  });
+});
 
-export type Household = z.infer<typeof _householdSchema>;
+export type Household = z.infer<typeof householdSchema>;
 
 export const householdInfoSchema = _householdSchema
   .pick({
@@ -267,12 +272,11 @@ export function householdToInfo(h: Household) {
     members: h.members.length,
   };
 
-  return householdInfoSchema.parse(x);
+  return householdInfoSchema.parse({ x });
 }
 
 export const roomRequestDataSchema = z.object({
   rooms: z.array(householdRoomSchema).min(1),
-  householdId: objectIdOrStringSchema,
 });
 export type RoomRequestData = z.infer<typeof roomRequestDataSchema>;
 
@@ -287,6 +291,7 @@ const _invMemberSchema = z.object({
 export const inviteMemberSchema = _invMemberSchema
   .omit({
     memberId: true,
+    householdId: true,
   })
   .refine(
     ({ role, permissions }) => {
@@ -304,6 +309,7 @@ export type InviteMember = z.infer<typeof inviteMemberSchema>;
 
 export const modifyMemberSchema = _invMemberSchema
   .omit({
+    householdId: true,
     email: true,
   })
   .refine(
@@ -328,6 +334,25 @@ export const respondToInviteDataSchema = z.object({
 
 export const transferSchema = z.object({
   newOwnerId: objectIdOrStringSchema,
+});
+
+export const pairDevicesSchema = z.object({
+  devices: z.array(
+    z.object({
+      id: z.string().nonempty(),
+      source: deviceSourceSchema,
+      roomId: z.string().nonempty(),
+    }),
+  ),
+});
+
+export const unpairDevicesSchema = z.object({
+  devices: z.array(z.string().nonempty()),
+});
+
+export const changeDeviceRoomsData = z.object({
+  deviceIds: z.array(z.string().nonempty()),
+  roomId: z.string().nonempty(),
 });
 
 /* Error types */
@@ -386,5 +411,13 @@ export class InvalidRoomsError extends Error {
     super('Invalid rooms');
     this.name = 'InvalidRoomsError';
     Object.setPrototypeOf(this, InvalidRoomsError.prototype);
+  }
+}
+
+export class DeviceAlreadyPairedError extends Error {
+  constructor() {
+    super('Device is already paired to another household');
+    this.name = 'DeviceAlreadyPairError';
+    Object.setPrototypeOf(this, DeviceAlreadyPairedError.prototype);
   }
 }

@@ -123,7 +123,4 @@ class CustomNavBar extends StatelessWidget {
       label: label,
     );
   }
-
-  
 }
-

@@ -62,11 +62,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     }
   }
 
-  void _addNewMember(String name) {
-    setState(() {
-      _members.add(Member(name, true));
-    });
-  }
+  // void _addNewMember(String name) {
+  //   setState(() {
+  //     _members.add(Member(name, true));
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -79,12 +79,17 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
       );
     }
 
-    final selectedHousehold = _households.firstWhere(
-      (h) => h.id == _selectedHouseholdId,
-      orElse: () => _households.isNotEmpty
-          ? _households.first
-          : HouseholdInfo(id: '', name: 'No Household', ownerId: '', floors: 0, membersCount: 0),
-    );
+    // final selectedHousehold = _households.firstWhere(
+    //   (h) => h.id == _selectedHouseholdId,
+    //   orElse: () => _households.isNotEmpty
+    //       ? _households.first
+    //       : const HouseholdInfo(
+    //           id: '',
+    //           name: 'No Household',
+    //           ownerId: '',
+    //           floors: 0,
+    //           membersCount: 0),
+    // );
 
     return Scaffold(
       body: SafeArea(
@@ -120,7 +125,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       await _fetchHouseholdDetails(value);
                     }
                   },
-                  items: _households.map<DropdownMenuItem<String>>((HouseholdInfo household) {
+                  items: _households
+                      .map<DropdownMenuItem<String>>((HouseholdInfo household) {
                     return DropdownMenuItem<String>(
                       value: household.id,
                       child: Text(household.name),
@@ -139,7 +145,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                           decoration: BoxDecoration(
                             color: Colors.grey[200], // Light grey background
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[400]!), // Grey border
+                            border: Border.all(
+                                color: Colors.grey[400]!), // Grey border
                           ),
                           child: Text(
                             "No existing members.\nAdd members to see them displayed here.",
@@ -171,8 +178,9 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => InviteMemberScreen( householdId: _selectedHouseholdId!,
-                             // onMemberInvited: _addNewMember,
+                            builder: (context) => InviteMemberScreen(
+                              householdId: _selectedHouseholdId!,
+                              // onMemberInvited: _addNewMember,
                             ),
                           ),
                         );
@@ -190,18 +198,20 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        final household = await _householdService.getHousehold(_selectedHouseholdId!);
+                        final household = await _householdService
+                            .getHousehold(_selectedHouseholdId!);
                         if (household != null) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ConfigureRoomScreen(
                                 floorCount: household.floors,
-                                finalOffset: household.floorsOffset ?? 0,
+                                finalOffset: household.floorsOffset,
                                 isEditing: true,
                                 householdName: household.name,
                                 rooms: household.rooms,
-                                householdId: household.id, // Pass the household ID
+                                householdId:
+                                    household.id, // Pass the household ID
                               ),
                             ),
                           );

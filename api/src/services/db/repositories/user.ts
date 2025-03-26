@@ -1,6 +1,6 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import {
   InvalidUserError,
   InvalidUserType,
@@ -20,6 +20,7 @@ import {
   SRPMongoSessionSchema,
   SRPSession,
 } from '../../../schemas/auth/auth';
+import { log } from '../../../util/log';
 
 export interface UserDoc extends User {
   _id?: ObjectId;
@@ -61,11 +62,11 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
         this.collection.createIndex({ email: 1 }, { unique: true }),
       ]);
 
-      console.log(
+      log.info(
         `Configured ${USER_COLLECTION_NAME} collection with required indices`,
       );
     } catch (error) {
-      console.error(
+      log.error(
         `Failed to configure ${USER_COLLECTION_NAME} collection:`,
         error,
       );
@@ -196,12 +197,15 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
    * @param userId - The user to check
    * @returns true if the user exists, false otherwise
    */
-  public async userExists(userId: ObjectIdOrString): Promise<boolean> {
+  public async userExists(
+    userId: ObjectIdOrString,
+    session?: ClientSession,
+  ): Promise<boolean> {
     const user = await this.collection.findOne(
       {
         _id: objectIdSchema.parse(userId),
       },
-      { projection: { _id: 1 } },
+      { projection: { _id: 1 }, session },
     );
     return !!user;
   }
@@ -355,7 +359,7 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
       })
       .toArray();
 
-    console.log(`Loading ${docs.length} SRP sessions to Redis cache`);
+    log.info(`Loading ${docs.length} SRP sessions to Redis cache`);
 
     const promises = docs.map(async (doc) => {
       // Calculate remaining TTL
@@ -377,7 +381,7 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
           },
         );
       } catch (e) {
-        console.error(`Failed to cache SRP session ${doc.email}:`, e);
+        log.error(`Failed to cache SRP session ${doc.email}:`, e);
       }
     });
 
@@ -441,7 +445,7 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
         return true;
       }
     } catch (e) {
-      console.error('Failed to store SRP session in redis:', e);
+      log.error('Failed to store SRP session in redis:', e);
       // ignore, try mongo
     }
 
@@ -455,7 +459,7 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
           0
       );
     } catch (e) {
-      console.error('Failed to store SRP session in mongo:', e);
+      log.error('Failed to store SRP session in mongo:', e);
     }
     return false;
   }
@@ -478,7 +482,7 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
       try {
         return SRPJSONSessionSchema.parse(JSON.parse(redisResult));
       } catch (e) {
-        console.error('Failed to parse SRP session from redis', e);
+        log.error('Failed to parse SRP session from redis', e);
         // ignore, try mongo
       }
     }
@@ -500,13 +504,13 @@ export class SRPSessionRepository extends DatabaseRepository<SRPSessionDoc> {
     try {
       await this.redis.del(`${SRP_SESSION_KEY_PREFIX}:${email}`);
     } catch (e) {
-      console.error('Failed to delete SRP session from redis:', e);
+      log.error('Failed to delete SRP session from redis:', e);
     }
 
     try {
       await this.collection.deleteOne({ email: email });
     } catch (e) {
-      console.error('Failed to delete SRP session from mongo:', e);
+      log.error('Failed to delete SRP session from mongo:', e);
     }
   }
 }

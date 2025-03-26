@@ -6,6 +6,9 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
+    ignores: ['src/schemas/icon.ts'],
+  },
+  {
     files: ['**/*.{js,mjs,cjs,ts}'],
     rules: {
       'no-restricted-imports': [

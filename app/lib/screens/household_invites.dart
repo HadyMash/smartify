@@ -52,13 +52,13 @@ class _HouseholdInvitesScreenState extends State<HouseholdInvitesScreen> {
 
   Future<void> _respondToInvite(String inviteId, bool accept) async {
     try {
-      final householdService =
-          Provider.of<HouseholdService>(context, listen: false);
+      // final householdService =
+      //     Provider.of<HouseholdService>(context, listen: false);
       final authService = Provider.of<AuthService>(context);
-      final household = await householdService.respondToInvite(
-        inviteId: inviteId,
-        response: accept,
-      );
+      // final household = await householdService.respondToInvite(
+      //   inviteId: inviteId,
+      //   response: accept,
+      // );
 
       if (accept) {
         Navigator.pushReplacement(
@@ -88,7 +88,6 @@ class _HouseholdInvitesScreenState extends State<HouseholdInvitesScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final authService = Provider.of<AuthService>(context);
 
     return Scaffold(
       body: SafeArea(

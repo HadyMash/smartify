@@ -22,6 +22,7 @@ import { DatabaseService } from '../db/db';
 import { MFAService } from './mfa';
 import crypto from 'crypto';
 import { modPow } from './srp-utils';
+import { log } from '../../util/log';
 
 export class AuthService {
   protected readonly db: DatabaseService;
@@ -274,7 +275,7 @@ export class AuthService {
     // check if mfa is confirmed
     if (user.mfaConfirmed) {
       if (!data.code) {
-        console.log('code missing');
+        log.info('code missing');
 
         throw new MFAError(MFAErrorType.INCORRECT_CODE);
       }
@@ -337,7 +338,7 @@ export class SRP {
 
     // Security check: A should not be 0 mod N
     if (A % this.N === BigInt(0)) {
-      console.log('A % N === 0, throwing');
+      log.debug('A % N === 0, throwing');
 
       throw new IncorrectPasswordError();
     }
@@ -347,7 +348,7 @@ export class SRP {
 
     // Security check: u should not be 0
     if (u === BigInt(0)) {
-      console.log('u === 0, throwing');
+      console.debug('u === 0, throwing');
 
       throw new IncorrectPasswordError();
     }
@@ -365,7 +366,7 @@ export class SRP {
 
     // Verify client proof
     if (expectedMc !== Mc) {
-      console.log('expectedMc !== Mc, throwing');
+      console.debug('expectedMc !== Mc, throwing');
 
       throw new IncorrectPasswordError();
     }

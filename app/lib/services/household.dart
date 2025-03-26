@@ -285,7 +285,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   }
 
   // Invite Member
-Future<HouseholdInvite?> inviteMember(
+  Future<HouseholdInvite?> inviteMember(
     String householdId,
     String role,
     HouseholdPermissions permissions,
@@ -312,8 +312,10 @@ Future<HouseholdInvite?> inviteMember(
         return HouseholdInvite(
           inviteId: data['inviteId'].toString(),
           userId: data['id'].toString(), // Assuming 'id' is the user ID
-          householdName: '', // Not provided in response; fetch separately if needed
-          senderName: '', // Not provided in response; fetch separately if needed
+          householdName:
+              '', // Not provided in response; fetch separately if needed
+          senderName:
+              '', // Not provided in response; fetch separately if needed
         );
       }
       return null; // Unexpected response
@@ -347,7 +349,7 @@ Future<HouseholdInvite?> inviteMember(
       return null;
     } catch (e) {
       print('Error inviting member: $e');
-      throw e; // Re-throw to handle in UI
+      rethrow; // Re-throw to handle in UI
     }
   }
 
@@ -399,10 +401,8 @@ Future<HouseholdInvite?> inviteMember(
     );
   }
 
-
-    
-
-    Future<bool> updateRooms(String householdId, List<HouseholdRoom> rooms) async {
+  Future<bool> updateRooms(
+      String householdId, List<HouseholdRoom> rooms) async {
     try {
       final response = await _dio.put(
         '/households/$householdId/rooms', // Adjust endpoint as per your backend
@@ -430,7 +430,7 @@ Future<HouseholdInvite?> inviteMember(
       return false;
     }
   }
-  }
+}
 
 class HouseholdInfo {
   final String id;
