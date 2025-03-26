@@ -69,6 +69,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
+                  autocorrect: false,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -89,6 +90,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
+                  autocorrect: false,
                   obscureText: true,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(

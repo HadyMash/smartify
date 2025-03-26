@@ -494,12 +494,15 @@ export class TokenService {
       true,
     );
 
+    log.debug('Refresh token valid:', valid);
+
     // check we have a valid payload
     if (
       !valid ||
       !oldRefreshPayload ||
       oldRefreshPayload.type !== tokenTypeSchema.enum.REFRESH
     ) {
+      log.debug('Invalid refresh token');
       throw new InvalidTokenError();
     }
 
@@ -511,6 +514,7 @@ export class TokenService {
     );
 
     if (!currGenId || currGenId !== oldRefreshPayload.generationId) {
+      log.debug('Refresh token revoked');
       throw new InvalidTokenError();
     }
 

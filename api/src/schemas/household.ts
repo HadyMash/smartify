@@ -272,7 +272,7 @@ export function householdToInfo(h: Household) {
     members: h.members.length,
   };
 
-  return householdInfoSchema.parse({ x });
+  return householdInfoSchema.parse(x);
 }
 
 export const roomRequestDataSchema = z.object({

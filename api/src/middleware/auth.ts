@@ -16,6 +16,7 @@ export const parseAuth = async (
     // check for device id
     const deviceId = req.headers['x-device-id'] as string | undefined;
     if (deviceId) {
+      log.debug('Device ID:', deviceId);
       req.deviceId = deviceId;
     }
 
@@ -23,6 +24,8 @@ export const parseAuth = async (
 
     async function parseAccess(accessToken: string) {
       const { valid, payload } = await ts.verifyToken(accessToken, true);
+
+      log.debug('Access token valid:', valid);
 
       if (valid) {
         if (payload!.type === tokenTypeSchema.enum.ACCESS) {
@@ -74,6 +77,7 @@ export const parseAuth = async (
       req.refreshToken !== undefined &&
       req.deviceId !== undefined
     ) {
+      log.debug('Auto refreshing tokens');
       const tokens = await AuthController.refresh(req, res);
 
       if (tokens) {

@@ -22,6 +22,7 @@ class AuthWrapper extends StatelessWidget {
       stream: authService.authEventStream,
       initialData: AuthEvent(AuthEventType.authStateChanged, authService.state),
       builder: (context, snapshot) {
+        print('auth state: ${snapshot.data?.state}');
         final authEvent = snapshot.data;
         final authState = authEvent?.state ?? AuthState.signedOut;
 

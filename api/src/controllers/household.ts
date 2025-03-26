@@ -537,6 +537,7 @@ export class HouseholdController {
   public static getUserHouseholds(req: AuthenticatedRequest, res: Response) {
     tryAPIController(res, async () => {
       const hs = new HouseholdService();
+      log.debug('getteing user households');
       const households = await hs.getUserHouseholds(req.user!._id);
       res.status(200).send(households);
     });

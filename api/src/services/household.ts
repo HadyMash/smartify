@@ -202,6 +202,8 @@ export class HouseholdService {
     const households =
       await this.db.householdRepository.getUserHouseholds(userId);
 
+    log.debug('households:', households);
+
     return households.map(householdToInfo);
   }
 

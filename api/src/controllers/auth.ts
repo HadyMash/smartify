@@ -486,36 +486,55 @@ export class AuthController {
    * @param res - The response
    */
   public static async refresh(req: AuthenticatedRequest, res: Response) {
-    if (req.tokensRefreshed) {
-      return;
+    try {
+      if (req.tokensRefreshed) {
+        log.debug('Tokens already refreshed');
+        return;
+      }
+
+      if (req.refreshToken === undefined) {
+        throw new Error('No refresh token to refresh with');
+      }
+      if (req.deviceId === undefined) {
+        throw new Error('No device id to refresh with');
+      }
+
+      const ts = new TokenService();
+      // refresh tokens
+      const {
+        accessToken,
+        refreshToken: newRefreshToken,
+        idToken,
+      } = await ts.refreshTokens(req.refreshToken, req.deviceId);
+
+      // TEMP
+      {
+        const refreshPayload = await ts.verifyToken(req.refreshToken, true);
+        log.debug('Tokens refreshed for user:', refreshPayload.payload?.userId);
+      }
+
+      // set new tokens in cookies
+      AuthController.writeAuthCookies(
+        res,
+        accessToken,
+        newRefreshToken,
+        idToken,
+      );
+      req.tokensRefreshed = true;
+
+      return { accessToken, newRefreshToken, idToken };
+    } catch (e) {
+      if (e instanceof InvalidTokenError) {
+        log.debug('Invalid refresh token');
+        AuthController.deleteAllAuthCookies(res);
+      }
+      if (e instanceof InvalidUserError) {
+        log.debug('Invalid user');
+        AuthController.deleteAllAuthCookies(res);
+      }
+
+      throw e;
     }
-
-    if (req.refreshToken === undefined) {
-      throw new Error('No refresh token to refresh with');
-    }
-    if (req.deviceId === undefined) {
-      throw new Error('No device id to refresh with');
-    }
-
-    const ts = new TokenService();
-    // refresh tokens
-    const {
-      accessToken,
-      refreshToken: newRefreshToken,
-      idToken,
-    } = await ts.refreshTokens(req.refreshToken, req.deviceId);
-
-    // TEMP
-    {
-      const refreshPayload = await ts.verifyToken(req.refreshToken, true);
-      console.log('Tokens refreshed for user:', refreshPayload.payload?.userId);
-    }
-
-    // set new tokens in cookies
-    AuthController.writeAuthCookies(res, accessToken, newRefreshToken, idToken);
-    req.tokensRefreshed = true;
-
-    return { accessToken, newRefreshToken, idToken };
   }
 
   public static refreshTokens(req: AuthenticatedRequest, res: Response) {

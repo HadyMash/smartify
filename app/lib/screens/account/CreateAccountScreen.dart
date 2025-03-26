@@ -553,6 +553,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
+                  autocorrect: false,
                   validator: validateEmail,
                 ),
                 const SizedBox(height: 24),
@@ -567,6 +568,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  autocorrect: false,
                   decoration: InputDecoration(
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
