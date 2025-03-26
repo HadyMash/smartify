@@ -1,6 +1,6 @@
 import { Email } from '../schemas/auth/auth';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
-import { Device, DeviceSource } from '../schemas/devices';
+import { DeviceSource } from '../schemas/devices';
 import {
   Household,
   HouseholdMember,
@@ -248,15 +248,22 @@ export class HouseholdService {
     const devices =
       await this.db.deviceInfoRepository.getHouseholdDevices(householdId);
 
+    if (devices.length === 0) {
+      return; // No devices to unpair
+    }
+
     // remove them from the household first
     await this.db.deviceInfoRepository.removeDevicesFromHousehold(
       householdId,
       devices.map((d) => d._id),
     );
 
+    // Track errors to potentially handle or report them better
+    const errors = [];
+
     try {
       // unpair them from the source
-      const deviceSourceMap = new Map<DeviceSource, Device[]>();
+      const deviceSourceMap = new Map<DeviceSource, string[]>();
 
       for (const device of devices) {
         if (!device.source) {
@@ -265,18 +272,33 @@ export class HouseholdService {
         if (!deviceSourceMap.has(device.source)) {
           deviceSourceMap.set(device.source, []);
         }
-        deviceSourceMap.get(device.source)?.push({
-          ...device,
-          id: device._id,
-        });
+        deviceSourceMap.get(device.source)?.push(device._id);
       }
 
-      for (const [source, devices] of deviceSourceMap) {
+      const unpairPromises = [];
+      for (const [source, deviceIds] of deviceSourceMap.entries()) {
         const adapter = getAdapter(source);
-        await adapter.unpairDevices(devices);
+        unpairPromises.push(
+          adapter.unpairDevices(deviceIds).catch((error) => {
+            console.error(`Error unpairing ${source} devices:`, error);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            errors.push({ source, error });
+          }),
+        );
       }
+
+      await Promise.all(unpairPromises);
     } catch (e) {
-      console.error('error unpairing devices:', e);
+      console.error('Error unpairing devices:', e);
+      errors.push({ error: e });
+    }
+
+    // If there were errors, log summary but don't fail the operation
+    // This ensures the household gets deleted even if some device unpairing fails
+    if (errors.length > 0) {
+      console.error(
+        `Failed to unpair ${errors.length} device sources during household deletion`,
+      );
     }
   }
 
@@ -300,7 +322,7 @@ export class HouseholdService {
   ): Promise<Household | null> {
     await this.db.connect();
 
-    // check household exists first and rooms are different
+    // check household exists first
     const household = await this.db.householdRepository.getHouseholdById(id);
 
     if (!household) {
@@ -312,7 +334,27 @@ export class HouseholdService {
       throw new InvalidRoomsError();
     }
 
-    // check if there are any devices not reassigned to a room
+    // Get the current rooms to identify removed rooms
+    const oldRoomIds = new Set(household.rooms.map((room) => room.id));
+    const newRoomIds = new Set(rooms.map((room) => room.id));
+
+    // Find removed rooms
+    const removedRoomIds = [...oldRoomIds].filter((id) => !newRoomIds.has(id));
+
+    // Check if there are any devices assigned to rooms that will be removed
+    if (removedRoomIds.length > 0) {
+      const devices =
+        await this.db.deviceInfoRepository.getHouseholdDevices(id);
+      const devicesInRemovedRooms = devices.filter((d) =>
+        removedRoomIds.includes(d.roomId),
+      );
+
+      if (devicesInRemovedRooms.length > 0) {
+        throw new InvalidRoomsError();
+      }
+    }
+
+    // Check if all devices have valid room assignments in the new configuration
     const devices = await this.db.deviceInfoRepository.getHouseholdDevices(id);
     if (!devices.every((d) => rooms.some((r) => r.id === d.roomId))) {
       throw new InvalidRoomsError();

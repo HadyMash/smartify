@@ -178,13 +178,15 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
     return device.householdId;
   }
 
+  /**
+   * Gets the households that devices are paired to
+   * Note: This method is redundant with getHouseholdsByDeviceIds and can be removed
+   * @deprecated Use getHouseholdsByDeviceIds instead
+   */
   public async getDevicesPairedHousehlds(
     deviceIds: string[],
   ): Promise<ObjectId[]> {
-    const devices = await this.collection
-      .find({ _id: { $in: deviceIds } }, { projection: { householdId: 1 } })
-      .toArray();
-    return devices.map((device) => device.householdId);
+    return this.getHouseholdsByDeviceIds(deviceIds);
   }
 
   public async getHouseholdsByDeviceIds(

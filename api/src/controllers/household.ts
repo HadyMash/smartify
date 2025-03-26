@@ -36,7 +36,6 @@ import { validateSchema } from '../util/schema';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
-import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 import {
   BadRequestToDeviceError,
   DeviceNotFoundError,
@@ -1007,13 +1006,6 @@ export class HouseholdController {
           devicesBySource.get(source)!.push(deviceId);
         }
 
-        function getAdapter(source: DeviceSource): BaseIotAdapter {
-          switch (source) {
-            case 'acme':
-              return new AcmeIoTAdapter();
-          }
-        }
-
         // remove devices from household first
         await hs.unpairDeviceFromHousehold(householdId, data.devices);
 
@@ -1024,7 +1016,7 @@ export class HouseholdController {
             .status(200)
             .send({ devices: await hs.getHouseholdDevices(householdId) });
         } catch (e) {
-          console.error('Failed to map househld:', e);
+          console.error('Failed to map household:', e);
           res
             .status(500)
             .send({ error: 'Unpaired devices but failed to return household' });
