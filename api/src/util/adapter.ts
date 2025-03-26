@@ -11,5 +11,8 @@ export function getAdapter(source: DeviceSource): BaseIotAdapter {
   switch (source) {
     case 'acme':
       return new AcmeIoTAdapter();
+    default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Unsupported device source: ${source}`);
   }
 }
