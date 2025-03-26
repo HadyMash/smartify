@@ -26,7 +26,7 @@ import {
 import { randomUUID } from 'crypto';
 import { ObjectIdOrString } from '../../schemas/obj-id';
 import { MFAFormattedKey } from '../../schemas/auth/auth';
-import { HouseholdMember } from '../../schemas/household';
+import { HouseholdMember, memberRoleSchema } from '../../schemas/household';
 import { log } from '../../util/log';
 
 export class TokenService {
@@ -289,6 +289,7 @@ export class TokenService {
    * @returns
    */
   private async generateAccessUser(userId: ObjectIdOrString) {
+    log.debug('Generating access user for:', userId);
     const [userDoc, households] = await Promise.all([
       this.db.userRepository.getUserById(userId),
       this.db.householdRepository.getUserHouseholds(userId),
@@ -305,14 +306,24 @@ export class TokenService {
     const accessUser = accessTokenUserSchema.parse({
       ...user,
       households: households
-        .filter((h) =>
-          h.members.some((m) => m.id.toString() === userId.toString()),
+        .filter(
+          (h) =>
+            h.owner.toString() == userId.toString() ||
+            h.members.some((m) => m.id.toString() === userId.toString()),
         )
         .reduce(
           (acc, h) => {
-            acc[h._id!.toString()] = h.members.find(
-              (m) => m.id.toString() === userId.toString(),
-            )!;
+            if (h.owner.toString() === userId.toString()) {
+              const x: HouseholdMember = {
+                id: h.owner,
+                role: memberRoleSchema.enum.owner,
+              };
+              acc[h._id!.toString()] = x;
+            } else {
+              acc[h._id!.toString()] = h.members.find(
+                (m) => m.id.toString() === userId.toString(),
+              )!;
+            }
             return acc;
           },
           {} as Record<string, HouseholdMember>,

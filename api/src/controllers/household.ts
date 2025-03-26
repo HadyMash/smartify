@@ -113,6 +113,7 @@ export class HouseholdController {
 
         // check user is a household member
         if (!(id.toString() in req.user!.households)) {
+          log.debug('User does not have access to household');
           res
             .status(403)
             .send({ error: "You don't have access to this household" });
