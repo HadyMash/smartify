@@ -547,6 +547,10 @@ export const deviceCapabilitySchema = z
 export const deviceSchema = z.object({
   /** Device ID */
   id: z.string().min(1),
+  /** The device's name */
+  name: z.string().optional(),
+  /** The device's description */
+  description: z.string().optional(),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
   /** The device's icon */
@@ -1008,3 +1012,54 @@ export type DeviceWithState = z.infer<typeof deviceWithStateSchema>;
 export type DeviceWithPartialState = z.infer<
   typeof deviceWithPartialStateSchema
 >;
+
+/* Errors */
+export class DeviceOfflineError extends Error {
+  constructor(deviceId: string) {
+    super(`Device offline, id: ${deviceId}`);
+    this.name = 'DeviceOfflineError';
+    Object.setPrototypeOf(this, DeviceOfflineError.prototype);
+  }
+}
+
+export class MissingAPIKeyError extends Error {
+  constructor(apiKey?: string) {
+    super(`Missing API key${apiKey ? `: ${apiKey}` : ''}`);
+    this.name = 'MissingAPIKeyError';
+    Object.setPrototypeOf(this, MissingAPIKeyError.prototype);
+  }
+}
+
+export class InvalidAPIKeyError extends Error {
+  constructor(apiKey: string) {
+    super(`Invalid API key: ${apiKey}`);
+    this.name = 'InvalidAPIKeyError';
+    Object.setPrototypeOf(this, InvalidAPIKeyError.prototype);
+  }
+}
+
+export class DeviceNotFoundError extends Error {
+  constructor(deviceId: string) {
+    super(`Device not found, id: ${deviceId}`);
+    this.name = 'DeviceNotFoundError';
+    Object.setPrototypeOf(this, DeviceNotFoundError.prototype);
+  }
+}
+
+export class BadRequestToDeviceError extends Error {
+  constructor(deviceId: string, message?: string) {
+    super(
+      `Bad request sent to device: ${deviceId}${message ? `. ${message}` : ''}`,
+    );
+    this.name = 'BadRequestError';
+    Object.setPrototypeOf(this, BadRequestToDeviceError.prototype);
+  }
+}
+
+export class ExternalServerError extends Error {
+  constructor(message?: string) {
+    super(`External server error${message ? `. ${message}` : ''}`);
+    this.name = 'ExternalServerError';
+    Object.setPrototypeOf(this, ExternalServerError.prototype);
+  }
+}

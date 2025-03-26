@@ -14,8 +14,12 @@ To run the app, you will need to have the following installed:
 - Go
 - Python
 - MongoDB
+- Redis
+- LM Studio/VLLM/llama.cpp (or similar)
 
 Please refer to each's respective documentation for installation instructions.
+
+Please note that you need to have to have `qwen2.5-3b-instruct-ml` and `text-embedding-nomic-embed-text-v1.5` installed and configured in your model serving solution of choice. If you intend to run the generate embeddings script (refer to `api`'s README for more details), you have to have gemma-3-4b-it installed as well.
 
 # Git Hooks
 

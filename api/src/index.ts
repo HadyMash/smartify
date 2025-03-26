@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
@@ -48,22 +47,9 @@ async function start() {
 
   console.log('Blacklists loaded');
 
-  async function start() {
-    const db = new DatabaseService();
-
-    await db.connect();
-
-    await Promise.all([
-      db.accessBlacklistRepository.loadBlacklistToCache(),
-      db.mfaBlacklistRepository.loadBlacklistToCache(),
-      db.srpSessionRepository.loadSessionsToCache(),
-    ]);
-
-    console.log('Blacklists loaded');
-
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
-  }
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
 }
+
 start();

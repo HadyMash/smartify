@@ -8826,4 +8826,5 @@ const icons = new Set([
   'zoom_out_sharp',
 ]);
 
-export const validMaterialIcon = (icon: string) => icons.has(icon);
+export const validMaterialIcon = (icon: string | undefined | null) =>
+  icon ? icons.has(icon) : false;
