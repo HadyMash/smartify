@@ -4,9 +4,6 @@ import cookieParser from 'cookie-parser';
 import { logMiddleware } from './middleware/log';
 import { authRouter } from './routes/auth';
 import { webhookRouter } from './routes/webhook';
-import { AIService } from './services/ai';
-import { Device, deviceSchema } from './schemas/devices';
-import { randomUUID } from 'crypto';
 
 dotenv.config();
 
@@ -31,46 +28,3 @@ app.use('/api', router);
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
-async function test() {
-  const ai = new AIService();
-  const device: Device = {
-    id: randomUUID(),
-    source: 'acme',
-    name: 'ACME Fan',
-    capabilities: [
-      {
-        id: 'heartrate',
-        type: 'number',
-        name: 'Heart Rate',
-        unit: 'bpm',
-        readonly: true,
-      },
-      {
-        id: 'bloodpressure',
-        type: 'number',
-        unit: 'mmHg',
-        readonly: true,
-      },
-      //{
-      //  id: 'on',
-      //  type: 'switch',
-      //},
-      //{
-      //  id: 'speed',
-      //  type: 'mode',
-      //  modes: ['low', 'medium', 'high'],
-      //},
-      //{
-      //  id: 'swing',
-      //  type: 'switch',
-      //  name: 'Horizontal Swing',
-      //},
-    ],
-  };
-  deviceSchema.parse(device);
-  console.log('icon:', await ai.pickDeviceIcon(device));
-}
-
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-test();
