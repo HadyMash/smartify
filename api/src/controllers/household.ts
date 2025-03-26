@@ -18,6 +18,9 @@ import {
   InvalidRoomsError,
   uiHouseholdSchema,
   householdInviteSchema,
+  DeviceAlreadyPairedError,
+  pairDeviceSchema,
+  HouseholdDevice,
 } from '../schemas/household';
 import { HouseholdService } from '../services/household';
 import { TokenService } from '../services/auth/token';
@@ -29,6 +32,17 @@ import { AuthenticatedRequest } from '../schemas/auth/auth';
 import { tryAPIController, validateSchema } from '../util';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
+import { BaseIotAdapter } from '../services/iot/base-adapter';
+import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
+import {
+  BadRequestToDeviceError,
+  DeviceNotFoundError,
+  DeviceOfflineError,
+  DeviceSource,
+  ExternalServerError,
+  InvalidAPIKeyError,
+  MissingAPIKeyError,
+} from '../schemas/devices';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -199,10 +213,6 @@ export class HouseholdController {
             return true;
           }
         }
-        if (e instanceof AlreadyMemberError) {
-          res.status(409).send({ error: 'User is already a member' });
-          return true;
-        }
         if (e instanceof AlreadyInvitedError) {
           res.status(409).send({ error: 'User is already invited' });
           return true;
@@ -322,7 +332,6 @@ export class HouseholdController {
         const householdId = validateSchema(
           res,
           objectIdStringSchema,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           req.params.householdId,
         );
         if (!householdId) {
@@ -806,28 +815,138 @@ export class HouseholdController {
     );
   }
 
-  //public static pairDevice(req: AuthenticatedRequest, res: Response) {
-  //  tryAPIController(res, async () => {
-  //    const hs = new HouseholdService();
-  //    const household = await hs.getHousehold(req.params.householdId);
-  //    if (!household) {
-  //      res.status(404).send({ error: 'Household not found' });
-  //      return;
-  //    }
-  //    if (!household.members.find((m) => m.id === req.user!._id)) {
-  //      res.status(403).send({ error: 'Permission denied' });
-  //      return;
-  //    }
-  //    const adapter: BaseIotAdapter = new AcmeIoTAdapter();
-  //    const device = await adapter.pairDevice(
-  //      req.params.householdId,
-  //      req.body.deviceId,
-  //    );
-  //    if (!device) {
-  //      res.status(400).send({ error: 'Failed to pair device' });
-  //      return;
-  //    }
-  //    res.status(200).send({ device });
-  //  });
-  //}
+  public static pairDevices(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        const data = validateSchema(res, pairDeviceSchema, req.body);
+
+        if (!data) {
+          return;
+        }
+
+        // check the user has permission to add devices (owner or admin)
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+        if (
+          !(
+            [
+              memberRoleSchema.enum.owner,
+              memberRoleSchema.enum.admin,
+            ] as string[]
+          ).includes(req.user!.households[householdId.toString()].role)
+        ) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        const devicesBySource = new Map<DeviceSource, string[]>();
+
+        for (const device of data.devices) {
+          if (!devicesBySource.has(device.source)) {
+            devicesBySource.set(device.source, []);
+          }
+          devicesBySource.get(device.source)!.push(device.id);
+        }
+
+        function getAdapter(source: DeviceSource): BaseIotAdapter {
+          switch (source) {
+            case 'acme':
+              return new AcmeIoTAdapter();
+          }
+        }
+
+        const mappedDevices: HouseholdDevice[] = [];
+        for (const source of devicesBySource.keys()) {
+          const adapter: BaseIotAdapter = getAdapter(source);
+
+          // pair
+          await adapter.pairDevices(devicesBySource.get(source)!);
+
+          // get the devices
+          const devs = await adapter.getDevices(devicesBySource.get(source)!);
+          if (!devs) {
+            res.status(400).send({ error: 'Failed to pair devices' });
+            return;
+          }
+
+          const ds: HouseholdDevice[] = [];
+          for (const d of devs) {
+            ds.push({
+              ...d,
+              roomId: data.devices.find((dd) => dd.id === d.id)!.roomId,
+            });
+          }
+
+          mappedDevices.push(...ds);
+        }
+
+        // pair with the household
+        const hs = new HouseholdService();
+        const result = await hs.pairDevicesToHousehold(
+          householdId,
+          mappedDevices,
+        );
+
+        if (!result) {
+          res.status(500).send({ error: 'Failed to pair devices' });
+          return;
+        }
+
+        res.status(200).send(await hs.transformToUIHousehold(result, true));
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
+        }
+        if (e instanceof DeviceAlreadyPairedError) {
+          res.status(409).send({ error: 'Device already paired' });
+          return true;
+        }
+        if (e instanceof MissingAPIKeyError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof InvalidAPIKeyError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof ExternalServerError) {
+          res.status(502).send({ error: 'External Server Error' });
+          return true;
+        }
+        if (e instanceof BadRequestToDeviceError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof DeviceNotFoundError) {
+          res.status(404).send({ error: 'Device not found' });
+          return true;
+        }
+        if (e instanceof DeviceOfflineError) {
+          res.status(503).send({ error: 'Device offline' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
 }

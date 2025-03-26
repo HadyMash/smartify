@@ -738,6 +738,27 @@ describe('AcmeIoTAdapter (with simulation)', () => {
       }
     });
 
+    test('pair non-existent device', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.pairDevices(['eab2c1f6-d95b-48d3-a19b-267f19cd18c5']);
+      } catch (e) {
+        expect(e).toBeInstanceOf(DeviceNotFoundError);
+      }
+    });
+
+    test('pair non-existent devices', async () => {
+      const adapter = new AcmeIoTAdapter();
+      try {
+        await adapter.pairDevices([
+          'eab2c1f6-d95b-48d3-a19b-267f19cd18c5',
+          '90cd8c96-ac3a-4ee2-9549-50a905511c13',
+        ]);
+      } catch (e) {
+        expect(e).toBeInstanceOf(DeviceNotFoundError);
+      }
+    });
+
     test('get devices', async () => {
       const adapter = new AcmeIoTAdapter();
       const devices = await adapter.getDevices([DEVICE1ID, DEVICE2ID]);

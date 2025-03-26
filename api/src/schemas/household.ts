@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { objectIdOrStringSchema } from './obj-id';
 import { randomUUID } from 'crypto';
 import { emailSchema } from './auth/auth';
-import { deviceSchema } from './devices';
+import { deviceSchema, deviceSourceSchema } from './devices';
 import { validateRooms } from '../util';
 
 /**
@@ -347,6 +347,16 @@ export const respondToInviteDataSchema = z.object({
 
 export const transferSchema = z.object({
   newOwnerId: objectIdOrStringSchema,
+});
+
+export const pairDeviceSchema = z.object({
+  devices: z.array(
+    z.object({
+      id: z.string().nonempty(),
+      source: deviceSourceSchema,
+      roomId: z.string().nonempty(),
+    }),
+  ),
 });
 
 /* Error types */

@@ -510,32 +510,48 @@ export class HouseholdService {
     return await this.db.householdRepository.getHouseholdByDevice(deviceId);
   }
 
-  public async pairDeviceToHousehold(
+  public async getHouseholdsByDevices(
+    deviceIds: string[],
+  ): Promise<Household[]> {
+    return await this.db.householdRepository.getHouseholdsByDevices(deviceIds);
+  }
+
+  public async pairDevicesToHousehold(
     householdId: ObjectIdOrString,
-    device: HouseholdDevice,
-  ) {
+    devices: HouseholdDevice[],
+  ): Promise<Household | null> {
     const household = await this.getHousehold(householdId);
     // check if the household exists
     if (!household) {
       throw new InvalidHouseholdError(InvalidHouseholdType.DOES_NOT_EXIST);
     }
     // check if the device is already paired with the household
-    if (household.devices.find((d) => d.id === device.id)) {
+    if (household.devices.find((d) => devices.some((dev) => dev.id === d.id))) {
       return household;
     }
 
     // check if it's paired with other households
-    const otherHousehold = await this.getHouseholdByDevice(device.id);
-    if (otherHousehold) {
+    const otherHouseholds: Household[] = await this.getHouseholdsByDevices(
+      devices.map((d) => d.id),
+    );
+
+    // filter out already paired devices
+    const unpairedDevices = devices.filter(
+      (d) =>
+        !otherHouseholds.find((h) => h.devices.some((dev) => dev.id === d.id)),
+    );
+
+    if (unpairedDevices.length === 0) {
       throw new DeviceAlreadyPairedError();
     }
 
-    const result = await this.db.householdRepository.addDeviceToHousehold(
+    const result = await this.db.householdRepository.addDevicesToHousehold(
       householdId,
-      device,
+      devices,
     );
+
     if (!result) {
-      return;
+      return null;
     }
 
     return householdSchema.parse(result);

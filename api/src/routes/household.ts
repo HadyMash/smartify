@@ -58,4 +58,6 @@ householdRouter.post('/:householdId/transfer', (req, res) =>
   HouseholdController.transferOwnership(req, res),
 );
 
-//householdRouter.
+householdRouter.post('/:householdId/pair', (req, res) =>
+  HouseholdController.pairDevices(req, res),
+);

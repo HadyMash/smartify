@@ -440,17 +440,28 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   }
 
   /**
+   * Get households by device ids
+   * @param deviceIds - The device ids
+   * @returns The households that contain the devices
+   */
+  public async getHouseholdsByDevices(
+    deviceIds: string[],
+  ): Promise<Household[]> {
+    return this.collection.find({ 'devices.id': { $in: deviceIds } }).toArray();
+  }
+
+  /**
    * Add a device to a household
    * @param householdId - Household id
    * @param device - The device to add
    */
-  public async addDeviceToHousehold(
+  public async addDevicesToHousehold(
     householdId: ObjectIdOrString,
-    device: HouseholdDevice,
+    devices: HouseholdDevice[],
   ): Promise<HouseholdDoc | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: objectIdSchema.parse(householdId) },
-      { $addToSet: { devices: device } },
+      { $push: { devices: { $each: devices } } },
       { returnDocument: 'after' },
     );
 
