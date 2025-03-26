@@ -458,6 +458,7 @@ describe('Room adjacency test', () => {
         type: 'living',
         floor: 1,
         connectedRooms: {},
+        devices: [],
       },
     ];
 
@@ -474,6 +475,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '2',
         },
+        devices: [],
       },
       {
         id: '2',
@@ -483,6 +485,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
+        devices: [],
       },
     ];
 
@@ -499,6 +502,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '2',
         },
+        devices: [],
       },
       {
         id: '2',
@@ -508,6 +512,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
+        devices: [],
       },
     ];
 
@@ -525,6 +530,7 @@ describe('Room adjacency test', () => {
           left: 'b',
           right: 'c',
         },
+        devices: [],
       },
       {
         id: 'b',
@@ -535,6 +541,7 @@ describe('Room adjacency test', () => {
           right: 'a',
           top: 'd',
         },
+        devices: [],
       },
       {
         id: 'c',
@@ -545,6 +552,7 @@ describe('Room adjacency test', () => {
           left: 'a',
           top: 'e',
         },
+        devices: [],
       },
       {
         id: 'd',
@@ -554,6 +562,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: 'b',
         },
+        devices: [],
       },
       {
         id: 'e',
@@ -563,6 +572,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: 'c',
         },
+        devices: [],
       },
     ];
 
@@ -580,6 +590,7 @@ describe('Room adjacency test', () => {
           bottom: '2',
           right: '3',
         },
+        devices: [],
       },
       {
         id: '2',
@@ -589,6 +600,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           top: '1',
         },
+        devices: [],
       },
       {
         id: '3',
@@ -598,6 +610,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           left: '1',
         },
+        devices: [],
       },
       {
         id: '4',
@@ -607,6 +620,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '3',
         },
+        devices: [],
       },
       {
         id: '5',
@@ -616,6 +630,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           right: '3',
         },
+        devices: [],
       },
     ];
 
@@ -633,6 +648,7 @@ describe('Room adjacency test', () => {
           left: '2',
           top: '5',
         },
+        devices: [],
       },
       {
         id: '2',
@@ -643,6 +659,7 @@ describe('Room adjacency test', () => {
           right: '1',
           top: '3',
         },
+        devices: [],
       },
       {
         id: '3',
@@ -653,6 +670,7 @@ describe('Room adjacency test', () => {
           bottom: '2',
           right: '4',
         },
+        devices: [],
       },
       {
         id: '4',
@@ -662,6 +680,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           left: '3',
         },
+        devices: [],
       },
       {
         id: '5',
@@ -671,6 +690,7 @@ describe('Room adjacency test', () => {
         connectedRooms: {
           bottom: '1',
         },
+        devices: [],
       },
     ];
 
@@ -685,6 +705,7 @@ describe('Room adjacency test', () => {
         type: 'living',
         floor: 1,
         connectedRooms: {},
+        devices: [],
       },
       {
         id: '2',
@@ -692,6 +713,7 @@ describe('Room adjacency test', () => {
         type: 'kitchen',
         floor: 1,
         connectedRooms: {},
+        devices: [],
       },
     ];
     expect(HouseholdService.validateRooms(rooms)).toBe(false);
