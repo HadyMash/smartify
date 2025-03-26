@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb';
+import { ClientSession, Db, MongoClient } from 'mongodb';
 import {
   AccessBlacklistRepository,
   MFABlacklistRepository,
@@ -7,6 +7,7 @@ import {
 import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
+import { DeviceInfoRepository } from './repositories/device-info';
 
 const DB_NAME: string = 'smartify';
 
@@ -23,6 +24,7 @@ export class DatabaseService {
   private _accessBlacklistRepository!: AccessBlacklistRepository;
   private _mfaBlacklistRepository!: MFABlacklistRepository;
   private _householdRepository!: HouseholdRepository;
+  private _deviceInfoRepository!: DeviceInfoRepository;
 
   constructor() {
     //// Start connection process in constructor
@@ -217,6 +219,14 @@ export class DatabaseService {
         DatabaseService.redis,
       );
     }
+
+    if (!this._deviceInfoRepository) {
+      this._deviceInfoRepository = new DeviceInfoRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
   }
 
   get userRepository(): UserRepository {
@@ -273,6 +283,92 @@ export class DatabaseService {
     return this._householdRepository;
   }
 
+  get deviceInfoRepository(): DeviceInfoRepository {
+    if (!this._deviceInfoRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._deviceInfoRepository;
+  }
+
+  /**
+   * Starts a new MongoDB transaction session.
+   * @returns The session object to be used with repository methods
+   */
+  public async startTransaction() {
+    await this.connect();
+    const session = DatabaseService.client.startSession();
+    session.startTransaction();
+    return session;
+  }
+
+  /**
+   * Commits a transaction and ends the session.
+   * @param session - The session to commit
+   */
+  public async commitTransaction(session: ClientSession) {
+    try {
+      await session.commitTransaction();
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Aborts a transaction and ends the session.
+   * @param session - The session to abort
+   */
+  public async abortTransaction(session: ClientSession) {
+    try {
+      await session.abortTransaction();
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Executes a function within a transaction and handles session lifecycle.
+   * This method creates a session, starts a transaction, executes the callback,
+   * and then either commits or aborts the transaction based on success or failure.
+   *
+   * @param operation - Async function that accepts a session and performs DB operations
+   * @param validator - Optional function that determines whether to commit (true) or abort (false) the transaction
+   *                   even when no exceptions are thrown
+   * @returns The result of the operation function
+   * @throws Any error that occurs during the operation (after aborting the transaction)
+   */
+  public async withTransaction<T>(
+    operation: (session: ClientSession) => Promise<T>,
+    validator?: (result: T, session: ClientSession) => Promise<boolean>,
+  ): Promise<{ result: T; committed: boolean }> {
+    await this.connect();
+    const session = await this.startTransaction();
+
+    try {
+      const result = await operation(session);
+
+      // If validator is provided, check whether to commit or abort
+      if (validator) {
+        const shouldCommit = await validator(result, session);
+        if (shouldCommit) {
+          await this.commitTransaction(session);
+          return { result, committed: true };
+        } else {
+          await this.abortTransaction(session);
+          return { result, committed: false };
+        }
+      } else {
+        // No validator provided, commit as usual
+        await this.commitTransaction(session);
+        return { result, committed: true };
+      }
+    } catch (error) {
+      await this.abortTransaction(session);
+      throw error;
+    }
+  }
+
   /** Configures all of the databases collections */
   public async configureCollections(): Promise<void> {
     // Ensure we're connected before configuring collections
@@ -285,6 +381,7 @@ export class DatabaseService {
       this.accessBlacklistRepository.configureCollection(),
       this.mfaBlacklistRepository.configureCollection(),
       this.householdRepository.configureCollection(),
+      this.deviceInfoRepository.configureCollection(),
     ]);
   }
 }

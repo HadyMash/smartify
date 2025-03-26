@@ -31,11 +31,11 @@ import {
   objectIdStringSchema,
 } from '../schemas/obj-id';
 import { AuthenticatedRequest } from '../schemas/auth/auth';
-import { tryAPIController, validateSchema } from '../util';
+import { tryAPIController } from '../util/controller';
+import { validateSchema } from '../util/schema';
 import { InvalidUserError, InvalidUserType } from '../schemas/auth/user';
 import { AuthController } from './auth';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
-import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 import {
   BadRequestToDeviceError,
   DeviceNotFoundError,
@@ -45,6 +45,7 @@ import {
   InvalidAPIKeyError,
   MissingAPIKeyError,
 } from '../schemas/devices';
+import { getAdapter } from '../util/adapter';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -64,7 +65,6 @@ export class HouseholdController {
         owner: req.user!._id,
         members: [],
         invites: [],
-        devices: [],
       };
 
       const d = validateSchema(res, householdSchema, householdData);
@@ -863,13 +863,6 @@ export class HouseholdController {
           devicesBySource.get(device.source)!.push(device.id);
         }
 
-        function getAdapter(source: DeviceSource): BaseIotAdapter {
-          switch (source) {
-            case 'acme':
-              return new AcmeIoTAdapter();
-          }
-        }
-
         const mappedDevices: HouseholdDevice[] = [];
         for (const source of devicesBySource.keys()) {
           const adapter: BaseIotAdapter = getAdapter(source);
@@ -897,17 +890,17 @@ export class HouseholdController {
 
         // pair with the household
         const hs = new HouseholdService();
-        const result = await hs.pairDevicesToHousehold(
-          householdId,
-          mappedDevices,
-        );
+        await hs.pairDevicesToHousehold(householdId, mappedDevices);
 
-        if (!result) {
+        // get updated household devices
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        if (!devices) {
           res.status(500).send({ error: 'Failed to pair devices' });
           return;
         }
 
-        res.status(200).send(await hs.transformToUIHousehold(result, true));
+        res.status(200).send({ devices: devices });
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
@@ -991,18 +984,13 @@ export class HouseholdController {
 
         // get household
         const hs = new HouseholdService();
-        const household = await hs.getHousehold(householdId);
-
-        if (!household) {
-          res.status(404).send({ error: 'Household not found' });
-          return;
-        }
+        const householdDevices = await hs.getHouseholdDevices(householdId);
 
         const devicesBySource = new Map<DeviceSource, string[]>();
 
         for (const deviceId of data.devices) {
-          const source = household.devices.find(
-            (d) => d.id === deviceId,
+          const source = householdDevices.find(
+            (d) => d._id === deviceId,
           )?.source;
 
           if (!source) {
@@ -1015,31 +1003,17 @@ export class HouseholdController {
           devicesBySource.get(source)!.push(deviceId);
         }
 
-        function getAdapter(source: DeviceSource): BaseIotAdapter {
-          switch (source) {
-            case 'acme':
-              return new AcmeIoTAdapter();
-          }
-        }
-
         // remove devices from household first
-        const updatedHousehold = await hs.unpairDeviceFromHousehold(
-          householdId,
-          data.devices,
-        );
-
-        if (!updatedHousehold) {
-          res.status(500).send({ error: 'Failed to unpair devices' });
-          return;
-        }
+        await hs.unpairDeviceFromHousehold(householdId, data.devices);
 
         // return, then unpair from the adapter
         try {
+          // get updated devices
           res
             .status(200)
-            .send(await hs.transformToUIHousehold(updatedHousehold, true));
+            .send({ devices: await hs.getHouseholdDevices(householdId) });
         } catch (e) {
-          console.error('Failed to map househld:', e);
+          console.error('Failed to map household:', e);
           res
             .status(500)
             .send({ error: 'Unpaired devices but failed to return household' });
@@ -1139,15 +1113,12 @@ export class HouseholdController {
         const hs = new HouseholdService();
 
         // update the rooms
-        const updatedHousehold = await hs.changeDeviceRooms(
-          householdId,
-          data.devices,
-        );
+        await hs.changeDeviceRooms(householdId, data.deviceIds, data.roomId);
 
-        if (!updatedHousehold) {
-          res.status(500).send({ error: 'Failed to update rooms' });
-          return;
-        }
+        // return updated devices
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        res.status(200).send({ devices });
       },
       (e) => {
         if (e instanceof InvalidHouseholdError) {
@@ -1162,6 +1133,52 @@ export class HouseholdController {
         if (e instanceof DeviceNotFoundError) {
           res.status(404).send({ error: 'Device not found' });
           return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  public static getHouseholdDevices(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const householdId = validateSchema(
+          res,
+          objectIdOrStringSchema,
+          req.params.householdId,
+        );
+
+        if (!householdId) {
+          return;
+        }
+
+        // Check if user has access to this household
+        if (!(householdId.toString() in req.user!.households)) {
+          res.status(403).send({ error: 'Permission denied' });
+          return;
+        }
+
+        // Get household devices
+        const hs = new HouseholdService();
+        const devices = await hs.getHouseholdDevices(householdId);
+
+        if (!devices) {
+          res.status(404).send({ error: 'No devices found' });
+          return;
+        }
+
+        res.status(200).send({ devices });
+      },
+      (e) => {
+        if (e instanceof InvalidHouseholdError) {
+          if (e.type === InvalidHouseholdType.DOES_NOT_EXIST) {
+            res.status(404).send({ error: 'Household not found' });
+            return true;
+          } else {
+            res.status(400).send({ error: 'Invalid household id' });
+            return true;
+          }
         }
         return false;
       },

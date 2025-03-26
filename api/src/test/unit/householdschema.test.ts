@@ -10,7 +10,7 @@ import {
   modifyMemberSchema,
   HouseholdRoom,
 } from '../../schemas/household';
-import { validateRooms } from '../../util';
+import { validateRooms } from '../../util/household';
 
 describe('Coordinates Schema Validation', () => {
   test('should validate correct coordinates', () => {

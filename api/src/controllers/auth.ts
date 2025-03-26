@@ -11,7 +11,8 @@ import {
   MFAErrorType,
 } from '../schemas/auth/auth';
 import { TokenService } from '../services/auth/token';
-import { tryAPIController, validateSchema } from '../util';
+import { tryAPIController } from '../util/controller';
+import { validateSchema } from '../util/schema';
 import {
   changePasswordDataSchema,
   InvalidUserError,
