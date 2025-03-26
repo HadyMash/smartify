@@ -1,6 +1,6 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import {
   Household,
   HouseholdMember,
@@ -132,14 +132,19 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   /**
    * Deletes a household.
    * @param householdId - The ID of the household to delete.
-   * @param ownerId - The ID of the household owner.
+   * @param session - Optional MongoDB session for transaction support
+   * @returns Boolean indicating if the household was successfully deleted
    */
   public async deleteHousehold(
     householdId: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<boolean> {
-    const result = await this.collection.deleteOne({
-      _id: objectIdSchema.parse(householdId),
-    });
+    const result = await this.collection.deleteOne(
+      {
+        _id: objectIdSchema.parse(householdId),
+      },
+      { session },
+    );
     //console.log('Household deleted:', result);
     return result.deletedCount === 1;
   }
@@ -249,11 +254,22 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
     return updatedHousehold;
   }
 
-  public async updateRooms(id: ObjectIdOrString, rooms: HouseholdRoom[]) {
+  /**
+   * Updates the room configuration for a household
+   * @param id - The household ID
+   * @param rooms - The new room configuration
+   * @param session - Optional MongoDB session for transaction support
+   */
+  public async updateRooms(
+    id: ObjectIdOrString,
+    rooms: HouseholdRoom[],
+    session?: ClientSession,
+  ) {
     // TODO: update to include adjacency list
     await this.collection.updateOne(
       { _id: objectIdSchema.parse(id) },
       { $set: { rooms } },
+      { session },
     );
   }
 
@@ -370,10 +386,14 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
    */
   public async getHouseholdByInvite(
     inviteId: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<HouseholdDoc | null> {
-    const household = await this.collection.findOne({
-      'invites.inviteId': objectIdSchema.parse(inviteId),
-    });
+    const household = await this.collection.findOne(
+      {
+        'invites.inviteId': objectIdSchema.parse(inviteId),
+      },
+      { session },
+    );
     return household;
   }
 
@@ -397,24 +417,26 @@ export class HouseholdRepository extends DatabaseRepository<Household> {
   }
 
   /**
-   * Transfer a household's ownership to another member
-   * @param householdId - The household Id
-   * @param to - The new owner's id
-   * @returns The new household
+   * Transfers a household's ownership to another member
+   * @param householdId - The household ID
+   * @param to - The new owner's ID
+   * @param session - Optional MongoDB session for transaction support
+   * @returns The updated household document
    */
   public async transferOwnership(
     householdId: ObjectIdOrString,
     to: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<HouseholdDoc | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: objectIdSchema.parse(householdId) },
-      // pull new owner from members, add old owner to members, and update owner fieldj
+      // Remove new owner from members, promote old owner to admin member, update owner field
       {
         $pull: { members: { id: objectIdSchema.parse(to) } },
         $addToSet: { members: { id: objectIdSchema.parse(to), role: 'admin' } },
         $set: { owner: objectIdSchema.parse(to) },
       },
-      { returnDocument: 'after' },
+      { returnDocument: 'after', session },
     );
 
     console.log('Transferred ownership:', result);

@@ -1,6 +1,6 @@
 import { RedisClientType } from 'redis';
 import { DatabaseRepository } from '../repo';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import {
   InvalidUserError,
   InvalidUserType,
@@ -196,12 +196,15 @@ export class UserRepository extends DatabaseRepository<UserDoc> {
    * @param userId - The user to check
    * @returns true if the user exists, false otherwise
    */
-  public async userExists(userId: ObjectIdOrString): Promise<boolean> {
+  public async userExists(
+    userId: ObjectIdOrString,
+    session?: ClientSession,
+  ): Promise<boolean> {
     const user = await this.collection.findOne(
       {
         _id: objectIdSchema.parse(userId),
       },
-      { projection: { _id: 1 } },
+      { projection: { _id: 1 }, session },
     );
     return !!user;
   }

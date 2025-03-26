@@ -1,5 +1,5 @@
 import { RedisClientType } from 'redis';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { ClientSession, Db, MongoClient, ObjectId } from 'mongodb';
 import { DatabaseRepository } from '../repo';
 import { ObjectIdOrString, objectIdSchema } from '../../../schemas/obj-id';
 import { HouseholdDevice } from '../../../schemas/household';
@@ -71,9 +71,10 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
    */
   public async getHouseholdDevices(
     householdId: ObjectIdOrString,
+    session?: ClientSession,
   ): Promise<DeviceInfoDoc[]> {
     return this.collection
-      .find({ householdId: objectIdSchema.parse(householdId) })
+      .find({ householdId: objectIdSchema.parse(householdId) }, { session })
       .toArray();
   }
 
@@ -86,9 +87,13 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
   public async getRoomDevices(
     householdId: ObjectIdOrString,
     roomId: string,
+    session?: ClientSession,
   ): Promise<DeviceInfoDoc[]> {
     return this.collection
-      .find({ householdId: objectIdSchema.parse(householdId), roomId })
+      .find(
+        { householdId: objectIdSchema.parse(householdId), roomId },
+        { session },
+      )
       .toArray();
   }
 
@@ -97,10 +102,12 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
    * Transforms the device objects to match the database schema before insertion
    * @param householdId - The ID of the household to add devices to
    * @param devices - Array of household devices to add
+   * @param session - Optional MongoDB session for transaction support
    */
   public async addDevicesToHousehold(
     householdId: ObjectIdOrString,
     devices: HouseholdDevice[],
+    session?: ClientSession,
   ): Promise<void> {
     const docs = devices.map((device): DeviceInfoDoc => {
       const x = {
@@ -111,7 +118,7 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
       };
       return x as DeviceInfoDoc;
     });
-    await this.collection.insertMany(docs);
+    await this.collection.insertMany(docs, { session });
   }
 
   /**
@@ -119,15 +126,20 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
    * Only removes devices that belong to the specified household
    * @param householdId - The ID of the household
    * @param deviceIds - Array of device IDs to remove
+   * @param session - Optional MongoDB session for transaction support
    */
   public async removeDevicesFromHousehold(
     householdId: ObjectIdOrString,
     deviceIds: string[],
+    session?: ClientSession,
   ): Promise<void> {
-    await this.collection.deleteMany({
-      _id: { $in: deviceIds },
-      householdId: objectIdSchema.parse(householdId),
-    });
+    await this.collection.deleteMany(
+      {
+        _id: { $in: deviceIds },
+        householdId: objectIdSchema.parse(householdId),
+      },
+      { session },
+    );
   }
 
   /**
@@ -148,11 +160,13 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
    * @param householdId - The ID of the household containing the devices
    * @param roomId - The new room ID to assign to the devices
    * @param deviceIds - Array of device IDs to update
+   * @param session - Optional MongoDB session for transaction support
    */
   public async updateDeviceRooms(
     householdId: ObjectIdOrString,
     roomId: string,
     deviceIds: string[],
+    session?: ClientSession,
   ): Promise<void> {
     await this.collection.updateMany(
       {
@@ -160,6 +174,7 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
         householdId: objectIdSchema.parse(householdId),
       },
       { $set: { roomId } },
+      { session },
     );
   }
 

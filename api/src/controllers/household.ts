@@ -414,9 +414,6 @@ export class HouseholdController {
           return;
         }
 
-        // unpair all devices first
-        await hs.unpairAllDevices(householdId);
-
         await hs.deleteHousehold(householdId);
 
         const ts = new TokenService();
