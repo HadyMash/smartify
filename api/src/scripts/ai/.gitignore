@@ -1,3 +1,4 @@
 icons/
 embeddings*.json
+icon-db.db
 log*

@@ -5,6 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
+import { AIService } from '../../services/ai';
 
 dotenv.config();
 
@@ -114,6 +115,21 @@ async function start() {
     }
 
     console.log('Database created and populated successfully!');
+
+    console.log(
+      'Test search (abc):',
+      await new AIService().vectorSearchIcon(db, 'abc'),
+    );
+
+    console.log(
+      'Test search (snowflake):',
+      await new AIService().vectorSearchIcon(db, 'snowflake'),
+    );
+
+    console.log(
+      'Test search (heart monitor):',
+      await new AIService().vectorSearchIcon(db, 'heart monitor'),
+    );
   } catch (error) {
     console.error('Error creating or populating database:', error);
     process.exit(1);
