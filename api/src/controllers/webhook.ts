@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { DeviceSource, deviceSourceSchema } from '../schemas/devices';
 import { log } from '../util/log';
+import { IotService } from '../services/iot';
 
 export class WebhookController {
   /**
@@ -14,33 +15,40 @@ export class WebhookController {
     return deviceSourceSchema.enum.acme;
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   static async iotUpdate(req: Request, res: Response) {
-    switch (this.webhookSource(req)) {
-      case deviceSourceSchema.enum.acme: {
-        const apiKey: string | undefined = req.headers['x-api-key'] as string;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const deviceId: string | undefined = req.body.deviceId;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const changes: Record<string, any> | undefined = req.body.changes;
+    try {
+      switch (this.webhookSource(req)) {
+        case deviceSourceSchema.enum.acme: {
+          const apiKey: string | undefined = req.headers['x-api-key'] as string;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const deviceId: string | undefined = req.body.deviceId;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const changes: Record<string, any> | undefined = req.body.changes;
 
-        if (!apiKey || !deviceId || !changes) {
-          log.debug('Invalid request:', req.body);
-          res.status(400).json({ error: 'Invalid request' });
-          return;
+          if (!apiKey || !deviceId || !changes) {
+            log.debug('Invalid request:', req.body);
+            res.status(400).json({ error: 'Invalid request' });
+            return;
+          }
+
+          log.debug(deviceId, 'changed:', changes);
+
+          const iot = new IotService();
+
+          await iot.logDeviceChanges(deviceId, changes);
+
+          break;
         }
-
-        log.debug(deviceId, 'changed:', changes);
-
-        // TODO: do something with the webhook data
-        break;
+        default:
+          res.status(400).json({ error: 'Invalid source' });
+          return;
       }
-      default:
-        res.status(400).json({ error: 'Invalid source' });
-        return;
-        break;
-    }
 
-    res.status(200).json({ message: 'Webhook received' });
+      res.status(200).json({ message: 'Webhook received' });
+    } catch (e) {
+      log.error('Error processing webhook:', e);
+      res.status(500).json({ error: 'Internal server error' });
+      return;
+    }
   }
 }

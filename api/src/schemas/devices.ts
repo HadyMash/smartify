@@ -49,13 +49,13 @@ const baseCapabilitySchema = z
     /** The capability  */
     type: deviceCapabilityTypesSchema,
     /** The extension type */
-    extensionType: z.string().optional(),
+    extensionType: z.string().optional().nullish(),
     /** Human readable name */
-    name: z.string().optional(),
+    name: z.string().optional().nullish(),
     /** Whether the capability is readonly */
-    readonly: z.boolean().optional(),
+    readonly: z.boolean().optional().nullish(),
     /** The capability's icon */
-    icon: iconSchema.optional(),
+    icon: iconSchema.optional().nullish(),
   })
   .strict();
 
@@ -76,9 +76,9 @@ export const basicCapabilitySchema = z
         /** The maximum number in the range (inclusive) */
         max: z.number(),
         /** The step size */
-        step: z.number().optional(),
+        step: z.number().optional().nullish(),
         /** The unit of the range */
-        unit: z.string().optional(),
+        unit: z.string().optional().nullish(),
       })
       .strict(),
 
@@ -90,9 +90,11 @@ export const basicCapabilitySchema = z
             type: z.enum(['min', 'max']),
             value: z.number(),
           })
-          .optional(),
-        step: z.number().optional(),
-        unit: z.string().optional(),
+
+          .optional()
+          .nullish(),
+        step: z.number().optional().nullish(),
+        unit: z.string().optional().nullish(),
       })
       .strict(),
 
@@ -123,14 +125,22 @@ export const basicCapabilitySchema = z
             return false;
           }
           // If step is provided, validate it's positive
-          if (capability.step !== undefined && capability.step <= 0) {
+          if (
+            capability.step !== undefined &&
+            capability.step !== null &&
+            capability.step <= 0
+          ) {
             return false;
           }
           return true;
 
         case 'number':
           // If step is provided, validate it's positive
-          if (capability.step !== undefined && capability.step <= 0) {
+          if (
+            capability.step !== undefined &&
+            capability.step !== null &&
+            capability.step <= 0
+          ) {
             return false;
           }
           return true;
@@ -173,7 +183,7 @@ export const basicCapabilitySchema = z
           return false;
         }
         // If step is provided, validate it divides the range cleanly
-        if (capability.step !== undefined) {
+        if (capability.step !== undefined && capability.step !== null) {
           const range = capability.max - capability.min;
           const steps = range / capability.step;
           return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
@@ -182,7 +192,11 @@ export const basicCapabilitySchema = z
 
       case 'number':
         // If step is provided, validate it's positive
-        if (capability.step !== undefined && capability.step <= 0) {
+        if (
+          capability.step !== undefined &&
+          capability.step !== null &&
+          capability.step <= 0
+        ) {
           return false;
         }
         return true;
@@ -229,9 +243,9 @@ export const deviceCapabilitySchema = z
         /** The maximum number in the range (inclusive) */
         max: z.number(),
         /** The step size */
-        step: z.number().optional(),
+        step: z.number().optional().nullish(),
         /** The unit of the range */
-        unit: z.string().optional(),
+        unit: z.string().optional().nullish(),
       })
       .strict(),
 
@@ -241,17 +255,20 @@ export const deviceCapabilitySchema = z
         /**
          * An optional bound on one of the ends of the number
          * If a bound on both ends is needed, use a range capability
+         * Can be null, undefined, or an object with type and value
          */
         bound: z
           .object({
             type: z.enum(['min', 'max']),
             value: z.number(),
           })
-          .optional(),
+
+          .optional()
+          .nullish(),
         /** The step size */
-        step: z.number().optional(),
+        step: z.number().optional().nullish(),
         /** The unit of the number */
-        unit: z.string().optional(),
+        unit: z.string().optional().nullish(),
       })
       .strict(),
 
@@ -275,7 +292,7 @@ export const deviceCapabilitySchema = z
     baseCapabilitySchema.extend({
       type: z.literal(deviceCapabilityTypesSchema.enum.multiswitch),
       /** Optional fixed length requirement */
-      length: z.number().optional(),
+      length: z.number().optional().nullish(),
     }),
 
     baseCapabilitySchema
@@ -303,11 +320,17 @@ export const deviceCapabilitySchema = z
         /** The maximum numbers in the range (inclusive) */
         max: z.union([z.number(), z.array(z.number()).nonempty()]),
         /** The step sizes */
-        step: z.union([z.number(), z.array(z.number())]).optional(),
+        step: z
+          .union([z.number(), z.array(z.number())])
+          .optional()
+          .nullish(),
         /** The units of the ranges */
-        unit: z.union([z.string(), z.array(z.string())]).optional(),
+        unit: z
+          .union([z.string(), z.array(z.string())])
+          .optional()
+          .nullish(),
         /** Optional fixed length requirement */
-        length: z.number().optional(),
+        length: z.number().optional().nullish(),
       })
       .strict(),
 
@@ -317,6 +340,7 @@ export const deviceCapabilitySchema = z
         /**
          * Optional bounds on the numbers
          * If bounds on both ends are needed, use a range capability
+         * Can be null, undefined, an object with type and value, or an array of such objects
          */
         bound: z
           .union([
@@ -330,16 +354,26 @@ export const deviceCapabilitySchema = z
                   type: z.enum(['min', 'max']),
                   value: z.number(),
                 })
-                .optional(),
+
+                .optional()
+                .nullish(),
             ),
           ])
-          .optional(),
+
+          .optional()
+          .nullish(),
         /** The step sizes */
-        step: z.union([z.number(), z.array(z.number())]).optional(),
+        step: z
+          .union([z.number(), z.array(z.number())])
+          .optional()
+          .nullish(),
         /** The units of the numbers */
-        unit: z.union([z.string(), z.array(z.string())]).optional(),
+        unit: z
+          .union([z.string(), z.array(z.string())])
+          .optional()
+          .nullish(),
         /** Optional fixed length requirement */
-        length: z.number().optional(),
+        length: z.number().optional().nullish(),
       })
       .strict(),
 
@@ -347,7 +381,7 @@ export const deviceCapabilitySchema = z
       .extend({
         type: z.literal(deviceCapabilityTypesSchema.enum.multivalue),
         /** Optional fixed length requirement */
-        length: z.number().optional(),
+        length: z.number().optional().nullish(),
       })
       .strict(),
 
@@ -381,14 +415,22 @@ export const deviceCapabilitySchema = z
             return false;
           }
           // If step is provided, validate it's positive
-          if (capability.step !== undefined && capability.step <= 0) {
+          if (
+            capability.step !== undefined &&
+            capability.step !== null &&
+            capability.step <= 0
+          ) {
             return false;
           }
           return true;
 
         case 'number':
           // If step is provided, validate it's positive
-          if (capability.step !== undefined && capability.step <= 0) {
+          if (
+            capability.step !== undefined &&
+            capability.step !== null &&
+            capability.step <= 0
+          ) {
             return false;
           }
           return true;
@@ -431,7 +473,7 @@ export const deviceCapabilitySchema = z
           return false;
         }
         // If step is provided, validate it divides the range cleanly
-        if (capability.step !== undefined) {
+        if (capability.step !== undefined && capability.step !== null) {
           const range = capability.max - capability.min;
           const steps = range / capability.step;
           return Math.abs(Math.round(steps) - steps) <= Number.EPSILON;
@@ -440,7 +482,11 @@ export const deviceCapabilitySchema = z
 
       case 'number':
         // If step is provided, validate it's positive
-        if (capability.step !== undefined && capability.step <= 0) {
+        if (
+          capability.step !== undefined &&
+          capability.step !== null &&
+          capability.step <= 0
+        ) {
           return false;
         }
         return true;
@@ -474,10 +520,10 @@ export const deviceCapabilitySchema = z
 
       // Helper function to get length of any field that might be an array
       const getLength = (
-        field: CapabilityValue | undefined,
+        field: CapabilityValue | undefined | null,
         defaultLength?: number,
       ): number | null => {
-        if (field === undefined) return defaultLength ?? null;
+        if (field === undefined || field === null) return defaultLength ?? null;
         if (Array.isArray(field)) return field.length;
         return null;
       };
@@ -485,7 +531,7 @@ export const deviceCapabilitySchema = z
       // Helper function to validate all lengths match
       const validateLengths = (
         lengths: (number | null)[],
-        requiredLength?: number,
+        requiredLength?: number | null,
       ): boolean => {
         const definedLengths = lengths.filter(
           (len): len is number => len !== null,
@@ -548,15 +594,15 @@ export const deviceSchema = z.object({
   /** Device ID */
   id: z.string().min(1),
   /** The device's name */
-  name: z.string().optional(),
+  name: z.string().optional().nullish(),
   /** The device's description */
-  description: z.string().optional(),
+  description: z.string().optional().nullish(),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
   /** The type of device */
   accessType: z.enum(['appliances', 'health', 'security', 'energy']),
   /** The device's icon */
-  icon: iconSchema.optional(),
+  icon: iconSchema.optional().nullish(),
   /** Device capabilities */
   capabilities: z
     .array(deviceCapabilitySchema)
@@ -590,7 +636,7 @@ export const actionStateSchema = z.record(
     /** Start time of the action */
     startTime: z.date(),
     /** Optional data specific to this action */
-    data: z.record(z.string(), z.unknown()).optional(),
+    data: z.record(z.string(), z.unknown()).optional().nullish(),
   }),
 );
 
@@ -599,7 +645,7 @@ export const deviceWithStateSchema = deviceSchema
   .extend({
     state: stateSchema,
     /** Optional active actions and their states */
-    actionStates: actionStateSchema.optional(),
+    actionStates: actionStateSchema.optional().nullish(),
   })
   .refine(
     (d) => {
@@ -639,7 +685,7 @@ export const deviceWithStateSchema = deviceSchema
             )
               return false;
 
-            if (capability.step !== undefined) {
+            if (capability.step !== undefined && capability.step !== null) {
               const steps = (value - capability.min) / capability.step;
               // Use a more lenient epsilon for floating point comparisons
               const FLOAT_EPSILON = 1e-10;
@@ -665,7 +711,7 @@ export const deviceWithStateSchema = deviceSchema
             }
 
             // Check step
-            if (capability.step !== undefined) {
+            if (capability.step !== undefined && capability.step !== null) {
               const reference = capability.bound?.value ?? 0;
               const steps = (value - reference) / capability.step;
               // Use a more lenient epsilon for floating point comparisons
@@ -722,7 +768,7 @@ export const deviceWithStateSchema = deviceSchema
 
               if (v < min || v > max) return false;
 
-              if (capability.step !== undefined) {
+              if (capability.step !== undefined && capability.step !== null) {
                 const step = Array.isArray(capability.step)
                   ? capability.step[idx]
                   : capability.step;
@@ -763,7 +809,7 @@ export const deviceWithStateSchema = deviceSchema
                   return false;
               }
 
-              if (capability.step !== undefined) {
+              if (capability.step !== undefined && capability.step !== null) {
                 const step = Array.isArray(capability.step)
                   ? capability.step[idx]
                   : capability.step;
@@ -799,9 +845,9 @@ export const deviceWithStateSchema = deviceSchema
 /** An IoT device with partial state */
 export const deviceWithPartialStateSchema = deviceSchema
   .extend({
-    state: stateSchema.optional().default({}),
+    state: stateSchema.optional().nullish().default({}),
     /** Optional active actions and their states */
-    actionStates: actionStateSchema.optional(),
+    actionStates: actionStateSchema.optional().nullish(),
   })
   .refine(
     (d) => {
@@ -815,10 +861,10 @@ export const deviceWithPartialStateSchema = deviceSchema
     },
   )
   .refine(
-    (d) => {
+    ({ capabilities, state }) => {
       // Validate that each state value matches its capability type
-      return Object.entries(d.state).every(([key, value]) => {
-        const capability = d.capabilities.find((c) => c.id === key);
+      return Object.entries(state ?? {}).every(([key, value]) => {
+        const capability = capabilities.find((c) => c.id === key);
         if (!capability) return false;
 
         switch (capability.type) {
@@ -836,7 +882,7 @@ export const deviceWithPartialStateSchema = deviceSchema
             )
               return false;
 
-            if (capability.step !== undefined) {
+            if (capability.step !== undefined && capability.step !== null) {
               const steps = (value - capability.min) / capability.step;
               // Check if steps is very close to a whole number to handle floating point imprecision
               if (Math.abs(Math.round(steps) - steps) > Number.EPSILON)
@@ -861,7 +907,7 @@ export const deviceWithPartialStateSchema = deviceSchema
             }
 
             // Check step
-            if (capability.step !== undefined) {
+            if (capability.step !== undefined && capability.step !== null) {
               const reference = capability.bound?.value ?? 0;
               const steps = (value - reference) / capability.step;
               // Check if steps is very close to a whole number to handle floating point imprecision
@@ -870,7 +916,7 @@ export const deviceWithPartialStateSchema = deviceSchema
             }
             return true;
           case 'mode':
-            return capability.modes.includes(String(value));
+            return capability.modes.includes(value as string);
           case 'date':
             try {
               if (typeof value !== 'number') {
@@ -917,7 +963,7 @@ export const deviceWithPartialStateSchema = deviceSchema
 
               if (v < min || v > max) return false;
 
-              if (capability.step !== undefined) {
+              if (capability.step !== undefined && capability.step !== null) {
                 const step = Array.isArray(capability.step)
                   ? capability.step[idx]
                   : capability.step;
@@ -956,7 +1002,7 @@ export const deviceWithPartialStateSchema = deviceSchema
                   return false;
               }
 
-              if (capability.step !== undefined) {
+              if (capability.step !== undefined && capability.step !== null) {
                 const step = Array.isArray(capability.step)
                   ? capability.step[idx]
                   : capability.step;

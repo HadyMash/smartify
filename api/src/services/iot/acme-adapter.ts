@@ -291,6 +291,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     device: any,
   ): DeviceWithPartialState | undefined {
     try {
+      log.debug('mapping device with partial state:', device);
       if (!device?.id) {
         log.error('Device with partial state mapping failed: missing ID');
         return undefined;
