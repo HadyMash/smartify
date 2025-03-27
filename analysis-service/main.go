@@ -45,6 +45,7 @@ func (app *App) Initialize() {
     app.SecurityHandler = handlers.NewSecurityHandler(securityService)
     app.DeviceUsageHandler = handlers.NewDeviceUsageHandler(deviceUsageService)
     app.LeaderboardHandler = handlers.NewLeaderboardHandler(leaderboardService)
+    
 
     // Initialize the scheduler
     //app.SchedulerService = scheduler.NewScheduler()
@@ -59,6 +60,8 @@ func (app *App) RegisterRoutes() {
     http.HandleFunc("/api/leaderboard", app.LeaderboardHandler.GetLeaderboard)
     http.HandleFunc("/api/statistics", app.LeaderboardHandler.GetStatistics)
     http.HandleFunc("/api/energy-generation", app.AnalysisHandler.GetEnergyGenerationSummary)
+    webhookHandler := handlers.NewWebhookHandler()
+    http.HandleFunc("/api/ingest", webhookHandler.HandleIngest)
 }
 
 // Run the server only if webhooks are needed
