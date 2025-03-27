@@ -13,6 +13,8 @@ func NewWebhookHandler() *WebhookHandler {
 }
 
 func (h *WebhookHandler) HandleIngest(w http.ResponseWriter, r *http.Request) {
+    fmt.Println("📩 Incoming request to /api/ingest") // DEBUG LOG
+
     var payload map[string]interface{}
     err := json.NewDecoder(r.Body).Decode(&payload)
     if err != nil {
