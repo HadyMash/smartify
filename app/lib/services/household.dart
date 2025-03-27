@@ -314,9 +314,9 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
           userId: data['id'].toString(), // Assuming 'id' is the user ID
           name: data['name'].toString(),
           householdName: data['householdName'].toString(),
-          
+
           //senderName:
-              //'', // Not provided in response; fetch separately if needed
+          //'', // Not provided in response; fetch separately if needed
         );
       }
       return null; // Unexpected response

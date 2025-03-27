@@ -10,7 +10,6 @@ class Member {
   Member(this.name);
 }
 
-
 class HouseholdScreen extends StatefulWidget {
   const HouseholdScreen({super.key});
 
