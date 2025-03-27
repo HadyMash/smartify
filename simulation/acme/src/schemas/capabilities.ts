@@ -366,4 +366,47 @@ export const deviceCapabilityMap: Record<
   //    },
   //  },
   //],
+
+  SECURITY_CAMERA: [
+    {
+      name: 'isRecording',
+      type: capabilityTypeSchema.enum.POWER,
+      isReadOnly: true,
+    },
+    {
+      name: 'motionDetected',
+      type: capabilityTypeSchema.enum.POWER,
+      isReadOnly: true,
+    },
+    {
+      name: 'currentResolution',
+      type: capabilityTypeSchema.enum.RANGE,
+      isReadOnly: true,
+      minValue: 480,
+      maxValue: 2160,
+      unit: 'p',
+    },
+    {
+      name: 'resolution',
+      type: capabilityTypeSchema.enum.RANGE,
+      minValue: 480,
+      maxValue: 2160,
+      unit: 'p',
+    },
+  ],
+
+  SECURITY_LOCK: [
+    {
+      name: 'lockState',
+      type: capabilityTypeSchema.enum.POWER,
+    },
+    {
+      name: 'batteryLevel',
+      type: capabilityTypeSchema.enum.RANGE,
+      isReadOnly: true,
+      minValue: 0,
+      maxValue: 100,
+      unit: '%',
+    },
+  ],
 };

@@ -13,7 +13,11 @@ export const deviceTypeSchema = z.enum([
   'THERMOMETER',
   'HUMIDITY_SENSOR',
   'POWER_METER',
+  'SECURITY_LOCK',
+  'SECURITY_CAMERA',
 ]);
+
+
 
 // Base device schema with required type and id fields
 const baseDeviceSchema = z.object({
@@ -24,6 +28,20 @@ const baseDeviceSchema = z.object({
   //activeActions: z.record(deviceActionSchema).default({}),
 });
 
+export const securityLockSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.SECURITY_LOCK),
+  locked: z.boolean(),
+  batteryLevel: z.number().min(0).max(100),
+});
+
+export const securityCameraSchema = baseDeviceSchema.extend({
+  type: z.literal(deviceTypeSchema.enum.SECURITY_CAMERA),
+  recording: z.boolean(),
+  resolution: z.enum(['720p', '1080p', '4K']),
+  batteryLevel: z.number().min(0).max(100).optional(),
+  isNightVisionEnabled: z.boolean().default(false),
+  motionDetected: z.boolean().default(false),
+});
 // bulbs
 
 // Device type-specific schemas
@@ -131,7 +149,12 @@ export const deviceSchema = z.union([
   powerMeterSchema,
   tempColorBulbSchema,
   //coffeeMachineSchema,
+  securityLockSchema,
+  securityCameraSchema,
 ]);
+
+export type SecurityLock = z.infer<typeof securityLockSchema>;
+export type SecurityCamera = z.infer<typeof securityCameraSchema>;
 
 // Types
 export type DeviceType = z.infer<typeof deviceTypeSchema>;
@@ -152,6 +175,8 @@ export const deviceSchemaMap: Record<DeviceType, ZodObject<any>> = {
   [deviceTypeSchema.enum.POWER_METER]: powerMeterSchema, // Using onOffBulbSchema as base, might need powerMeterSchema
   [deviceTypeSchema.enum.BULB_TEMP_COLOR]: tempColorBulbSchema, // Using limitedColorBulbSchema as it's most similar
   //[deviceTypeSchema.enum.COFFEE_MACHINE]: coffeeMachineSchema, // Using onOffBulbSchema as base, might need coffeeMachineSchema
+  [deviceTypeSchema.enum.SECURITY_LOCK]: securityLockSchema,
+  [deviceTypeSchema.enum.SECURITY_CAMERA]: securityCameraSchema,
 };
 
 // Specific device types
@@ -246,6 +271,21 @@ export const defaultStates: Record<DeviceType, any> = {
   //  connected: true,
   //  pairedApiKeys: [],
   //},
+
+  SECURITY_LOCK: {
+    connected: true,
+    pairedApiKeys: [],
+    locked: true,
+    batteryLevel: 100,
+  },
+  SECURITY_CAMERA: {
+    connected: true,
+    pairedApiKeys: [],
+    recording: false,
+    resolution: '1080p',
+    batteryLevel: 100,
+    isNightVisionEnabled: false,
+  },
 };
 
 // Type guards
@@ -271,3 +311,8 @@ export const isAC = (device: Device): device is AC =>
 //  device.type === deviceTypeSchema.enum.GARAGE_DOOR;
 export const isSolarPanel = (device: Device): device is SolarPanel =>
   device.type === deviceTypeSchema.enum.SOLAR_PANEL;
+
+export const isSecurityLock = (device: Device): device is SecurityLock =>
+  device.type === deviceTypeSchema.enum.SECURITY_LOCK;
+export const isSecurityCamera = (device: Device): device is SecurityCamera =>
+  device.type === deviceTypeSchema.enum.SECURITY_CAMERA;
