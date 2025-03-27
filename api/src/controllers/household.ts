@@ -78,6 +78,24 @@ export class HouseholdController {
       const hs = new HouseholdService();
       const createdHousehold = await hs.createHousehold(householdData);
 
+      // refresh the user's tokens
+      try {
+        const ts = new TokenService();
+        const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
+          req.refreshToken!,
+          req.deviceId!,
+        );
+        AuthController.writeAuthCookies(
+          res,
+          accessToken,
+          refreshToken,
+          idToken,
+        );
+        log.debug("refreshed the user's tokens after creating household");
+      } catch (e) {
+        log.error('Failed to refresh tokens:', e);
+      }
+
       try {
         const uiHousehold = await hs.transformToUIHousehold(
           createdHousehold,
@@ -286,6 +304,7 @@ export class HouseholdController {
             refreshToken,
             idToken,
           );
+          log.debug("refreshed the user's tokens after responding to invite");
         } catch (e) {
           log.error('Failed to revoke tokens:', e);
         }
@@ -365,8 +384,9 @@ export class HouseholdController {
         try {
           const ts = new TokenService();
           await ts.revokeAccessTokens(userId);
+          log.debug("revoked removed member's tokens");
         } catch (e) {
-          log.error('Failed to revoke tokens:', e);
+          log.error('Failed to revoke removed member tokens:', e);
         }
       },
       (e) => {
@@ -422,6 +442,7 @@ export class HouseholdController {
         const ts = new TokenService();
         // update this user's tokens
         try {
+          // revoke access tokesn
           await ts.revokeAccessTokens(req.user!._id);
           // generate new tokens
           const { refreshToken, accessToken, idToken } = await ts.refreshTokens(
@@ -435,6 +456,7 @@ export class HouseholdController {
             refreshToken,
             idToken,
           );
+          log.debug("refreshed the user's tokens after deleting household");
         } catch (e) {
           log.error('Failed to revoke tokens:', e);
         }
@@ -449,6 +471,7 @@ export class HouseholdController {
           }
 
           await Promise.all(promises);
+          log.debug("revoked all member's tokens after deleting household");
         } catch (e) {
           log.error('Failed to revoke tokens:', e);
         }
@@ -589,6 +612,15 @@ export class HouseholdController {
         res
           .status(200)
           .send(await hs.transformToUIHousehold(updatedHousehold, true));
+
+        // revoke user's access token to reflect permissions changes
+        try {
+          const ts = new TokenService();
+          await ts.revokeAccessTokens(data.memberId);
+          log.debug("revoked user's tokens after changing permissions");
+        } catch (e) {
+          log.error('Failed to revoke tokens:', e);
+        }
       },
       (e) => {
         if (e instanceof MissingPermissionsError) {
@@ -765,7 +797,7 @@ export class HouseholdController {
         );
 
         const ts = new TokenService();
-        // update current user's tokens, revoke the new owner's access tokens
+        // revoke and update current user's tokens, revoke the new owner's access tokens
         try {
           // revoke current user's tokens
           await ts.revokeAccessTokens(req.user!._id);
