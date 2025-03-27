@@ -94,6 +94,24 @@ class DashboardContent extends StatelessWidget {
               },
               child: const Text('get all device states'),
             ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final iot = await IotService.create();
+                final device = await iot
+                    .getDeviceState('32df2452-6092-4269-aead-99da9ed0919d');
+
+                print(device);
+                if (device == null) {
+                  return;
+                }
+
+                await iot.updateDeviceState(
+                    '32df2452-6092-4269-aead-99da9ed0919d',
+                    {'on': !device.state['on']});
+              },
+              child: const Text('set device state'),
+            ),
           ],
         ),
         // You can add your dashboard content here

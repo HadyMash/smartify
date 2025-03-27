@@ -1,6 +1,4 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'dart:convert';
-import 'device.dart';
 import 'capability.dart';
 import 'capability_extension.dart';
 

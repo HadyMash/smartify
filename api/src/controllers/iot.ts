@@ -11,6 +11,7 @@ import {
   ExternalServerError,
   InvalidAPIKeyError,
   MissingAPIKeyError,
+  setDeviceStateDataSchema,
 } from '../schemas/devices';
 import { log } from '../util/log';
 import { validateSchema } from '../util/schema';
@@ -155,6 +156,43 @@ export class IoTController {
       res.status(200).send({
         message: 'All devices state retrieved',
         devices: devicesWithStates,
+      });
+    });
+  }
+
+  public static updateDeviceState(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      const data = validateSchema(res, setDeviceStateDataSchema, req.body);
+      if (!data) {
+        return;
+      }
+      log.debug('state:', data);
+
+      // check if the device is paired with one of the user's households
+      const hs = new HouseholdService();
+      const di = await hs.getDeviceInfo(data.deviceId);
+      if (!di) {
+        log.debug('device info not found:', di);
+        res.status(404).send({ error: 'Device not found' });
+        return;
+      }
+
+      // check if the user is a member of the device's houseohld
+      if (!(di.householdId.toString() in req.user!.households)) {
+        res.status(403).send({
+          error: 'Unauthorized: You do not have access to this device',
+        });
+        return;
+      }
+
+      // set the device state
+      const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+      log.debug('setting device state');
+      await adapter.setDeviceState(data.deviceId, data.state);
+
+      res.status(200).send({
+        message: 'Device state updated',
+        //device,
       });
     });
   }

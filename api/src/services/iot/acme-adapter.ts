@@ -714,6 +714,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       );
 
       if (response.status !== 200) {
+        log.debug('non 200 status code:', response.status);
         switch (response.status) {
           case 503:
             throw new DeviceOfflineError(deviceId);

@@ -43,16 +43,21 @@ iotRouter.get('/test-route', (req: AuthenticatedRequest, res: Response) => {
   });
 });
 
+iotRouter.get('/:householdId/all', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.getAllDevicesState(req, res),
+);
+
+//iotRouter.patch('/devices')
+iotRouter.patch('/state', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.updateDeviceState(req, res),
+);
+
 iotRouter.get('/discover', (req: AuthenticatedRequest, res: Response) =>
   IoTController.discoverDevices(req, res),
 );
 
 iotRouter.get('/:deviceId', (req: AuthenticatedRequest, res: Response) =>
   IoTController.getDeviceState(req, res),
-);
-
-iotRouter.get('/:householdId/all', (req: AuthenticatedRequest, res: Response) =>
-  IoTController.getAllDevicesState(req, res),
 );
 
 //iotRouter.post(

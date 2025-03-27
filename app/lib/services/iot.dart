@@ -7,14 +7,13 @@ import '../models/device_schema.dart';
 
 class IotService {
   late final Dio _dio;
-  late final SmartifyHttpClient _httpClient;
 
-  IotService._(this._dio, this._httpClient);
+  IotService._(this._dio);
 
   /// factory method to create an instance of AuthService
   static Future<IotService> create() async {
     final httpClient = await SmartifyHttpClient.instance;
-    return IotService._(httpClient.dio, httpClient);
+    return IotService._(httpClient.dio);
   }
 
   Future<List<({String id, String? name})>> discoverDevices() async {
@@ -200,6 +199,17 @@ class IotService {
           );
       }
     }).toList();
+  }
+
+  Future<void> updateDeviceState(
+      String deviceId, Map<String, dynamic> state) async {
+    try {
+      final response = await _dio
+          .patch('/iot/state', data: {'deviceId': deviceId, 'state': state});
+      print(response);
+    } catch (e) {
+      print('error updating device state: $e');
+    }
   }
 
   DeviceCapabilityType _parseCapabilityType(String type) {

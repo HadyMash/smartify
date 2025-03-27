@@ -131,10 +131,8 @@ extension CapabilityValidation on Capability {
 
           if (steps != null) {
             final stepValue = steps[i];
-            if (stepValue != null) {
-              final stepCount = (numValue - mins[i]) / stepValue;
-              if ((stepCount - stepCount.round()).abs() > 1e-10) return false;
-            }
+            final stepCount = (numValue - mins[i]) / stepValue;
+            if ((stepCount - stepCount.round()).abs() > 1e-10) return false;
           }
         }
 
@@ -172,12 +170,12 @@ extension CapabilityValidation on Capability {
             }
           }
 
-          if (steps != null && i < steps.length && steps[i] != null) {
+          if (steps != null && i < steps.length) {
             final reference =
                 bounds != null && i < bounds.length && bounds[i] != null
                     ? bounds[i]!.value
                     : 0.0;
-            final stepCount = (numValue - reference) / steps[i]!;
+            final stepCount = (numValue - reference) / steps[i];
             if ((stepCount - stepCount.round()).abs() > 1e-10) return false;
           }
         }

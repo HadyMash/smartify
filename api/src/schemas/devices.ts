@@ -1015,6 +1015,13 @@ export type DeviceWithPartialState = z.infer<
   typeof deviceWithPartialStateSchema
 >;
 
+/* requests */
+
+export const setDeviceStateDataSchema = z.object({
+  deviceId: z.string(),
+  state: stateSchema,
+});
+
 /* Errors */
 export class DeviceOfflineError extends Error {
   constructor(deviceId: string) {
