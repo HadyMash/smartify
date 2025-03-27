@@ -5,6 +5,7 @@ import {
   deviceSchema,
   DeviceSource,
   deviceSourceSchema,
+  DeviceWithPartialState,
   deviceWithPartialStateSchema,
   deviceWithStateSchema,
 } from '../../../schemas/devices';
@@ -208,6 +209,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'action',
@@ -233,6 +235,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'action',
@@ -261,6 +264,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -279,6 +283,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: '',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -293,6 +298,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-123_@.',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -661,7 +667,8 @@ describe('IoT Device Schema Tests', () => {
     test('valid device should parse', () => {
       const device = {
         id: 'device-1',
-        source: 'acme' as const,
+        source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch' as const,
@@ -696,6 +703,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -711,6 +719,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -727,6 +736,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -743,6 +753,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -759,6 +770,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -775,6 +787,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -798,6 +811,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -816,6 +830,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -834,6 +849,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -854,6 +870,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -873,6 +890,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -892,6 +910,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -912,6 +931,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -933,6 +953,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -955,6 +976,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -977,6 +999,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -999,6 +1022,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -1020,6 +1044,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -1041,6 +1066,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -1064,6 +1090,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1083,6 +1110,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1102,6 +1130,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1121,6 +1150,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1140,6 +1170,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1159,6 +1190,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'value',
@@ -1180,6 +1212,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1199,6 +1232,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1219,6 +1253,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1239,6 +1274,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1259,6 +1295,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1283,6 +1320,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1306,6 +1344,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1329,6 +1368,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1352,6 +1392,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1375,6 +1416,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -1395,6 +1437,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -1415,6 +1458,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -1435,6 +1479,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -1458,6 +1503,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'range',
@@ -1478,6 +1524,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'range',
@@ -1500,6 +1547,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -1518,6 +1566,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -1536,6 +1585,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -1554,6 +1604,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -1816,6 +1867,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'date',
@@ -1835,6 +1887,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'date',
@@ -1854,6 +1907,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'date',
@@ -1873,6 +1927,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'date',
@@ -1896,6 +1951,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -1928,6 +1984,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -1959,7 +2016,8 @@ describe('IoT Device Schema Tests', () => {
     test('valid device with actionStates should parse', () => {
       const device = {
         id: 'coffee-maker-1',
-        source: 'acme' as const,
+        source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch' as const,
@@ -2059,6 +2117,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'unknown-type', // This is not one of the known types
@@ -2080,6 +2139,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -2100,6 +2160,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -2120,6 +2181,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -2143,6 +2205,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -2164,6 +2227,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -2185,6 +2249,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -2208,6 +2273,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -2229,6 +2295,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -2254,6 +2321,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2277,6 +2345,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2300,6 +2369,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2323,6 +2393,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2346,6 +2417,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2369,6 +2441,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2390,6 +2463,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2409,6 +2483,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -2551,6 +2626,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -2570,6 +2646,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -2590,6 +2667,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -2609,6 +2687,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -2629,6 +2708,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -2650,6 +2730,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -2669,6 +2750,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -2689,6 +2771,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -2708,6 +2791,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -2728,6 +2812,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -2750,6 +2835,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2765,6 +2851,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2781,6 +2868,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2799,6 +2887,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2817,6 +2906,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2835,6 +2925,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2858,6 +2949,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2878,6 +2970,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2898,6 +2991,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2918,6 +3012,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2937,6 +3032,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2958,6 +3054,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -2980,6 +3077,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3001,6 +3099,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3023,6 +3122,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3045,6 +3145,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3069,6 +3170,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3092,6 +3194,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3115,6 +3218,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'range',
@@ -3139,6 +3243,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3158,6 +3263,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3178,6 +3284,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3198,6 +3305,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3220,6 +3328,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3244,6 +3353,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3267,6 +3377,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3292,6 +3403,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3315,6 +3427,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3340,6 +3453,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'number',
@@ -3362,6 +3476,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -3382,6 +3497,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -3404,6 +3520,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'mode',
@@ -3429,6 +3546,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'range',
@@ -3451,6 +3569,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'range',
@@ -3473,6 +3592,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -3493,6 +3613,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -3511,6 +3632,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -3529,6 +3651,7 @@ describe('IoT Device Schema Tests', () => {
           const device = {
             id: 'device-1',
             source: 'acme',
+            accessType: 'appliances',
             capabilities: [
               {
                 type: 'mode',
@@ -3705,6 +3828,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -3737,6 +3861,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch',
@@ -3770,7 +3895,8 @@ describe('IoT Device Schema Tests', () => {
     test('valid device with actionStates should parse', () => {
       const device = {
         id: 'coffee-maker-1',
-        source: 'acme' as const,
+        source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'switch' as const,
@@ -3874,6 +4000,7 @@ describe('IoT Device Schema Tests', () => {
       const device = {
         id: 'device-1',
         source: 'acme',
+        accessType: 'appliances',
         capabilities: [
           {
             type: 'unknown-type', // This is not one of the known types
@@ -3897,6 +4024,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -3919,6 +4047,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -3941,6 +4070,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multimode',
@@ -3966,6 +4096,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -3989,6 +4120,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -4012,6 +4144,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -4037,6 +4170,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -4060,6 +4194,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multirange',
@@ -4087,6 +4222,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4112,6 +4248,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4137,6 +4274,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4162,6 +4300,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4187,6 +4326,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4212,6 +4352,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4235,6 +4376,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4256,6 +4398,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multinumber',
@@ -4400,6 +4543,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -4421,6 +4565,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -4443,6 +4588,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -4464,6 +4610,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -4486,6 +4633,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multiswitch',
@@ -4506,9 +4654,10 @@ describe('IoT Device Schema Tests', () => {
 
     describe('multivalue capability', () => {
       test('valid multivalue states parse', () => {
-        const device = {
+        const device: DeviceWithPartialState = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -4530,6 +4679,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -4552,6 +4702,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -4573,6 +4724,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
@@ -4595,6 +4747,7 @@ describe('IoT Device Schema Tests', () => {
         const device = {
           id: 'device-1',
           source: 'acme',
+          accessType: 'appliances',
           capabilities: [
             {
               type: 'multivalue',
