@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/services/auth.dart';
 import 'package:smartify/widgets/back_button.dart';
 
 class HouseholdInvitesScreen extends StatelessWidget {
@@ -7,6 +8,7 @@ class HouseholdInvitesScreen extends StatelessWidget {
   const HouseholdInvitesScreen({
     super.key,
     this.hasInvites = false,
+    required AuthService authService,
   });
 
   @override

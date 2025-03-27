@@ -18,6 +18,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false; // State variable for password visibility
 
   @override
   void dispose() {
@@ -91,12 +92,23 @@ class _SignInScreenState extends State<SignInScreen> {
                 TextFormField(
                   controller: _passwordController,
                   autocorrect: false,
-                  obscureText: true,
+                  obscureText: !_isPasswordVisible, // Toggle visibility
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    suffixIcon: const Icon(Icons.visibility_off),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
                   ),
                   validator: validatePassword,
                 ),
@@ -126,7 +138,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 110),
 
                 // Sign In Button
                 ElevatedButton(
@@ -181,24 +193,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                 const SizedBox(height: 20),
 
-                // Or sign in with Text
-                Text("Or sign in with", style: textTheme.bodyMedium),
-                const SizedBox(height: 10),
-
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(
-                    Icons.account_circle,
-                    size: 20,
-                    color: colorScheme.onPrimary,
-                  ),
-                  label: const Text("Continue with Google"),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 15, horizontal: 30),
-                    foregroundColor: Colors.black,
-                  ),
-                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

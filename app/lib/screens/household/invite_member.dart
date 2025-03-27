@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/screens/household/add_household.dart';
+import 'package:smartify/screens/household/household_screen.dart';
 import '/widgets/back_button.dart';
 import 'package:smartify/services/household.dart'; // Import HouseholdService
 
@@ -50,26 +52,39 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final invite = await _householdService.inviteMember(
+        // Create HouseholdPermissions object
+        final permissions = HouseholdPermissions(
+          appliances: _appliances,
+          health: _health,
+          security: _security,
+          energy: _energy,
+        );
+
+        // Call HouseholdService.inviteMember
+        final success = await _householdService.inviteMember(
           widget.householdId,
           _role,
-          HouseholdPermissions(
-            appliances: _appliances,
-            health: _health,
-            security: _security,
-            energy: _energy,
-          ),
-          _emailController.text,
+          permissions,
+          _emailController.text.trim(),
         );
 
         setState(() => _isLoading = false);
 
-        if (invite != null) {
-          Navigator.pop(context); // Pop back to HouseholdScreen
+        if (success) {
+          // Navigate to HouseholdScreen on success
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HouseholdScreen(),
+            ),
+          );
+
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Member invited successfully!')),
           );
         } else {
+          // Handle case where inviteMember returns false
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed to invite member')),
           );
@@ -77,7 +92,7 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
       } catch (e) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error inviting member: $e')),
         );
       }
     }
@@ -306,3 +321,4 @@ extension StringExtension on String {
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }
+

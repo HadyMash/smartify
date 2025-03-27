@@ -198,6 +198,9 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       onPressed: () async {
                         final household = await _householdService
                             .getHousehold(_selectedHouseholdId!);
+
+                        // Print the server response
+
                         if (household != null) {
                           Navigator.push(
                             context,

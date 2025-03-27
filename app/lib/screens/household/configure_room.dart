@@ -543,9 +543,9 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: isOpen ? 100 : 0,
-      color: Colors.blueGrey[900],
+      duration: const Duration(milliseconds: 300), // Animation duration
+      width: isOpen ? 100 : 0, // Sidebar width (100 when open, 0 when closed)
+      color: Colors.black, // Background color of the sidebar
       child: isOpen
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,

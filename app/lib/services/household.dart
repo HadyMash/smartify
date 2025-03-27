@@ -75,10 +75,16 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
               .toList(),
           invites: (responseBody['invites'] as List)
               .map((i) => HouseholdInvite(
-                    inviteId: i['_id'],
-                    userId: i['userId'],
-                    householdName: i['householdName'].toString(),
-                    name: i['senderName'].toString(),
+                    inviteId: i['inviteId'],
+                    userId: i['id'],
+                    name: i['name'].toString(),
+                    role: i['role'],
+                    permissions: HouseholdPermissions(
+                      appliances: i['permissions']['appliances'],
+                      health: i['permissions']['health'],
+                      security: i['permissions']['security'],
+                      energy: i['permissions']['energy'],
+                    ),
                   ))
               .toList(),
         );
@@ -138,6 +144,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     try {
       final response = await _dio.get('/households/$householdId');
       final responseBody = response.data;
+      print('Server Response: ${response.data}');
       try {
         final household = Household(
           id: responseBody['_id'],
@@ -174,10 +181,16 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
               .toList(),
           invites: (responseBody['invites'] as List)
               .map((i) => HouseholdInvite(
-                    inviteId: i['_id'],
-                    userId: i['userId'],
-                    householdName: i['householdName'].toString(),
+                    inviteId: i['inviteId'],
+                    userId: i['id'],
                     name: i['name'].toString(),
+                    role: i['role'],
+                    permissions: HouseholdPermissions(
+                      appliances: i['permissions']['appliances'],
+                      health: i['permissions']['health'],
+                      security: i['permissions']['security'],
+                      energy: i['permissions']['energy'],
+                    ),
                   ))
               .toList(),
         );
@@ -241,11 +254,17 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
     try {
       final response = await _dio.get('/households/invites');
       return (response.data as List)
-          .map((invite) => HouseholdInvite(
-                inviteId: invite['_id'].toString(),
-                userId: invite['userId'].toString(),
-                householdName: invite['householdName'].toString(),
-                name: invite['name'].toString(),
+          .map((i) => HouseholdInvite(
+                inviteId: i['inviteId'],
+                userId: i['id'],
+                name: i['name'].toString(),
+                role: i['role'],
+                permissions: HouseholdPermissions(
+                  appliances: i['permissions']['appliances'],
+                  health: i['permissions']['health'],
+                  security: i['permissions']['security'],
+                  energy: i['permissions']['energy'],
+                ),
               ))
           .toList();
     } on DioError catch (e) {
@@ -285,7 +304,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
   }
 
   // Invite Member
-  Future<HouseholdInvite?> inviteMember(
+  Future<bool> inviteMember(
     String householdId,
     String role,
     HouseholdPermissions permissions,
@@ -306,29 +325,33 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
         },
       );
 
+      print(
+          'Invite response: ${response.data}'); // Log raw response for debugging
+
       if (response.statusCode == 200) {
         final data = response.data;
-        // Assuming the response is parsed by householdInviteSchema in backend
-        return HouseholdInvite(
-          inviteId: data['inviteId'].toString(),
-          userId: data['id'].toString(), // Assuming 'id' is the user ID
-          name: data['name'].toString(),
-          householdName: data['householdName'].toString(),
-
-          //senderName:
-          //'', // Not provided in response; fetch separately if needed
-        );
+        if (data is String) {
+          // Handle string response (e.g., "Invite sent successfully")
+          print('Received string response: $data');
+          return true; // Success
+        } else if (data is List) {
+          // Handle list response (original expectation)
+          print('Received list response: $data');
+          return true; // Success (we don’t need to parse it here)
+        } else {
+          print('Unexpected response type: ${data.runtimeType}');
+          return false; // Unexpected format
+        }
       }
-      return null; // Unexpected response
+      return false; // Unexpected status code
     } on DioError catch (e) {
       print('Dio Error inviting member: ${e.message}');
       if (e.response != null && e.response!.data != null) {
         final error = e.response!.data as Map<String, dynamic>;
-        print('error response data: ${e.response!.data}');
-        print('Error inviting member: ${error['error'] ?? error['error']}');
+        print('Error response data: ${e.response!.data}');
+        print('Error inviting member: ${error['error'] ?? error['message']}');
         print('Error inviting member details: ${error['details']}');
 
-        // Handle specific error cases based on backend response
         switch (e.response!.statusCode) {
           case 403:
             throw Exception('Permission denied: You must be an owner or admin');
@@ -344,17 +367,17 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
             }
             throw Exception('Conflict: ${error['error']}');
           default:
-            return null;
+            return false;
         }
       }
-      return null;
+      return false;
     } catch (e) {
       print('Error inviting member: $e');
       rethrow; // Re-throw to handle in UI
     }
   }
 
-  // Helper method to parse Household from JSON
+// Helper method to parse Household from JSON (unchanged)
   Household _parseHousehold(Map<String, dynamic> json) {
     return Household(
       id: json['_id'].toString(),
@@ -393,10 +416,16 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
           .toList(),
       invites: (json['invites'] as List)
           .map((i) => HouseholdInvite(
-                inviteId: i['_id'].toString(),
-                userId: i['userId'].toString(),
-                householdName: i['householdName'].toString(),
-                name: i['senderName'].toString(),
+                inviteId: i['inviteId'],
+                userId: i['id'],
+                name: i['name'].toString(),
+                role: i['role'],
+                permissions: HouseholdPermissions(
+                  appliances: i['permissions']['appliances'],
+                  health: i['permissions']['health'],
+                  security: i['permissions']['security'],
+                  energy: i['permissions']['energy'],
+                ),
               ))
           .toList(),
     );
@@ -499,17 +528,19 @@ class HouseholdPermissions {
 }
 
 class HouseholdInvite {
-  final String inviteId;
   final String userId;
-  final String householdName;
   //final String senderName;
   final String name;
+  final String? role;
+  final HouseholdPermissions? permissions;
+  final String inviteId;
 
   const HouseholdInvite(
-      {required this.inviteId,
-      required this.userId,
-      required this.householdName,
-      required this.name});
+      {required this.userId,
+      required this.name,
+      this.role,
+      this.permissions,
+      required this.inviteId});
 }
 
 class HouseholdRoom {

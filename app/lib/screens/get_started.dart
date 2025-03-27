@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/household_invites.dart';
 import 'package:smartify/screens/household/add_household.dart';
-import 'package:smartify/widgets/back_button.dart';
-import 'household_invites.dart';
 import 'package:smartify/services/auth.dart'; // Assuming you are using this service
 import 'package:provider/provider.dart';
 
@@ -26,7 +25,7 @@ class GetStartedScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const CustomBackButton(),
+                  
                   const SizedBox(width: 16),
                   Text(
                     'Get Started',

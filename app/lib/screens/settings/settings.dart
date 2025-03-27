@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:smartify/screens/household/household_screen.dart';
+import 'package:smartify/screens/household/add_household.dart';
+import 'package:smartify/household_invites.dart';
 import 'profile_screen.dart';
 import 'package:smartify/services/auth.dart';
 
@@ -23,8 +26,6 @@ class SettingsScreen extends StatelessWidget {
                 style: textTheme.displayMedium,
               ),
               const SizedBox(height: 32),
-
-              // Profile Avatar
               Center(
                 child: Column(
                   children: [
@@ -58,9 +59,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Settings List
-              _buildSettingsTile(
+              _buildSettingsCard(
                 context,
                 'Profile',
                 Icons.person_outline,
@@ -73,66 +72,77 @@ class SettingsScreen extends StatelessWidget {
                   );
                 },
               ),
-              _buildSettingsTile(
+              _buildSettingsCard(
                 context,
-                'Push Notifications',
-                Icons.notifications_none,
-                isSwitch: true,
-              ),
-              _buildSettingsTile(
-                context,
-                'Support',
-                Icons.help_outline,
+                'Manage my household',
+                Icons.home_outlined,
                 onTap: () {
-                  // Navigate to support
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HouseholdScreen(),
+                    ),
+                  );
                 },
               ),
-              _buildSettingsTile(
+              _buildSettingsCard(
+                context,
+                'Create household',
+                Icons.add_home_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddHouseholdScreen(),
+                    ),
+                  );
+                },
+              ),
+              _buildSettingsCard(
+                context,
+                'View invites',
+                Icons.mail_outline,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HouseholdInvitesScreen(
+                        authService: authService,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildSettingsCard(
                 context,
                 'Sign out',
                 Icons.logout,
                 onTap: () async {
                   try {
-                    // Get the AuthService instance
-                    // Call the signOut method from AuthService
                     await authService.signOut();
-
-                    // Show a success message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Signed out successfully')),
-                    );
-
-                    // Navigate to the login screen or another appropriate screen
-                    Navigator.pushReplacementNamed(context, '/login');
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(
+                          const SnackBar(
+                              content: Text('Signed out successfully')),
+                        )
+                        .closed
+                        .then((_) {
+                      Navigator.pushReplacementNamed(context, '/login');
+                    });
                   } catch (e) {
-                    // Show an error message if sign-out fails
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Failed to sign out: ${e.toString()}')),
+                      SnackBar(content: Text('Failed to sign out: $e')),
                     );
-                  } // Handle sign out
+                  }
                 },
               ),
-              _buildSettingsTile(
+              _buildSettingsCard(
                 context,
                 'Delete account',
                 Icons.delete_outline,
                 textColor: Colors.red,
                 onTap: () {
-                  // Navigate to delete account
-                },
-              ),
-              _buildSettingsTile(
-                context,
-                'Manage my household',
-                Icons.home_outlined,
-                onTap: () {
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => const HouseholdScreen(),
-                  //   ),
-                  // );
+                  // Placeholder for delete account logic
                 },
               ),
             ],
@@ -142,32 +152,28 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsTile(
+  Widget _buildSettingsCard(
     BuildContext context,
     String title,
     IconData icon, {
-    VoidCallback? onTap,
-    bool isSwitch = false,
+    required VoidCallback? onTap,
     Color? textColor,
   }) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w500,
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 8.0),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: textColor ?? Theme.of(context).textTheme.bodyLarge?.color,
+            fontWeight: FontWeight.w500,
+          ),
         ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
-      trailing: isSwitch
-          ? Switch(
-              value: true,
-              onChanged: (value) {
-                // Handle switch change
-              },
-            )
-          : const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap,
     );
   }
 }

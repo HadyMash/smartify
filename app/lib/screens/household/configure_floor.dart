@@ -504,7 +504,7 @@ class _Floor extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: isSelected ? Colors.red : Colors.grey,
+        color: isSelected ? Colors.black : Colors.grey,
         borderRadius: BorderRadius.circular(8),
       ),
       child: FittedBox(
