@@ -34,7 +34,6 @@ class _HouseholdInvitesScreenState extends State<HouseholdInvitesScreen> {
             .map((invite) => {
                   'inviteId': invite.inviteId,
                   'householdName': invite.householdName,
-                  'senderName': invite.senderName,
                 })
             .toList();
         _hasInvites = _invites.isNotEmpty;

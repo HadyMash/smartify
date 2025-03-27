@@ -78,7 +78,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
                     inviteId: i['_id'],
                     userId: i['userId'],
                     householdName: i['householdName'].toString(),
-                    senderName: i['senderName'].toString(),
+                    name: i['senderName'].toString(),
                   ))
               .toList(),
         );
@@ -177,7 +177,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
                     inviteId: i['_id'],
                     userId: i['userId'],
                     householdName: i['householdName'].toString(),
-                    senderName: i['senderName'].toString(),
+                    name: i['name'].toString(),
                   ))
               .toList(),
         );
@@ -245,7 +245,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
                 inviteId: invite['_id'].toString(),
                 userId: invite['userId'].toString(),
                 householdName: invite['householdName'].toString(),
-                senderName: invite['senderName'].toString(),
+                name: invite['name'].toString(),
               ))
           .toList();
     } on DioError catch (e) {
@@ -312,10 +312,11 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
         return HouseholdInvite(
           inviteId: data['inviteId'].toString(),
           userId: data['id'].toString(), // Assuming 'id' is the user ID
-          householdName:
-              '', // Not provided in response; fetch separately if needed
-          senderName:
-              '', // Not provided in response; fetch separately if needed
+          name: data['name'].toString(),
+          householdName: data['householdName'].toString(),
+          
+          //senderName:
+              //'', // Not provided in response; fetch separately if needed
         );
       }
       return null; // Unexpected response
@@ -395,7 +396,7 @@ export const householdSchema = householdCreateRequestDataSchema.extend({
                 inviteId: i['_id'].toString(),
                 userId: i['userId'].toString(),
                 householdName: i['householdName'].toString(),
-                senderName: i['senderName'].toString(),
+                name: i['senderName'].toString(),
               ))
           .toList(),
     );
@@ -501,13 +502,14 @@ class HouseholdInvite {
   final String inviteId;
   final String userId;
   final String householdName;
-  final String senderName;
+  //final String senderName;
+  final String name;
 
   const HouseholdInvite(
       {required this.inviteId,
       required this.userId,
       required this.householdName,
-      required this.senderName});
+      required this.name});
 }
 
 class HouseholdRoom {

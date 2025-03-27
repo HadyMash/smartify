@@ -7,10 +7,9 @@ import 'package:smartify/services/household.dart'; // Import HouseholdService
 
 class Member {
   final String name;
-  final bool isInvited;
-
-  Member(this.name, this.isInvited);
+  Member(this.name);
 }
+
 
 class HouseholdScreen extends StatefulWidget {
   const HouseholdScreen({super.key});
@@ -55,8 +54,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     if (household != null) {
       setState(() {
         _members = [
-          ...household.members.map((m) => Member(m.name, false)),
-          ...household.invites.map((i) => Member(i.senderName, true)),
+          ...household.members.map((m) => Member(m.name)),
+          ...household.invites.map((i) => Member(i.name)),
         ];
       });
     }
@@ -250,15 +249,15 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           member.name,
           style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
-        subtitle: member.isInvited
-            ? Text(
-                'Invited',
-                style: textTheme.bodySmall?.copyWith(
-                  color: Colors.green,
-                  fontWeight: FontWeight.w500,
-                ),
-              )
-            : null,
+        // subtitle: member.isInvited
+        //     ? Text(
+        //         'Invited',
+        //         style: textTheme.bodySmall?.copyWith(
+        //           color: Colors.green,
+        //           fontWeight: FontWeight.w500,
+        //         ),
+        //       )
+        //     : null,
         trailing: IconButton(
           icon: const Icon(Icons.edit),
           onPressed: () {
