@@ -1,0 +1,106 @@
+{
+  "devices": {
+    "eab2c1f6-d95b-48d3-a19b-267f19cd18c7": {
+      "type": "BULB_ON_OFF",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false
+    },
+    "90cd8c96-ac3a-4ee2-9549-50a905511c14": {
+      "type": "BULB_RGB_BRIGHTNESS",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "rgb": [255, 255, 255],
+      "brightness": 100
+    },
+    "8bb60445-b9e4-40bb-8c38-c53cff3ec7c8": {
+      "type": "BULB_LIMITED_COLOR_BRIGHTNESS",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "color": "neutral",
+      "brightness": 100
+    },
+    "6ab0b7c5-ec89-406f-a758-a8a22a45e0ee": {
+      "type": "BULB_LIMITED_COLOR",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "color": "neutral"
+    },
+    "1df3fc84-07f8-4547-ac78-f1a51d0f93d9": {
+      "type": "BULB_TEMP_COLOR",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "rgb": [255, 255, 255],
+      "temperature": 20
+    },
+    "6258cb95-a6f3-41f9-bbaa-c43efdc5b599": {
+      "type": "SOLAR_PANEL",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "currentPowerOutput": 1220.18,
+      "totalDailyOutput": 0,
+      "isExportingToGrid": false
+    },
+    "563cf604-f71f-4ca7-be90-a8da3e25426c": {
+      "type": "AC",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "targetTemperature": 22,
+      "currentTemperature": 24.8,
+      "mode": "cool",
+      "fanSpeed": "auto"
+    },
+    "d9ae299a-ba13-4d8f-a94a-706e882c657b": {
+      "type": "CURTAIN",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "position": 0
+    },
+    "1b63407d-73ab-4a81-b69b-9e4f3353317a": {
+      "type": "BULB_ON_OFF",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false
+    },
+    "bbb39b3a-bc96-4144-9c7d-ea1f816b65cb": {
+      "type": "BULB_ON_OFF",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false
+    },
+    "23d6b4cf-74dc-4ad1-8d44-079c7a494c34": {
+      "type": "BULB_RGB_BRIGHTNESS",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "rgb": [255, 255, 255],
+      "brightness": 100
+    },
+    "9405e5f6-66a9-4941-97d0-7c462eff857e": {
+      "type": "BULB_RGB_BRIGHTNESS",
+      "connected": true,
+      "pairedApiKeys": [],
+      "activeActions": {},
+      "on": false,
+      "rgb": [255, 255, 255],
+      "brightness": 100
+    }
+  }
+}
+

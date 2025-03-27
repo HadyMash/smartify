@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/screens/account/sign_in_screen.dart';
+import 'package:smartify/services/auth.dart';
 
 class PasswordChangedScreen extends StatelessWidget {
-  const PasswordChangedScreen({super.key});
+  final AuthService authService;
+
+  const PasswordChangedScreen({
+    super.key,
+    required this.authService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,8 @@ class PasswordChangedScreen extends StatelessWidget {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const SignInScreen()),
+                          builder: (context) =>
+                              SignInScreen(authService: authService)),
                       (route) => false,
                     );
                   },

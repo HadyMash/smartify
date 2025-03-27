@@ -1,13 +1,35 @@
-// import 'dart:io';
-// import 'package:flutter/material.dart';
+// ignore_for_file: unused_local_variable, prefer_const_declarations, avoid_print, constant_identifier_names, non_constant_identifier_names
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+import 'package:smartify/services/auth.dart';
+import 'package:smartify/services/auth_wrapper.dart';
+import 'package:smartify/services/household.dart';
+
+// import 'models/mfa.dart';
+// import 'models/user.dart';
 // import 'services/mfa.dart';
 // import 'widgets/mfa_code.dart';
-// import 'screens/account/sign_in_screen.dart';
-// // import 'screens/account/dashboard_screen.dart';
 
-// Future<void> main() async {
-//   //await dotenv.load(fileName: '.env');
+Future<void> main() async {
+  await dotenv.load(fileName: '.env');
 
+  final authService = await AuthService.create();
+  final householdService =
+      await HouseholdService.create(); // Initialize HouseholdService
+
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<AuthService>.value(value: authService), // Provide AuthService
+        Provider<HouseholdService>.value(
+            value: householdService), // Provide HouseholdService
+      ],
+      child: const MyApp(),
+    ),
+  );
 //   runApp(const MyApp());
 // }
 
@@ -124,17 +146,14 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key}); // Constructor
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
-      debugShowCheckedModeBanner: false,
+      title: 'Smartify',
       theme: ThemeData(
         useMaterial3: true,
-
-        // Text Theme
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 32,
@@ -157,8 +176,6 @@ class MyApp extends StatelessWidget {
             height: 24 / 14,
           ),
         ),
-
-        // Color Scheme
         colorScheme: ColorScheme(
           brightness: Brightness.light,
           primary: Colors.white,
@@ -171,8 +188,6 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
         ),
         scaffoldBackgroundColor: Colors.white,
-
-        // Elevated Button Theme
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.black,
@@ -185,17 +200,11 @@ class MyApp extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
-
-        // AppBar Theme
         appBarTheme: const AppBarTheme(
-          backgroundColor:
-              Colors.white, // Set the background color of the AppBar
-          foregroundColor:
-              Colors.black, // Set the text/icon color of the AppBar
-          elevation: 0, // Remove shadow
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
         ),
-
-        // Input Decoration Theme
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -214,8 +223,6 @@ class MyApp extends StatelessWidget {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-
-        // Date Picker Theme
         datePickerTheme: const DatePickerThemeData(
           backgroundColor: Colors.white,
           headerBackgroundColor: Colors.black,
@@ -232,6 +239,7 @@ class MyApp extends StatelessWidget {
           headerHelpStyle: TextStyle(color: Colors.white),
         ),
       ),
+      home: const AuthWrapper(), // Pass AuthService to AuthWrapper
       home: const DashboardScreen(),
     );
   }

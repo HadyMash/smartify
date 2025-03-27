@@ -3,14 +3,22 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:smartify/widgets/back_button.dart'; // Import the custom back button widget
 import 'mfa_verification_screen.dart';
+import 'package:smartify/services/auth.dart';
 
 class QRSetupScreen extends StatelessWidget {
-  const QRSetupScreen({super.key});
+  final String mfaSecret; // Add a parameter for the MFA secret
+  final String mfaQRUri; // QR code URI passed from registration
+  final AuthService authService; // Add AuthService for state update
 
-  final String secretCode = 'B22QH A49AD K7G0Q';
+  const QRSetupScreen({
+    super.key,
+    required this.mfaSecret,
+    required this.mfaQRUri,
+    required this.authService, // Inject the AuthService
+  });
 
   void _copyToClipboard(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: secretCode));
+    Clipboard.setData(ClipboardData(text: mfaSecret));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Code copied to clipboard'),
@@ -64,7 +72,7 @@ class QRSetupScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Center(
                 child: QrImageView(
-                  data: secretCode,
+                  data: mfaQRUri,
                   version: QrVersions.auto,
                   size: 200.0,
                 ),
@@ -90,17 +98,22 @@ class QRSetupScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'B22QH A49AD K7G0Q',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1,
+                    // Scrollable mfaSecret
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          mfaSecret,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    // Copy Icon aligned to the right
                     IconButton(
                       icon: const Icon(Icons.copy, size: 20),
                       onPressed: () => _copyToClipboard(context),
@@ -111,19 +124,22 @@ class QRSetupScreen extends StatelessWidget {
                 ),
               ),
 
-              // Next Button
+              // Next Button (Confirm MFA)
               const Spacer(),
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const MFAVerificationScreen(),
+                      builder: (context) => MFAVerificationScreen(
+                        authService: authService,
+                        authState: AuthState.signedInMFAConfirm,
+                      ),
                     ),
                   );
                 },
                 child: const Text(
-                  'Next',
+                  'Confirm MFA',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'mfa_setup_complete_screen.dart'; // Ensure this import is correct
-import 'package:smartify/widgets/back_button.dart'; // Import the custom back button widget
+import 'package:smartify/widgets/back_button.dart';
+import 'mfa_setup_complete_screen.dart';
+import 'package:smartify/services/auth.dart';
 
 class MFAVerificationScreen extends StatefulWidget {
-  const MFAVerificationScreen({super.key});
+  final AuthState authState; // Use AuthState instead of isSetup
+  final AuthService authService;
+
+  const MFAVerificationScreen(
+      {super.key, required this.authState, required this.authService});
 
   @override
-  // ignore: library_private_types_in_public_api
   _MFAVerificationScreenState createState() => _MFAVerificationScreenState();
 }
 
 class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
+  final List<TextEditingController> _controllers =
+      List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+
   bool _isError = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,24 +34,65 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
     super.dispose();
   }
 
-  void _verifyCode() {
+  Future<void> _verifyCode() async {
     String code = _controllers.map((controller) => controller.text).join();
+
     if (code.length != 6) {
       setState(() => _isError = true);
-    } else {
-      // Add your verification logic here
-      // For demo purposes, we'll assume the code is correct and navigate to the confirmation screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const MFASetupCompleteScreen(),
-        ),
+      return;
+    }
+    if (code.length != 6) {
+      setState(() => _isError = true);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+    });
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+    });
+
+    try {
+      bool success = false;
+
+      if (widget.authState == AuthState.signedInMFAVerify) {
+        success = await widget.authService.verifyMFA(code);
+      } else if (widget.authState == AuthState.signedInMFAConfirm) {
+        success = await widget.authService.confirmMFA(code);
+      }
+
+      if (success) {
+        if (widget.authState == AuthState.signedInMFAConfirm) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const MFASetupCompleteScreen()),
+          );
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      } else {
+        setState(() => _isError = true);
+      }
+    } catch (e) {
+      setState(() {
+        _isError = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isSetup = widget.authState == AuthState.signedInMFAConfirm;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -59,34 +101,26 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Back Button
                 const Row(
-                  children: [
-                    CustomBackButton(), // Use the custom back button widget
-                  ],
+                  children: [CustomBackButton()],
                 ),
                 const SizedBox(height: 24),
-
-                // Title and Description
-                const Text(
-                  'Verify your MFA Setup',
-                  style: TextStyle(
+                Text(
+                  isSetup ? 'Complete Your MFA Setup' : 'Enter MFA Code',
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Enter the 6-digit code generated in your authenticator app to complete the setup',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                Text(
+                  isSetup
+                      ? 'Enter the 6-digit code from your authenticator app to finish setting up MFA.'
+                      : 'Enter the 6-digit code from your authenticator app to sign in.',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
-
-                // Code Input Fields
                 const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -104,20 +138,20 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                           counterText: '',
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
-                              color: _isError ? Colors.red : Colors.grey,
-                            ),
+                                color: _isError ? Colors.red : Colors.grey),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderSide: BorderSide(
-                              color: _isError ? Colors.red : Colors.black,
-                            ),
+                                color: _isError ? Colors.red : Colors.black),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onChanged: (value) {
                           if (value.isNotEmpty && index < 5) {
                             _focusNodes[index + 1].requestFocus();
+                          } else if (value.isEmpty && index > 0) {
+                            _focusNodes[index - 1].requestFocus();
                           }
                         },
                         inputFormatters: [
@@ -127,27 +161,20 @@ class _MFAVerificationScreenState extends State<MFAVerificationScreen> {
                     ),
                   ),
                 ),
-
-                // Verify Button
                 const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: _verifyCode,
-                  child: const Text(
-                    'Verify',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-
-                // Error Message
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+                        onPressed: _verifyCode,
+                        child: const Text('Verify',
+                            style: TextStyle(color: Colors.white)),
+                      ),
                 if (_isError)
                   const Padding(
                     padding: EdgeInsets.only(top: 16),
                     child: Text(
                       'The code you entered is incorrect. Please try again.',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.red, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
                   ),

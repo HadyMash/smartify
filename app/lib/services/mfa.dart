@@ -2,43 +2,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// ! temp
-// TODO: replace with actual user
-class User {
-  final String id;
-  final String email;
-
-  User(this.id, this.email);
-
-  // from json
-  User.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
-        email = json['email'];
-
-  // convert to json
-  Map<String, String> toJson() {
-    return <String, String>{
-      'id': id,
-      'email': email,
-    };
-  }
-}
-
-// ! temp class
-// TODO: replace with actual data class
-class MFAFormattedKey {
-  final String _formattedKey;
-  final String _qrCodeUri;
-  MFAFormattedKey(this._formattedKey, this._qrCodeUri);
-
-  // from json
-  MFAFormattedKey.fromJson(Map<String, dynamic> json)
-      : _formattedKey = json['formattedKey'],
-        _qrCodeUri = json['uri'];
-
-  String get formattedKey => _formattedKey;
-  String get qrCodeUri => _qrCodeUri;
-}
+import '../models/mfa.dart';
+import '../models/user.dart';
 
 // TODO: remove user args and get auth from auth service
 class MFAService {
