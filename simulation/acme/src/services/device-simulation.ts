@@ -8,6 +8,8 @@ import {
   PowerMeter,
   TempColorBulb,
   AC,
+  SecurityLock,
+  SecurityCamera,
 } from '../schemas/device';
 
 export class DeviceSimulator {
@@ -27,6 +29,8 @@ export class DeviceSimulator {
       'POWER_METER',
       'BULB_TEMP_COLOR',
       'AC',
+      'SECURITY_LOCK',
+      'SECURITY_CAMERA',
     ];
     this.simulationActive = false;
   }
@@ -36,6 +40,10 @@ export class DeviceSimulator {
       DeviceSimulator.instance = new DeviceSimulator();
     }
     return DeviceSimulator.instance;
+  }
+
+  private getRandomBoolean(): boolean {
+    return Math.random() > 0.5;
   }
 
   private getRandomFloat(min: number, max: number): number {
@@ -65,6 +73,28 @@ export class DeviceSimulator {
 
     console.log(
       `THERMOMETER [${device.id}] temp: ${boundedTemp.toFixed(1)}°C, change: ${tempChange.toFixed(3)}`,
+    );
+  }
+
+  private async simulateSecurityLock(device: SecurityLock) {
+    const isLocked = this.getRandomBoolean();
+
+    await this.db.updateDeviceState<SecurityLock>(device.id, { locked: isLocked });
+
+    console.log(
+      `SECURITY LOCK [${device.id}] ${isLocked ? 'Locked 🔒' : 'Unlocked 🔓'}`,
+    );
+  }
+
+  private async simulateSecurityCamera(device: SecurityCamera) {
+    const motionDetected = this.getRandomBoolean();
+
+    await this.db.updateDeviceState<SecurityCamera>(device.id, {
+      motionDetected,
+    });
+
+    console.log(
+      `SECURITY CAMERA [${device.id}] Motion ${motionDetected ? 'Detected 🚨' : 'Clear ✅'}`,
     );
   }
 
@@ -305,6 +335,12 @@ export class DeviceSimulator {
         break;
       case 'AC':
         await this.simulateAC(device as AC);
+        break;
+      case 'SECURITY_LOCK':
+        await this.simulateSecurityLock(device as SecurityLock);
+        break;
+      case 'SECURITY_CAMERA':
+        await this.simulateSecurityCamera(device as SecurityCamera);
         break;
     }
   }
