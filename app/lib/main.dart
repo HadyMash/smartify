@@ -30,6 +30,119 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   // This widget is the root of your application.
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Flutter Demo',
+//       theme: ThemeData(
+//         // This is the theme of your application.
+//         //
+//         // TRY THIS: Try running your application with "flutter run". You'll see
+//         // the application has a purple toolbar. Then, without quitting the app,
+//         // try changing the seedColor in the colorScheme below to Colors.green
+//         // and then invoke "hot reload" (save your changes or press the "hot
+//         // reload" button in a Flutter-supported IDE, or press "r" if you used
+//         // the command line to start the app).
+//         //
+//         // Notice that the counter didn't reset back to zero; the application
+//         // state is not lost during the reload. To reset the state, use hot
+//         // restart instead.
+//         //
+//         // This works for code too, not just values: Most code changes can be
+//         // tested with just a hot reload.
+//         textTheme: TextTheme(
+//         displayLarge: TextStyle(
+//           fontSize: 32, // Heading 1 size
+//           fontWeight: FontWeight.bold, // Heading 1 weight
+//           height: 38 / 32, // Line height (calculated as line height / font size)
+//         ),
+//         displayMedium: TextStyle(
+//           fontSize: 24, // Heading 2 size
+//           fontWeight: FontWeight.bold, // Heading 2 weight
+//           height: 29 / 24, // Line height
+//         ),
+//         bodyLarge: TextStyle(
+//           fontSize: 16, // Body Text size
+//           fontWeight: FontWeight.normal, // Body Text weight (Regular)
+//           height: 19 / 16, // Line height
+//         ),
+//         bodyMedium: TextStyle(
+//           fontSize: 14, // Secondary Text size
+//           fontWeight: FontWeight.normal, // Secondary Text weight (Regular)
+//           height: 24 / 14, // Line height
+//         ),
+//         ),
+//           colorScheme: ColorScheme(
+//           brightness: Brightness.light, // Light theme
+//           primary: Colors.white, // Primary color
+//           onPrimary: Colors.black, // Text/Icon color on primary
+//           secondary: Colors.black, // Secondary color
+//           onSecondary: Colors.white, // Text/Icon color on secondary
+//           surface: Colors.grey[200]!, // Surface color
+//           onSurface: Colors.black, // Text/Icon color on surface
+//           error: Colors.red, // Error color
+//           onError: Colors.white, // Text/Icon color on error
+//         ),
+//         useMaterial3: true,
+//         scaffoldBackgroundColor: Colors.white,
+
+//        // Elevated Button Theme (Black button with rounded edges and white text)
+//         elevatedButtonTheme: ElevatedButtonThemeData(
+//           style: ElevatedButton.styleFrom(
+//             backgroundColor: Colors.black, // Button color
+//             foregroundColor: Colors.white, // Text color
+//             minimumSize: Size(double.infinity, 50), // Full width button
+//             shape: RoundedRectangleBorder(
+//               borderRadius: BorderRadius.circular(50), // Rounded corners
+//             ),
+//             elevation: 4, // Light shadow
+//           ),
+//         ),
+//         inputDecorationTheme: InputDecorationTheme(
+//           filled: true,
+//           fillColor: Colors.white, // Background color
+//           border: OutlineInputBorder(
+//             borderRadius: BorderRadius.circular(12), // Rounded edges
+//             borderSide: BorderSide(color: Colors.black, width: 2), // Black outline
+//           ),
+//           enabledBorder: OutlineInputBorder(
+//             borderRadius: BorderRadius.circular(12),
+//             borderSide: BorderSide(color: Colors.black, width: 1),
+//           ),
+//           focusedBorder: OutlineInputBorder(
+//             borderRadius: BorderRadius.circular(12),
+//             borderSide: BorderSide(color: Colors.grey, width: 1),
+//           ),
+//           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Padding inside text field
+//         ),
+//       ),
+//       // initialRoute: '/main',
+//       // routes: {
+//       //   '/main': (context) => SignInScreen(),
+//       //   '/dashboard': (context) => DashboardScreen(),
+//       // },
+//       home: SignInScreen()
+//     );
+//   }
+// }
+
+import 'package:flutter/material.dart';
+//import 'package:smartify/dashboard_screen.dart';
+//import 'package:smartify/screens/devices/devices_screen.dart';
+//import 'package:smartify/screens/security_screen.dart';
+// import 'screens/account/sign_in_screen.dart';
+import '../screens/dashboard/dashboard_screen.dart';
+
+
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -127,6 +240,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const AuthWrapper(), // Pass AuthService to AuthWrapper
+      home: const DashboardScreen(),
     );
   }
 }
