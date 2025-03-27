@@ -248,7 +248,7 @@ export class HouseholdService {
 
   protected async unpairAllDevices(
     householdId: ObjectIdOrString,
-    session: ClientSession,
+    session?: ClientSession,
   ): Promise<void> {
     await this.db.connect();
     // get all devices first
@@ -918,5 +918,10 @@ export class HouseholdService {
   public async getHouseholdDevices(householdId: ObjectIdOrString) {
     await this.db.connect();
     return this.db.deviceInfoRepository.getHouseholdDevices(householdId);
+  }
+
+  public async getDeviceInfo(deviceId: string) {
+    await this.db.connect();
+    return this.db.deviceInfoRepository.getDevicePairingInfo(deviceId);
   }
 }

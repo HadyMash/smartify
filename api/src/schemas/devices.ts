@@ -553,6 +553,8 @@ export const deviceSchema = z.object({
   description: z.string().optional(),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
+  /** The type of device */
+  accessType: z.enum(['appliances', 'health', 'security', 'energy']),
   /** The device's icon */
   icon: iconSchema.optional(),
   /** Device capabilities */

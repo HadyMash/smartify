@@ -45,6 +45,35 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     });
   }
 
+  protected deviceName(type: string | undefined): string {
+    switch (type) {
+      case 'BULB_ON_OFF':
+        return 'ACME On/Off lightbulb';
+      case 'BULB_RGB_BRIGHTNESS':
+        return 'ACME RGB lightbulb';
+      case 'BULB_LIMITED_COLOR_BRIGHTNESS':
+        return 'ACME Limited color lightbulb';
+      case 'BULB_LIMITED_COLOR':
+        return 'ACME Limited color lightbulb';
+      case 'BULB_TEMP_COLOR':
+        return 'ACME Temperature color lightbulb';
+      case 'CURTAIN':
+        return 'ACME Curtain';
+      case 'AC':
+        return 'ACME AC';
+      case 'SOLAR_PANEL':
+        return 'ACME Solar panel';
+      case 'THERMOMETER':
+        return 'ACME Thermometer';
+      case 'HUMIDITY_SENSOR':
+        return 'ACME Humidity sensor';
+      case 'POWER_METER':
+        return 'ACME Power meter';
+      default:
+        return 'ACME Device';
+    }
+  }
+
   public async healthCheck(): Promise<boolean> {
     try {
       // Use the configured axiosInstance with the API key instead of plain axios
@@ -203,39 +232,11 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         return;
       }
 
-      function deviceName(type: string | undefined): string {
-        switch (type) {
-          case 'BULB_ON_OFF':
-            return 'ACME On/Off lightbulb';
-          case 'BULB_RGB_BRIGHTNESS':
-            return 'ACME RGB lightbulb';
-          case 'BULB_LIMITED_COLOR_BRIGHTNESS':
-            return 'ACME Limited color lightbulb';
-          case 'BULB_LIMITED_COLOR':
-            return 'ACME Limited color lightbulb';
-          case 'BULB_TEMP_COLOR':
-            return 'ACME Temperature color lightbulb';
-          case 'CURTAIN':
-            return 'ACME Curtain';
-          case 'AC':
-            return 'ACME AC';
-          case 'SOLAR_PANEL':
-            return 'ACME Solar panel';
-          case 'THERMOMETER':
-            return 'ACME Thermometer';
-          case 'HUMIDITY_SENSOR':
-            return 'ACME Humidity sensor';
-          case 'POWER_METER':
-            return 'ACME Power meter';
-          default:
-            return 'ACME Device';
-        }
-      }
-
       const d: Device = {
         id: device.id,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        name: deviceName(device?.type),
+        name: this.deviceName(device?.type),
+        accessType: 'appliances',
         capabilities: mappedCapabilities as any,
         source: deviceSourceSchema.enum.acme,
       };
@@ -273,6 +274,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       const mappedDevice: DeviceWithState = {
         id: device.id,
         source,
+        accessType: 'appliances',
         capabilities: mappedCapabilities as any,
         state: mappedState,
       };
@@ -313,6 +315,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       const mappedDevice: DeviceWithPartialState = {
         id: device.id,
         source,
+        accessType: 'appliances',
         capabilities: mappedCapabilities as any,
         state: mappedState,
       };
@@ -408,6 +411,9 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           try {
             const mc: Device = {
               id: device.id,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+              name: this.deviceName(device.type),
+              accessType: 'appliances',
               capabilities: device.capabilities.map((c: any) =>
                 this.mapCapability(c),
               ),
@@ -423,7 +429,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     } catch (e: unknown) {
       // TODO: Handle errors
       if (axios.isAxiosError(e)) {
-        log.error(e.message);
+        log.error('axios error:', e);
         return;
       } else {
         log.error('non axios error:', e);
@@ -585,6 +591,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
       const mappedDevice: DeviceWithState = {
         id: device.id,
         source,
+        accessType: 'appliances',
         capabilities: mappedCapabilities as any,
         state: mappedState,
       };
@@ -658,6 +665,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           const mappedDevice: DeviceWithState = {
             id: device.id,
             source,
+            accessType: 'appliances',
             capabilities: mappedCapabilities as any,
             state: mappedState,
           };

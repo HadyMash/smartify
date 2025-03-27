@@ -4,6 +4,17 @@ import { tryAPIController } from '../util/controller';
 import { BaseIotAdapter } from '../services/iot/base-adapter';
 import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 import { HouseholdService } from '../services/household';
+import {
+  BadRequestToDeviceError,
+  DeviceNotFoundError,
+  DeviceOfflineError,
+  ExternalServerError,
+  InvalidAPIKeyError,
+  MissingAPIKeyError,
+} from '../schemas/devices';
+import { log } from '../util/log';
+import { validateSchema } from '../util/schema';
+import { objectIdOrStringSchema } from '../schemas/obj-id';
 
 export class IoTController {
   public static discoverDevices(req: AuthenticatedRequest, res: Response) {
@@ -28,12 +39,122 @@ export class IoTController {
         (d) => !households.some((h) => h._id === d.id),
       );
 
+      log.debug('Unpaired devices:', unpairedDevices);
+
       res.status(200).send({
         message: 'Devices discovered',
-        deviceIds: unpairedDevices.map((d) => ({
+        devices: unpairedDevices.map((d) => ({
           id: d.id,
           name: d.name,
         })),
+      });
+    });
+  }
+
+  public static getDeviceState(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(
+      res,
+      async () => {
+        const deviceId = req.params.deviceId;
+        if (!deviceId) {
+          res.status(400).send({ error: 'Missing deviceId' });
+          return;
+        }
+
+        // check if the device is paired with one of the user's households
+        const hs = new HouseholdService();
+        const di = await hs.getDeviceInfo(deviceId);
+
+        if (!di) {
+          res.status(404).send({ error: 'Device not found' });
+          return;
+        }
+
+        // check if the user is a member of the device's houseohld
+        if (!(di.householdId.toString() in req.user!.households)) {
+          res.status(403).send({
+            error: 'Unauthorized: You do not have access to this device',
+          });
+          return;
+        }
+
+        // get the device state
+        const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+        const device = await adapter.getDevice(deviceId);
+
+        if (!device) {
+          res.status(404).send({ error: 'Device not found' });
+          log.error('Device not found but paired with our system');
+          return;
+        }
+
+        res.status(200).send({
+          message: 'Device state retrieved',
+          device,
+        });
+        return;
+      },
+      (e) => {
+        if (e instanceof DeviceNotFoundError) {
+          res.status(404).send({ error: 'Device not found' });
+          return true;
+        }
+        if (e instanceof BadRequestToDeviceError) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof ExternalServerError) {
+          res.status(502).send({ error: 'External Server Error' });
+          return true;
+        }
+        if (
+          e instanceof MissingAPIKeyError ||
+          e instanceof InvalidAPIKeyError
+        ) {
+          res.status(500).send({ error: 'Internal Server Error' });
+          return true;
+        }
+        if (e instanceof DeviceOfflineError) {
+          res.status(503).send({ error: 'Device Offline' });
+          return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  public static getAllDevicesState(req: AuthenticatedRequest, res: Response) {
+    tryAPIController(res, async () => {
+      const householdId = validateSchema(
+        res,
+        objectIdOrStringSchema,
+        req.params.householdId,
+      );
+      if (!householdId) {
+        return;
+      }
+
+      const hs = new HouseholdService();
+      const devices = await hs.getHouseholdDevices(householdId);
+
+      if (!devices) {
+        res.status(500).send({ error: 'Internal Server Error' });
+        return;
+      }
+
+      const adapter: BaseIotAdapter = new AcmeIoTAdapter();
+      const devicesWithStates = await adapter.getDevices(
+        devices.map((d) => d._id),
+      );
+
+      if (!devicesWithStates) {
+        res.status(500).send({ error: 'Internal Server Error' });
+        return;
+      }
+
+      res.status(200).send({
+        message: 'All devices state retrieved',
+        devices: devicesWithStates,
       });
     });
   }

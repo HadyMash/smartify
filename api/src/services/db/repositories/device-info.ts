@@ -222,4 +222,8 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
       .toArray();
     return devices;
   }
+
+  public async getDevicePairingInfo(deviceId: string) {
+    return this.collection.findOne({ _id: deviceId });
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smartify/screens/household/household_screen.dart';
+import 'package:smartify/services/iot.dart';
 import 'package:smartify/widgets/nav_bar.dart';
 import 'package:smartify/screens/energy/energy_screen.dart'; // Import the EnergyScreen
 // Import the HouseholdScreen
@@ -57,9 +58,46 @@ class DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('This is the Dashboard!'),
-      // You can add your dashboard content here
+    return SafeArea(
+      child: Center(
+        child: Column(
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final iot = await IotService.create();
+                print(await iot.discoverDevices());
+              },
+              child: const Text('discover devices'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final iot = await IotService.create();
+                await iot.testRoute();
+              },
+              child: const Text('test route'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final iot = await IotService.create();
+                print(await iot
+                    .getDeviceState('32df2452-6092-4269-aead-99da9ed0919d'));
+              },
+              child: const Text('get device state'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final iot = await IotService.create();
+                print(await iot.getAllDeviceStates('67e48b974bdb223b52a9458d'));
+              },
+              child: const Text('get all device states'),
+            ),
+          ],
+        ),
+        // You can add your dashboard content here
+      ),
     );
   }
 }

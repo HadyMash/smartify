@@ -349,6 +349,7 @@ export const pairDevicesSchema = z.object({
   devices: z.array(
     z.object({
       id: z.string().nonempty(),
+      name: z.string().optional(),
       source: deviceSourceSchema,
       roomId: z.string().nonempty(),
     }),
