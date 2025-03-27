@@ -7,7 +7,7 @@ import {
 import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
-import { DeviceInfoRepository } from './repositories/device-info';
+import { DeviceInfoRepository } from './repositories/iot/device-info';
 import { log } from '../../util/log';
 import { parseBool } from '../../util/parse-bool';
 
