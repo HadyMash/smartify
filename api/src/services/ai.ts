@@ -7,6 +7,8 @@ import SQDB from 'better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
 import path from 'path';
 import { log } from '../util/log';
+import { DatabaseService } from './db/db';
+import { getDeviceMongoId, getDeviceSignature } from '../util/device';
 
 const DEVICE_MODEL = 'qwen2.5-3b-instruct-ml';
 const VLM_MODEL = 'gemma-3-4b-it';
@@ -15,8 +17,9 @@ const EMBEDDING_MODEL = 'text-embedding-nomic-embed-text-v1.5';
 export class AIService {
   private static _client: OpenAI;
   protected readonly client: OpenAI;
-  protected static _db: SQDB.Database;
-  protected readonly db: SQDB.Database;
+  protected static embeddingsDB: SQDB.Database;
+  protected readonly embeddingsDB: SQDB.Database;
+  protected readonly db: DatabaseService;
 
   constructor() {
     if (!AIService._client) {
@@ -26,11 +29,14 @@ export class AIService {
       });
     }
     this.client = AIService._client;
-    if (!AIService._db) {
-      AIService._db = new SQDB(path.join('src', 'scripts', 'ai', 'icons.db'));
-      sqliteVec.load(AIService._db);
+    if (!AIService.embeddingsDB) {
+      AIService.embeddingsDB = new SQDB(
+        path.join('src', 'scripts', 'ai', 'icons.db'),
+      );
+      sqliteVec.load(AIService.embeddingsDB);
     }
-    this.db = AIService._db;
+    this.embeddingsDB = AIService.embeddingsDB;
+    this.db = new DatabaseService();
   }
 
   /**
@@ -39,7 +45,64 @@ export class AIService {
    * @returns The icon name
    * @throws An error if the model fails to generate a valid icon after retries
    */
-  public async pickDeviceIcon(
+  public async pickDeviceIcon(d: Device): Promise<string | undefined> {
+    if (d.icon) return d.icon;
+
+    // parse the schema to make sure that no state etc is included
+    const device = deviceSchema.parse(d);
+
+    // Connect to the database
+    await this.db.connect();
+
+    // Generate the hash and signature for the device
+    const hash = getDeviceMongoId(device);
+    const signature = getDeviceSignature(device);
+
+    // Check if the icon was previously generated
+    const existingIcon = await this.db.deviceIconsRepository.getDeviceIcon(
+      hash,
+      signature,
+    );
+
+    // If we found an existing icon, return it
+    if (existingIcon) {
+      log.info('Using existing icon from database for device:', device.id);
+      return existingIcon;
+    }
+
+    // Generate a new icon if one doesn't exist
+    log.info('No existing icon found, generating new icon for device:', device);
+    const icon = await this.generateIconAI(device);
+
+    // Store the generated icon in the database
+    if (icon) {
+      try {
+        await this.db.deviceIconsRepository.storeDeviceIcons(
+          hash,
+          signature,
+          icon,
+        );
+        log.info('Stored new icon in database for device:', device.id);
+      } catch (error) {
+        // Log the error but continue since we still have a valid icon
+        log.warn(
+          'Failed to store icon in database for device:',
+          device.id,
+          error,
+        );
+      }
+    }
+
+    return icon;
+  }
+
+  /**
+   * Pick a suitable icon for the device
+   * @param device - The device to generate an icon for
+   * @returns The icon name
+   * @throws An error if the model fails to generate a valid icon after retries
+   */
+  protected async generateIconAI(
     device: Omit<Device, 'icon'>,
   ): Promise<string | undefined> {
     log.info('picking icon for:', device);
@@ -47,6 +110,7 @@ export class AIService {
     const example1device: Omit<Device, 'icon'> = {
       id: randomUUID(),
       source: 'acme',
+      accessType: 'appliances',
       capabilities: [
         {
           id: 'on',
@@ -80,6 +144,7 @@ export class AIService {
     const example2device: Omit<Device, 'icon'> = {
       id: randomUUID(),
       source: 'acme',
+      accessType: 'appliances',
       capabilities: [
         {
           id: 'power',
@@ -111,44 +176,38 @@ export class AIService {
       ],
     };
 
-    // make sure device is valid
-    deviceSchema.parse(example2device);
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const badexample1device: Device = {
-      id: randomUUID(),
-      source: 'acme',
-      name: 'ACME Fan',
+    const example3device: Omit<Device, 'icon'> = {
+      id: 'dd74d8db-86a9-48aa-81ef-6c898300f522',
+      accessType: 'energy',
       capabilities: [
-        //{
-        //  id: 'heartrate',
-        //  type: 'number',
-        //  name: 'Heart Rate',
-        //  unit: 'bpm',
-        //  readonly: true,
-        //},
-        //{
-        //  id: 'bloodpressure',
-        //  type: 'number',
-        //  unit: 'mmHg',
-        //  readonly: true,
-        //},
         {
-          id: 'on',
-          type: 'switch',
+          id: 'currentPowerOutput',
+          type: 'number',
+          name: 'currentPowerOutput',
+          readonly: true,
+          bound: null,
+          unit: 'W',
         },
         {
-          id: 'speed',
-          type: 'mode',
-          modes: ['low', 'medium', 'high'],
+          id: 'totalDailyOutput',
+          type: 'number',
+          name: 'totalDailyOutput',
+          readonly: true,
+          bound: null,
+          unit: 'kWh',
         },
         {
-          id: 'swing',
+          id: 'isExportingToGrid',
           type: 'switch',
-          name: 'Horizontal Swing',
+          name: 'isExportingToGrid',
+          readonly: true,
         },
       ],
+      source: 'acme',
     };
+
+    // make sure device is valid
+    deviceSchema.parse(example2device);
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
@@ -177,6 +236,13 @@ ${JSON.stringify(example2device)}
 
 OUTPUT:
 air. An icon showing air, or curvy lines, or a fan, or temperature. air, fan, temperature control, climate control
+
+Example 3:
+INPUT:
+${JSON.stringify(example3device)}
+
+OUTPUT:
+solar_power. An icon showing a sun or solar panel or energy or grid. solar, sun, energy, power, grid, green energy.
 `,
       },
     ];
@@ -296,16 +362,16 @@ Cooling, Temperature, AirConditioner, Freezer, Thermostat, ABC, ClimateControl, 
     // Make sure sqlite-vec extension is loaded
     try {
       // Check if vec_version function exists
-      this.db.prepare('SELECT vec_version() as version').get();
+      this.embeddingsDB.prepare('SELECT vec_version() as version').get();
     } catch (_) {
       // Load the extension if not already loaded
       const sqliteVec = await import('sqlite-vec');
-      sqliteVec.load(this.db);
+      sqliteVec.load(this.embeddingsDB);
       log.debug('Loaded sqlite-vec extension');
     }
 
     // Prepare query to search for the most similar icon
-    const searchQuery = this.db.prepare(`
+    const searchQuery = this.embeddingsDB.prepare(`
       SELECT name, distance
       FROM icons 
       WHERE embedding MATCH ?

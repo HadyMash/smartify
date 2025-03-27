@@ -47,6 +47,7 @@ import {
 } from '../schemas/devices';
 import { getAdapter } from '../util/adapter';
 import { log } from '../util/log';
+import { AIService } from '../services/ai';
 
 export class HouseholdController {
   public static createHousehold(req: AuthenticatedRequest, res: Response) {
@@ -915,9 +916,25 @@ export class HouseholdController {
 
           const ds: HouseholdDevice[] = [];
           for (const d of devs) {
+            // try getting an icon for the device:
+            let icon: string | undefined;
+            try {
+              const ai = new AIService();
+              icon = await ai.pickDeviceIcon(d);
+            } catch (e) {
+              log.error(
+                'Failed to get icon for device\n\n',
+                'device:',
+                d,
+                '\n\nerror:',
+                e,
+              );
+            }
+
             ds.push({
               ...d,
               roomId: data.devices.find((dd) => dd.id === d.id)!.roomId,
+              icon,
             });
           }
 
