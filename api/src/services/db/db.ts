@@ -7,9 +7,11 @@ import {
 import { SRPSessionRepository, UserRepository } from './repositories/user';
 import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
-import { DeviceInfoRepository } from './repositories/device-info';
+import { DeviceInfoRepository } from './repositories/iot/device-info';
 import { log } from '../../util/log';
 import { parseBool } from '../../util/parse-bool';
+import { IoTEnergyLogsRepository } from './repositories/iot/energy-logs';
+import { IoTApplianceLogsRepsoitory } from './repositories/iot/device-logs';
 
 const DB_NAME: string = 'smartify';
 
@@ -28,6 +30,8 @@ export class DatabaseService {
   private _mfaBlacklistRepository!: MFABlacklistRepository;
   private _householdRepository!: HouseholdRepository;
   private _deviceInfoRepository!: DeviceInfoRepository;
+  private _energyLogsRepository!: IoTEnergyLogsRepository;
+  private _applianceLogsRepository!: IoTApplianceLogsRepsoitory;
 
   constructor() {
     this.useTransactions =
@@ -232,6 +236,21 @@ export class DatabaseService {
         DatabaseService.redis,
       );
     }
+
+    if (!this._energyLogsRepository) {
+      this._energyLogsRepository = new IoTEnergyLogsRepository(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
+    if (!this._applianceLogsRepository) {
+      this._applianceLogsRepository = new IoTApplianceLogsRepsoitory(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
   }
 
   get userRepository(): UserRepository {
@@ -295,6 +314,24 @@ export class DatabaseService {
       );
     }
     return this._deviceInfoRepository;
+  }
+
+  get energyLogsRepository(): IoTEnergyLogsRepository {
+    if (!this._energyLogsRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._energyLogsRepository;
+  }
+
+  get applianceLogsRepository(): IoTApplianceLogsRepsoitory {
+    if (!this._applianceLogsRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._applianceLogsRepository;
   }
 
   /**
@@ -396,6 +433,8 @@ export class DatabaseService {
       this.mfaBlacklistRepository.configureCollection(),
       this.householdRepository.configureCollection(),
       this.deviceInfoRepository.configureCollection(),
+      this.energyLogsRepository.configureCollection(),
+      this.applianceLogsRepository.configureCollection(),
     ]);
   }
 }

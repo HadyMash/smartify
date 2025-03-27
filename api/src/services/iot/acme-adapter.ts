@@ -74,6 +74,28 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     }
   }
 
+  protected deviceAccessType(
+    type: string | undefined,
+  ): 'appliances' | 'security' | 'energy' | 'health' {
+    switch (type) {
+      case 'BULB_ON_OFF':
+      case 'BULB_RGB_BRIGHTNESS':
+      case 'BULB_LIMITED_COLOR_BRIGHTNESS':
+      case 'BULB_LIMITED_COLOR':
+      case 'BULB_TEMP_COLOR':
+      case 'CURTAIN':
+      case 'AC':
+      case 'THERMOMETER':
+      case 'HUMIDITY_SENSOR':
+        return 'appliances';
+      case 'SOLAR_PANEL':
+      case 'POWER_METER':
+        return 'energy';
+      default:
+        return 'appliances';
+    }
+  }
+
   public async healthCheck(): Promise<boolean> {
     try {
       // Use the configured axiosInstance with the API key instead of plain axios
@@ -236,7 +258,8 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         id: device.id,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         name: this.deviceName(device?.type),
-        accessType: 'appliances',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        accessType: this.deviceAccessType(device?.type),
         capabilities: mappedCapabilities as any,
         source: deviceSourceSchema.enum.acme,
       };
@@ -291,6 +314,7 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
     device: any,
   ): DeviceWithPartialState | undefined {
     try {
+      log.debug('mapping device with partial state:', device);
       if (!device?.id) {
         log.error('Device with partial state mapping failed: missing ID');
         return undefined;
