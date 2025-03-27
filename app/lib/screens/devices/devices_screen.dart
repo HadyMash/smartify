@@ -3,9 +3,9 @@ import 'add_device_screen.dart';
 import '../models/device_info.dart';
 import '../models/device_examples.dart';
 import 'device_management_screen.dart';
-import '../routines_screen.dart';
-import '../dashboard_screen.dart';
-import '../security_screen.dart';
+import '../routines/routines_screen.dart';
+import '../dashboard/dashboard_screen.dart';
+import '../security/security_screen.dart';
 import '../responsive_helper.dart';
 
 class DevicesScreen extends StatefulWidget {

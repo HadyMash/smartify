@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 import 'ai_config.dart';
 
 class AiAssistantScreen extends StatefulWidget {

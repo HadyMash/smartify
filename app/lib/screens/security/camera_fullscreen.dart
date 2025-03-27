@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 import 'security_config.dart';
 
 class CameraFullscreen extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 import 'routine_config.dart';
 
 class AddRoutineScreen extends StatefulWidget {

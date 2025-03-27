@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({Key? key}) : super(key: key);

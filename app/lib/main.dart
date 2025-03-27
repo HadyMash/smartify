@@ -116,7 +116,7 @@ import 'package:flutter/material.dart';
 //import 'package:smartify/screens/devices/devices_screen.dart';
 //import 'package:smartify/screens/security_screen.dart';
 // import 'screens/account/sign_in_screen.dart';
-import 'screens/dashboard_screen.dart';
+import '../screens/dashboard/dashboard_screen.dart';
 
 
 void main() {

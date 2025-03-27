@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'camera_fullscreen.dart';
 import 'locks_screen.dart';
 import '../../../screens/devices/devices_screen.dart';
-import 'dashboard_screen.dart';
-import 'responsive_helper.dart';
+import '../../dashboard_screen.dart';
+import '../responsive_helper.dart';
 import 'security_config.dart';
 
 class SecurityScreen extends StatefulWidget {

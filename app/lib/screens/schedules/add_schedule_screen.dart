@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'constants.dart';
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 
 class AddScheduleScreen extends StatefulWidget {
   final bool editMode;

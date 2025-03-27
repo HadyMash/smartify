@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'constants.dart';
 import 'add_schedule_screen.dart';
-import 'responsive_helper.dart';
+import '../responsive_helper.dart';
 import 'initial_schedule_data.dart';
 
 class ScheduleScreen extends StatefulWidget {

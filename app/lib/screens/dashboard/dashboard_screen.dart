@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'ai_assistant_screen.dart';
 import 'notification_screen.dart';
-import 'devices/devices_screen.dart';
-import 'security_screen.dart';
-import 'schedule_screen.dart';
-import 'responsive_helper.dart';
-import 'devices/device_management_screen.dart';
-import 'models/device_info.dart';
-import 'models/device_examples.dart';
+import '../devices/devices_screen.dart';
+import '../security/security_screen.dart';
+import '../schedules/schedule_screen.dart';
+import '../responsive_helper.dart';
+import '../devices/device_management_screen.dart';
+import '../models/device_info.dart';
+import '../models/device_examples.dart';
 import 'dashboard_data.dart'; 
 
 class DashboardScreen extends StatelessWidget {
