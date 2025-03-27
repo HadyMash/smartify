@@ -8,6 +8,7 @@ import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
 import { log } from '../util/log';
 import { HouseholdDevice } from '../schemas/household';
 import { randomInt } from 'crypto';
+import { AIService } from '../services/ai';
 
 export const iotRouter = Router();
 
@@ -34,10 +35,26 @@ iotRouter.get('/test-route', (req: AuthenticatedRequest, res: Response) => {
     log.debug('Pairing device:', device);
     await adapter.pairDevices([device.id]);
 
+    // try getting an icon for the device:
+    let icon: string | undefined;
+    try {
+      const ai = new AIService();
+      icon = await ai.pickDeviceIcon(device);
+    } catch (e) {
+      log.error(
+        'Failed to get icon for device\n\n',
+        'device:',
+        device,
+        '\n\nerror:',
+        e,
+      );
+    }
+
     const hd: HouseholdDevice = {
       ...device,
       roomId: 'room_0_0',
       name: `my device ${randomInt(0, 1000)}`,
+      icon,
     };
 
     await hs.pairDevicesToHousehold('67e48b974bdb223b52a9458d', [hd]);

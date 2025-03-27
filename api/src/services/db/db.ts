@@ -12,6 +12,7 @@ import { log } from '../../util/log';
 import { parseBool } from '../../util/parse-bool';
 import { IoTEnergyLogsRepository } from './repositories/iot/energy-logs';
 import { IoTApplianceLogsRepsoitory } from './repositories/iot/device-logs';
+import { DeviceIconsRepositroy } from './repositories/device-icons';
 
 const DB_NAME: string = 'smartify';
 
@@ -32,6 +33,7 @@ export class DatabaseService {
   private _deviceInfoRepository!: DeviceInfoRepository;
   private _energyLogsRepository!: IoTEnergyLogsRepository;
   private _applianceLogsRepository!: IoTApplianceLogsRepsoitory;
+  private _deviceIconsRepository!: DeviceIconsRepositroy;
 
   constructor() {
     this.useTransactions =
@@ -251,6 +253,13 @@ export class DatabaseService {
         DatabaseService.redis,
       );
     }
+    if (!this._deviceIconsRepository) {
+      this._deviceIconsRepository = new DeviceIconsRepositroy(
+        DatabaseService.client,
+        DatabaseService.db,
+        DatabaseService.redis,
+      );
+    }
   }
 
   get userRepository(): UserRepository {
@@ -332,6 +341,15 @@ export class DatabaseService {
       );
     }
     return this._applianceLogsRepository;
+  }
+
+  get deviceIconsRepository(): DeviceIconsRepositroy {
+    if (!this._deviceIconsRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._deviceIconsRepository;
   }
 
   /**
