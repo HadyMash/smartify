@@ -248,7 +248,7 @@ export class HouseholdService {
 
   protected async unpairAllDevices(
     householdId: ObjectIdOrString,
-    session: ClientSession,
+    session?: ClientSession,
   ): Promise<void> {
     await this.db.connect();
     // get all devices first
