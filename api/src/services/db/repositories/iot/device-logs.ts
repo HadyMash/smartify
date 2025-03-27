@@ -76,7 +76,8 @@ export class IoTApplianceLogsRepsoitory extends DatabaseRepository<ApplianceLogD
   public async insertLog(
     deviceId: string,
     field: string,
-    value: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: any,
     timestamp: Date,
   ): Promise<void> {
     try {

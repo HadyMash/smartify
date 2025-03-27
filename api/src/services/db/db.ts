@@ -325,6 +325,15 @@ export class DatabaseService {
     return this._energyLogsRepository;
   }
 
+  get applianceLogsRepository(): IoTApplianceLogsRepsoitory {
+    if (!this._applianceLogsRepository) {
+      throw new Error(
+        'Database connection not established. Call connect() and await it before using repositories.',
+      );
+    }
+    return this._applianceLogsRepository;
+  }
+
   /**
    * Starts a new MongoDB transaction session.
    * @returns The session object to be used with repository methods if transactions are enabled, otherwise undefined
@@ -425,6 +434,7 @@ export class DatabaseService {
       this.householdRepository.configureCollection(),
       this.deviceInfoRepository.configureCollection(),
       this.energyLogsRepository.configureCollection(),
+      this.applianceLogsRepository.configureCollection(),
     ]);
   }
 }

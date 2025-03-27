@@ -40,20 +40,32 @@ export class IotService {
       switch (device.accessType) {
         case 'appliances':
         case 'security': {
-          //for (const [field, value] of Object.entries(
-          //  deviceWithPartialState?.state ?? {},
-          //)) {
-          //  if (deviceWithPartialState.capabilities[field as string]?.readonly ?? false) {
-          //    log.debug('skip readonly field', field);
-          //    continue;
-          //  }
-          //
-          //  log.debug(
-          //    'logging appliance/security device changes:',
-          //    deviceWithPartialState.id,
-          //  );
-          //  // update the device in the db
-          //}
+          for (const [field, value] of Object.entries(
+            deviceWithPartialState?.state ?? {},
+          )) {
+            //if (deviceWithPartialState.capabilities[field as string]?.readonly ?? false) {
+            if (
+              deviceWithPartialState.capabilities.find((c) => c.id === field)
+                ?.readonly ??
+              false
+            ) {
+              log.debug('skip readonly field', field);
+              continue;
+            }
+
+            log.debug(
+              'logging appliance/security device changes:',
+              deviceWithPartialState.id,
+            );
+            // update the device in the db
+            await this.db.applianceLogsRepository.insertLog(
+              device._id,
+              field,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              value as any,
+              new Date(),
+            );
+          }
           break;
         }
         case 'health':
