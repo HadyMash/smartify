@@ -553,6 +553,8 @@ export const deviceSchema = z.object({
   description: z.string().optional(),
   /** The source of the device (manufacturer) */
   source: deviceSourceSchema,
+  /** The type of device */
+  accessType: z.enum(['appliances', 'health', 'security', 'energy']),
   /** The device's icon */
   icon: iconSchema.optional(),
   /** Device capabilities */
@@ -1012,6 +1014,13 @@ export type DeviceWithState = z.infer<typeof deviceWithStateSchema>;
 export type DeviceWithPartialState = z.infer<
   typeof deviceWithPartialStateSchema
 >;
+
+/* requests */
+
+export const setDeviceStateDataSchema = z.object({
+  deviceId: z.string(),
+  state: stateSchema,
+});
 
 /* Errors */
 export class DeviceOfflineError extends Error {

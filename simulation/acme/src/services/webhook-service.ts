@@ -74,7 +74,7 @@ export class WebhookService {
 
       return response.ok;
     } catch (error) {
-      console.error(`Failed to send webhook notification: ${error}`);
+      console.warn(`Failed to send webhook notification: ${error}`);
       return false;
     }
   }

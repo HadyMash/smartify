@@ -9,10 +9,12 @@ import { createClient, RedisClientType } from 'redis';
 import { HouseholdRepository } from './repositories/household';
 import { DeviceInfoRepository } from './repositories/device-info';
 import { log } from '../../util/log';
+import { parseBool } from '../../util/parse-bool';
 
 const DB_NAME: string = 'smartify';
 
 export class DatabaseService {
+  protected useTransactions: boolean;
   protected static client: MongoClient;
   protected static db: Db;
   protected static redis: RedisClientType;
@@ -28,6 +30,8 @@ export class DatabaseService {
   private _deviceInfoRepository!: DeviceInfoRepository;
 
   constructor() {
+    this.useTransactions =
+      parseBool(process.env.MONGODB_USE_TRANSACTION ?? 'false') ?? false;
     //// Start connection process in constructor
     //this.connect().catch((err) => {
     //  console.error(
@@ -295,10 +299,12 @@ export class DatabaseService {
 
   /**
    * Starts a new MongoDB transaction session.
-   * @returns The session object to be used with repository methods
+   * @returns The session object to be used with repository methods if transactions are enabled, otherwise undefined
    */
   public async startTransaction(): Promise<ClientSession | undefined> {
-    return undefined;
+    if (!this.useTransactions) {
+      return;
+    }
     await this.connect();
     const session = DatabaseService.client.startSession();
     session.startTransaction();

@@ -132,3 +132,5 @@ without a trailing slash (e.g https://website.com/api/v3)
 **`INFERENCE_URL`:** The OpenAI like API url. This can be for llamaa.cpp, ollama, vllm, lm studio, etc.
 
 **`INFERENCE_API_KEY`:** The api key for the `INFERENCE_URL`
+
+**`MONGODB_USE_TRANSACTIONS:`** Whether transactions are supported for the current deployment. If this is missing it's assumed to be false.

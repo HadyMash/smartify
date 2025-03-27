@@ -213,4 +213,17 @@ export class DeviceInfoRepository extends DatabaseRepository<DeviceInfoDoc> {
       .toArray();
     return devices.map((device) => device.householdId);
   }
+
+  public async getDevicesPairedToHouseholds(
+    deviceIds: string[],
+  ): Promise<DeviceInfoDoc[]> {
+    const devices = await this.collection
+      .find({ _id: { $in: deviceIds } }, { projection: { householdId: 1 } })
+      .toArray();
+    return devices;
+  }
+
+  public async getDevicePairingInfo(deviceId: string) {
+    return this.collection.findOne({ _id: deviceId });
+  }
 }

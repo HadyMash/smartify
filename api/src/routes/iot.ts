@@ -1,10 +1,67 @@
-//import { Router, Response } from 'express';
-//import { IoTController } from '../controllers/iot';
-//import { AuthenticatedRequest } from '../schemas/auth/auth';
-//import { requireAuth } from '../middleware/auth';
-//
-//export const iotRouter = Router();
-//
+import { Router, Response } from 'express';
+import { IoTController } from '../controllers/iot';
+import { AuthenticatedRequest } from '../schemas/auth/auth';
+import { requireAuth } from '../middleware/auth';
+import { tryAPIController } from '../util/controller';
+import { HouseholdService } from '../services/household';
+import { AcmeIoTAdapter } from '../services/iot/acme-adapter';
+import { log } from '../util/log';
+import { HouseholdDevice } from '../schemas/household';
+import { randomInt } from 'crypto';
+
+export const iotRouter = Router();
+
+iotRouter.use(requireAuth);
+
+iotRouter.get('/test-route', (req: AuthenticatedRequest, res: Response) => {
+  tryAPIController(res, async () => {
+    const hs = new HouseholdService();
+    const adapter = new AcmeIoTAdapter();
+
+    // discover devices
+    const devices = await adapter.discoverDevices();
+    log.debug('Discovered devices:', devices);
+    if (!devices || devices.length === 0) {
+      res.status(200).send();
+      return;
+    }
+    // pair the first device
+    const device = devices[0];
+    if (!device) {
+      res.status(200).send();
+      return;
+    }
+    log.debug('Pairing device:', device);
+    await adapter.pairDevices([device.id]);
+
+    const hd: HouseholdDevice = {
+      ...device,
+      roomId: 'room_0_0',
+      name: `my device ${randomInt(0, 1000)}`,
+    };
+
+    await hs.pairDevicesToHousehold('67e48b974bdb223b52a9458d', [hd]);
+    res.status(200).send();
+  });
+});
+
+iotRouter.get('/:householdId/all', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.getAllDevicesState(req, res),
+);
+
+//iotRouter.patch('/devices')
+iotRouter.patch('/state', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.updateDeviceState(req, res),
+);
+
+iotRouter.get('/discover', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.discoverDevices(req, res),
+);
+
+iotRouter.get('/:deviceId', (req: AuthenticatedRequest, res: Response) =>
+  IoTController.getDeviceState(req, res),
+);
+
 //iotRouter.post(
 //  '/:deviceId',
 //  requireAuth,
