@@ -35,7 +35,8 @@ type LeaderboardEntry struct {
 }
 
 type EnergyGenerationData struct {
-    Timestamp   time.Time `bson:"timestamp"`
-    DeviceID    string    `bson:"device_id"`
-    EnergyValue float64   `bson:"energy_value"` // Energy generated during 10-minute interval
+    Timestamp time.Time `bson:"timestamp"`
+    DeviceID  string    `bson:"device_id"`
+    Field     string    `bson:"field"`  // e.g., "currentPowerOutput"
+    Value     float64   `bson:"value"`  // Energy reading
 }

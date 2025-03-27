@@ -49,10 +49,16 @@ func (h *AnalysisHandler) PerformAnalysis(w http.ResponseWriter, r *http.Request
 func (h *AnalysisHandler) GetEnergyGenerationSummary(w http.ResponseWriter, r *http.Request) {
     window := r.URL.Query().Get("window")
     if window == "" {
-        window = "hour" // default
+        window = "hour"
     }
 
-    summary, err := h.AnalysisService.AnalyzeEnergyGeneration(window)
+    field := r.URL.Query().Get("field")
+    if field == "" {
+        http.Error(w, "Missing required field parameter", http.StatusBadRequest)
+        return
+    }
+
+    summary, err := h.AnalysisService.AnalyzeEnergyGeneration(window, field)
     if err != nil {
         http.Error(w, "Failed to analyze energy generation: "+err.Error(), http.StatusInternalServerError)
         return
