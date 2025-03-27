@@ -93,32 +93,32 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
         inputDecorationTheme: InputDecorationTheme(
-  filled: true,
-  fillColor: Colors.white,
-  border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Colors.black, width: 2),
-  ),
-  enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Colors.black, width: 1),
-  ),
-  focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Colors.grey, width: 1),
-  ),
-  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-  labelStyle: const TextStyle(color: Colors.black), // Label text remains black
-  floatingLabelStyle: const TextStyle(color: Colors.black), // Label stays black when focused
-),
-textSelectionTheme: const TextSelectionThemeData(
-  cursorColor: Colors.black, // Black cursor
-  selectionColor: Colors.black, // Black selection color
-  selectionHandleColor: Colors.black, // Black selection handle
-
-),
-
-
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.black, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.grey, width: 1),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          labelStyle:
+              const TextStyle(color: Colors.black), // Label text remains black
+          floatingLabelStyle: const TextStyle(
+              color: Colors.black), // Label stays black when focused
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Colors.black, // Black cursor
+          selectionColor: Colors.black, // Black selection color
+          selectionHandleColor: Colors.black, // Black selection handle
+        ),
         datePickerTheme: const DatePickerThemeData(
           backgroundColor: Colors.white,
           headerBackgroundColor: Colors.black,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:smartify/screens/household/add_household.dart';
 import 'package:smartify/screens/household/household_screen.dart';
 import '/widgets/back_button.dart';
 import 'package:smartify/services/household.dart'; // Import HouseholdService
@@ -321,4 +320,3 @@ extension StringExtension on String {
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }
-

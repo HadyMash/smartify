@@ -25,7 +25,6 @@ class GetStartedScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  
                   const SizedBox(width: 16),
                   Text(
                     'Get Started',

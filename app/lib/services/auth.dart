@@ -22,7 +22,7 @@ class AuthService {
   late final Dio _dio;
   late final SmartifyHttpClient _httpClient;
   MFAFormattedKey? _mfaKey;
-  
+
   MFAFormattedKey? get mfaKey => _mfaKey;
 
   static AuthState _currentAuthState = AuthState.signedOut;
@@ -33,8 +33,6 @@ class AuthService {
   AuthState get state => _currentAuthState;
 
   AuthService._(this._dio, this._httpClient);
-
-  
 
   /// factory method to create an instance of AuthService
   static Future<AuthService> create() async {
@@ -218,81 +216,81 @@ class AuthService {
     }
   }
 
-Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
-    String email, String password) async {
-  try {
-    if (state != AuthState.signedOut) {
-      throw Exception('User is already signed in');
-    }
+  Future<({bool success, String? error, MFAFormattedKey? mfa})?> signIn(
+      String email, String password) async {
+    try {
+      if (state != AuthState.signedOut) {
+        throw Exception('User is already signed in');
+      }
 
-    final session = await _initiateAuthSession(email);
-    if (session == null) throw Exception('Failed to initiate session');
+      final session = await _initiateAuthSession(email);
+      if (session == null) throw Exception('Failed to initiate session');
 
-    final a = _SRP.generatePrivateKey();
-    final proof = _SRP.respondToAuthChallenge(
-        email, password, session.salt, a, session.B);
+      final a = _SRP.generatePrivateKey();
+      final proof = _SRP.respondToAuthChallenge(
+          email, password, session.salt, a, session.B);
 
-    final response = await _dio.post('/auth/login', data: {
-      'email': email,
-      'A': '0x${proof.A.toRadixString(16)}',
-      'Mc': '0x${proof.M.toRadixString(16)}',
-    });
+      final response = await _dio.post('/auth/login', data: {
+        'email': email,
+        'A': '0x${proof.A.toRadixString(16)}',
+        'Mc': '0x${proof.M.toRadixString(16)}',
+      });
 
-    print('Response Status Code: ${response.statusCode}');
+      print('Response Status Code: ${response.statusCode}');
 
-    final responseBody = response.data as Map<String, dynamic>;
+      final responseBody = response.data as Map<String, dynamic>;
 
-    if (responseBody.containsKey('mfa')) {
-      // If MFA is required, parse it and update state
-      _mfaKey = MFAFormattedKey.fromJson(responseBody['mfa']);
-      print('MFA Required: $_mfaKey');
-      _currentAuthState = AuthState.signedInMFAVerify;
+      if (responseBody.containsKey('mfa')) {
+        // If MFA is required, parse it and update state
+        _mfaKey = MFAFormattedKey.fromJson(responseBody['mfa']);
+        print('MFA Required: $_mfaKey');
+        _currentAuthState = AuthState.signedInMFAVerify;
+        _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
+
+        return (success: true, error: null, mfa: _mfaKey);
+      }
+
+      // Otherwise, user is fully signed in
+      _currentAuthState = AuthState.signedInMFAConfirm;
       _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
 
-      return (success: true, error: null, mfa: _mfaKey);
-    }
+      return (success: true, error: null, mfa: null);
+    } on DioError catch (e) {
+      String errorMessage;
 
-    // Otherwise, user is fully signed in
-    _currentAuthState = AuthState.signedInMFAConfirm;
-    _eventStream.add(AuthEvent(AuthEventType.authStateChanged, state));
-
-    return (success: true, error: null, mfa: null);
-  } on DioError catch (e) {
-    String errorMessage;
-
-    if (e.response != null) {
-      switch (e.response?.statusCode) {
-        case 400:
-          errorMessage = 'Invalid request. Please check your input.';
-          break;
-        case 401:
-          errorMessage = 'Authentication failed. Please try again.';
-          break;
-        case 403:
-          errorMessage = 'Access denied. Please check your credentials.';
-          break;
-        case 500:
-          errorMessage = 'Server error. Please try again later.';
-          break;
-        default:
-          errorMessage = 'An unexpected error occurred. Please try again.';
+      if (e.response != null) {
+        switch (e.response?.statusCode) {
+          case 400:
+            errorMessage = 'Invalid request. Please check your input.';
+            break;
+          case 401:
+            errorMessage = 'Authentication failed. Please try again.';
+            break;
+          case 403:
+            errorMessage = 'Access denied. Please check your credentials.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later.';
+            break;
+          default:
+            errorMessage = 'An unexpected error occurred. Please try again.';
+        }
+      } else {
+        errorMessage =
+            'Unable to connect to the server. Please check your connection.';
       }
-    } else {
-      errorMessage = 'Unable to connect to the server. Please check your connection.';
+
+      print('Dio Error signing in: ${e.message}');
+      return (success: false, error: errorMessage, mfa: null);
+    } catch (e) {
+      print('Error signing in: $e');
+      return (
+        success: false,
+        error: 'An error occurred. Please try again.',
+        mfa: null
+      );
     }
-
-    print('Dio Error signing in: ${e.message}');
-    return (
-      success: false,
-      error: errorMessage,
-      mfa: null
-    );
-  } catch (e) {
-    print('Error signing in: $e');
-    return (success: false, error: 'An error occurred. Please try again.', mfa: null);
   }
-}
-
 
   /// Verifies the MFA code
   Future<bool> verifyMFA(String code) async {

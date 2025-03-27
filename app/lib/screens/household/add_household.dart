@@ -22,7 +22,8 @@ class _AddHouseholdScreenState extends State<AddHouseholdScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ConfigureFloorsScreen(householdName: householdName),
+        builder: (context) =>
+            ConfigureFloorsScreen(householdName: householdName),
       ),
     );
   }
