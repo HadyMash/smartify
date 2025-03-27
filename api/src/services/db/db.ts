@@ -297,7 +297,8 @@ export class DatabaseService {
    * Starts a new MongoDB transaction session.
    * @returns The session object to be used with repository methods
    */
-  public async startTransaction() {
+  public async startTransaction(): Promise<ClientSession | undefined> {
+    return undefined;
     await this.connect();
     const session = DatabaseService.client.startSession();
     session.startTransaction();
@@ -308,7 +309,10 @@ export class DatabaseService {
    * Commits a transaction and ends the session.
    * @param session - The session to commit
    */
-  public async commitTransaction(session: ClientSession) {
+  public async commitTransaction(session?: ClientSession) {
+    if (!session) {
+      return;
+    }
     try {
       await session.commitTransaction();
     } finally {
@@ -320,7 +324,10 @@ export class DatabaseService {
    * Aborts a transaction and ends the session.
    * @param session - The session to abort
    */
-  public async abortTransaction(session: ClientSession) {
+  public async abortTransaction(session?: ClientSession) {
+    if (!session) {
+      return;
+    }
     try {
       await session.abortTransaction();
     } finally {
@@ -340,8 +347,8 @@ export class DatabaseService {
    * @throws Any error that occurs during the operation (after aborting the transaction)
    */
   public async withTransaction<T>(
-    operation: (session: ClientSession) => Promise<T>,
-    validator?: (result: T, session: ClientSession) => Promise<boolean>,
+    operation: (session?: ClientSession) => Promise<T>,
+    validator?: (result: T, session?: ClientSession) => Promise<boolean>,
   ): Promise<{ result: T; committed: boolean }> {
     await this.connect();
     const session = await this.startTransaction();
