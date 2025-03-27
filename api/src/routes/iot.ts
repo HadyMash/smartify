@@ -22,12 +22,14 @@ iotRouter.get('/test-route', (req: AuthenticatedRequest, res: Response) => {
     const devices = await adapter.discoverDevices();
     log.debug('Discovered devices:', devices);
     if (!devices || devices.length === 0) {
-      throw new Error('No devices found');
+      res.status(200).send();
+      return;
     }
     // pair the first device
     const device = devices[0];
     if (!device) {
-      throw new Error('No devices found');
+      res.status(200).send();
+      return;
     }
     log.debug('Pairing device:', device);
     await adapter.pairDevices([device.id]);
