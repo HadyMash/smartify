@@ -809,12 +809,21 @@ export class HouseholdService {
       await this.db.deviceInfoRepository.getHouseholdsByDeviceIds(deviceIds);
     const households = await Promise.all(
       householdIds.map(async (id) => {
-        const household =
-          await this.db.householdRepository.getHouseholdById(id);
-        return householdSchema.parse(household);
+        try {
+          const household =
+            await this.db.householdRepository.getHouseholdById(id);
+          return householdSchema.parse(household);
+        } catch (_) {
+          return;
+        }
       }),
     );
-    return households;
+    return households.filter((h) => h !== undefined);
+  }
+
+  public async getDevicesPairedToHouseholds(deviceIds: string[]) {
+    await this.db.connect();
+    return this.db.deviceInfoRepository.getDevicesPairedToHouseholds(deviceIds);
   }
 
   /**

@@ -10,6 +10,7 @@ import { bigIntToHexMiddleware } from './middleware/bigint';
 import { DatabaseService } from './services/db/db';
 import { webhookRouter } from './routes/webhook';
 import { log } from './util/log';
+import { iotRouter } from './routes/iot';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ router.get('/health', (_, res) => {
 
 router.use('/auth', authRouter);
 router.use('/households', householdRouter);
+router.use('/iot', iotRouter);
 router.use('/webhooks', webhookRouter);
 
 app.use('/api', router);

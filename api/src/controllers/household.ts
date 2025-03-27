@@ -209,7 +209,7 @@ export class HouseholdController {
         if (e instanceof InvalidUserError) {
           if (e.type === InvalidUserType.DOES_NOT_EXIST) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            log.debug('Faking invite sent to:', req.body.email);
+            log.info('Faking invite sent to:', req.body.email);
             res.status(200).send();
             return true;
           } else {

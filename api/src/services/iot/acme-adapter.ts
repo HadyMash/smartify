@@ -109,21 +109,32 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
           };
           return deviceCapabilitySchema.parse(mc);
         }
-        // TODO: change to range if both min and max are defined
         case 'ENERGY': {
-          const mc: DeviceCapability = {
-            id: capability.name,
-            name: capability.name,
-            type: 'number',
-            bound:
-              capability.minValue !== undefined
-                ? { type: 'min', value: capability.minValue }
-                : capability.maxValue !== undefined
-                  ? { type: 'max', value: capability.maxValue }
-                  : undefined,
-            unit: capability.unit,
-            readonly: capability.isReadOnly || false,
-          };
+          const mc: DeviceCapability =
+            capability.minValue !== undefined &&
+            capability.maxValue !== undefined
+              ? {
+                  id: capability.name,
+                  name: capability.name,
+                  type: 'range',
+                  min: capability.minValue,
+                  max: capability.maxValue,
+                  unit: capability.unit,
+                  readonly: capability.isReadOnly || false,
+                }
+              : {
+                  id: capability.name,
+                  name: capability.name,
+                  type: 'number',
+                  bound:
+                    capability.minValue !== undefined
+                      ? { type: 'min', value: capability.minValue }
+                      : capability.maxValue !== undefined
+                        ? { type: 'max', value: capability.maxValue }
+                        : undefined,
+                  unit: capability.unit,
+                  readonly: capability.isReadOnly || false,
+                };
           return deviceCapabilitySchema.parse(mc);
         }
         default:
@@ -192,8 +203,39 @@ export class AcmeIoTAdapter extends BaseIotAdapter implements HealthCheck {
         return;
       }
 
+      function deviceName(type: string | undefined): string {
+        switch (type) {
+          case 'BULB_ON_OFF':
+            return 'ACME On/Off lightbulb';
+          case 'BULB_RGB_BRIGHTNESS':
+            return 'ACME RGB lightbulb';
+          case 'BULB_LIMITED_COLOR_BRIGHTNESS':
+            return 'ACME Limited color lightbulb';
+          case 'BULB_LIMITED_COLOR':
+            return 'ACME Limited color lightbulb';
+          case 'BULB_TEMP_COLOR':
+            return 'ACME Temperature color lightbulb';
+          case 'CURTAIN':
+            return 'ACME Curtain';
+          case 'AC':
+            return 'ACME AC';
+          case 'SOLAR_PANEL':
+            return 'ACME Solar panel';
+          case 'THERMOMETER':
+            return 'ACME Thermometer';
+          case 'HUMIDITY_SENSOR':
+            return 'ACME Humidity sensor';
+          case 'POWER_METER':
+            return 'ACME Power meter';
+          default:
+            return 'ACME Device';
+        }
+      }
+
       const d: Device = {
         id: device.id,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        name: deviceName(device?.type),
         capabilities: mappedCapabilities as any,
         source: deviceSourceSchema.enum.acme,
       };
